@@ -74,7 +74,7 @@ export default function HomePage() {
   </div>
 
   <div className="text-amber-300 font-semibold tracking-wide">
-    Alaa Abdullah Alsaihati
+        Alaa Abdullah 
   </div>
 
   <div className="text-xs mt-1 text-neutral-500">
