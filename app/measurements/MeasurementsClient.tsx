@@ -30,7 +30,7 @@ export default function MeasurementsClient({
   const [waistCm, setWaistCm] = useState("");
   const [hipCm, setHipCm] = useState("");
 
-  // ✅ صار إلزامي
+  // ✅ إلزامي
   const [bodyShape, setBodyShape] = useState<BodyShapeArabic | "">("");
 
   const errors = useMemo(() => {
@@ -54,7 +54,6 @@ export default function MeasurementsClient({
       e.push("محيط الأرداف لازم يكون بين 60 و 180 سم.");
     }
 
-    // ✅ إلزامي: شكل الجسم
     if (!bodyShape) {
       e.push("اختاري شكل جسمك عشان نرتّب لك النتائج بدقة (خصوصًا العبايات).");
     }
@@ -67,12 +66,12 @@ export default function MeasurementsClient({
   function goResults() {
     if (!canSubmit) return;
 
-    // ✅ الأهم: كمّلي على اللي جاك بدل ما تبدين من الصفر
     const params = new URLSearchParams();
 
-    // خلّي الموجود (لو جاء) يثبت
+    // تثبيت اللي جاينا من الصفحات السابقة
     if (initialParams.occasion) params.set("occasion", initialParams.occasion);
-    if (initialParams.weddingStyle) params.set("weddingStyle", initialParams.weddingStyle);
+    if (initialParams.weddingStyle)
+      params.set("weddingStyle", initialParams.weddingStyle);
     if (initialParams.depth) params.set("depth", initialParams.depth);
     if (initialParams.undertone) params.set("undertone", initialParams.undertone);
 
@@ -82,7 +81,7 @@ export default function MeasurementsClient({
     params.set("waist", String(toNum(waistCm)));
     params.set("hip", String(toNum(hipCm)));
 
-    // ✅ إلزامي
+    // إلزامي
     params.set("bodyShape", bodyShape);
 
     router.push(`/results?${params.toString()}`);
@@ -107,10 +106,10 @@ export default function MeasurementsClient({
 
         {/* Luxury Card */}
         <div className="relative overflow-hidden rounded-3xl border border-[#d6b56a]/35 bg-white/5 p-6 shadow-[0_0_0_1px_rgba(214,181,106,0.12),0_20px_60px_rgba(0,0,0,0.55)] backdrop-blur">
-          {/* إطار ذهبي */}
-          <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-[#d6b56a]/25" />
+          {/* Gold inner frame */}
+          <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-[#d6b56a]/22" />
 
-          {/* لمعة خفيفة داخل الكرت */}
+          {/* Soft gold glow */}
           <div className="pointer-events-none absolute -top-24 left-1/2 h-40 w-[520px] -translate-x-1/2 rounded-full bg-[#d6b56a]/10 blur-3xl" />
 
           {/* Inputs */}
@@ -141,7 +140,7 @@ export default function MeasurementsClient({
             />
           </div>
 
-          {/* Body shape (صار إلزامي) */}
+          {/* Body shape */}
           <div className="mt-6">
             <p className="text-sm font-semibold text-white">
               شكل جسمك <span className="text-[#f3e0b0]">(إلزامي)</span>
@@ -192,15 +191,54 @@ export default function MeasurementsClient({
             onClick={goResults}
             disabled={!canSubmit}
             className="mt-6 w-full rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/15 py-3 text-sm font-extrabold text-white shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:border-[#d6b56a]/70 disabled:opacity-40 disabled:hover:border-[#d6b56a]/45"
+            type="button"
           >
             عرض النتائج
           </button>
 
-          {/* Small hint */}
+          {/* Hint */}
           <p className="mt-3 text-center text-xs text-neutral-400">
             * القياسات بالسنتيمتر — نستخدمها فقط لحساب المقاس المقترح.
           </p>
         </div>
+
+        {/* Footer (داخل الصفحة فقط — بدون اسمك) */}
+        <footer className="mt-10 text-center text-xs text-neutral-400 leading-tight">
+          <div className="text-neutral-500">© 2026 FAZAA</div>
+          <div className="text-neutral-500">All Rights Reserved</div>
+
+          <div dir="ltr" className="mt-1 text-neutral-400">
+            <span className="inline-flex items-center gap-2">
+              <span>For contact</span>
+
+              {/* Mail icon (SVG) */}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 text-[#d6b56a]"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                aria-hidden
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M21.75 6.75v10.5A2.25 2.25 0 0 1 19.5 19.5H4.5A2.25 2.25 0 0 1 2.25 17.25V6.75M21.75 6.75A2.25 2.25 0 0 0 19.5 4.5H4.5A2.25 2.25 0 0 0 2.25 6.75m19.5 0-7.5 5.25a2.25 2.25 0 0 1-2.5 0l-7.5-5.25"
+                />
+              </svg>
+
+              <span>:</span>
+
+              <a
+                href="mailto:contact.fazaa@gmail.com"
+                className="text-[#f3e0b0] hover:underline font-medium tracking-wide"
+              >
+                contact.fazaa@gmail.com
+              </a>
+            </span>
+          </div>
+        </footer>
       </div>
     </main>
   );

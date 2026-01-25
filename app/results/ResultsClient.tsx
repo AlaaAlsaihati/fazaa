@@ -1,245 +1,216 @@
 "use client";
 
-import { useMemo } from "react";
-import { useSearchParams } from "next/navigation";
-import {
-  products,
-  type Product,
-  type BodyShapeArabic,
-  type Occasion,
-  type WeddingStyle,
-} from "@/app/data/products";
-import { recommendSize } from "@/app/lib/recommendSize";
+import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
-type BodyShape = "" | BodyShapeArabic;
-
-const OCCASION_LABEL: Record<string, string> = {
-  wedding: "زواج",
-  engagement: "خطوبة",
-  work: "عمل",
-  abaya: "عبايات",
-  ramadan: "غبقة / رمضان",
-  beach: "بحر",
-  chalets: "شاليهات",
+type InitialParams = {
+  occasion?: string;
+  weddingStyle?: string;
+  depth?: string;
+  undertone?: string;
 };
 
-export default function ResultsClient() {
+type BodyShapeArabic = "ساعة رملية" | "كمثري" | "مستقيم" | "تفاحة";
+
+function toNum(v: string) {
+  const n = Number(String(v || "").trim());
+  return Number.isFinite(n) ? n : NaN;
+}
+
+export default function MeasurementsClient({
+  initialParams,
+}: {
+  initialParams: InitialParams;
+}) {
+  const router = useRouter();
   const sp = useSearchParams();
 
-  const occasion = (sp.get("occasion") || "") as Occasion | "";
-  const weddingStyle = (sp.get("weddingStyle") || "") as WeddingStyle | "";
+  // ✅ fallback قوي: إذا initialParams فاضية ناخذها من URL
+  const occasion = initialParams.occasion || sp.get("occasion") || "";
+  const weddingStyle = initialParams.weddingStyle || sp.get("weddingStyle") || "";
+  const depth = initialParams.depth || sp.get("depth") || "";
+  const undertone = initialParams.undertone || sp.get("undertone") || "";
 
-  const depth = sp.get("depth") || "";
-  const undertone = sp.get("undertone") || "";
+  // القياسات
+  const [heightCm, setHeightCm] = useState("");
+  const [bustCm, setBustCm] = useState("");
+  const [waistCm, setWaistCm] = useState("");
+  const [hipCm, setHipCm] = useState("");
 
-  const height = Number(sp.get("height") || 0);
-  const bust = Number(sp.get("bust") || 0);
-  const waist = Number(sp.get("waist") || 0);
-  const hip = Number(sp.get("hip") || 0);
+  // ✅ إلزامي
+  const [bodyShape, setBodyShape] = useState<BodyShapeArabic | "">("");
 
-  const bodyShape = (sp.get("bodyShape") || "") as BodyShape;
+  const errors = useMemo(() => {
+    const e: string[] = [];
 
-  // ✅ أسباب “ليش ممكن ما تطلع نتائج”
-  const blockingReason = useMemo(() => {
-    if (!occasion) return "واضح إن المناسبة ما وصلت للنتائج (occasion مفقود). ارجعي خطوة للخلف واختاري المناسبة مرة ثانية.";
-    if (occasion === "wedding" && !weddingStyle)
-      return "انتي اخترتي زواج لكن ستايل الزواج (ناعم/ثقيل) ما وصل للنتائج. ارجعي واختاريه مرة ثانية.";
-    return "";
-  }, [occasion, weddingStyle]);
+    const h = toNum(heightCm);
+    const b = toNum(bustCm);
+    const w = toNum(waistCm);
+    const hip = toNum(hipCm);
 
-  const top6 = useMemo(() => {
-    if (!occasion) return [];
+    if (!heightCm || !Number.isFinite(h) || h < 120 || h > 210) {
+      e.push("الطول لازم يكون بين 120 و 210 سم.");
+    }
+    if (!bustCm || !Number.isFinite(b) || b < 60 || b > 160) {
+      e.push("محيط الصدر لازم يكون بين 60 و 160 سم.");
+    }
+    if (!waistCm || !Number.isFinite(w) || w < 45 || w > 160) {
+      e.push("محيط الخصر لازم يكون بين 45 و 160 سم.");
+    }
+    if (!hipCm || !Number.isFinite(hip) || hip < 60 || hip > 180) {
+      e.push("محيط الأرداف لازم يكون بين 60 و 180 سم.");
+    }
 
-    const filtered = products.filter((p) => {
-      // ✅ قفل العبايات: لازم occasion="abaya" و category="abaya"
-      if (occasion === "abaya") {
-        if (p.occasion !== "abaya") return false;
-        if (p.category !== "abaya") return false;
-        return true;
-      }
+    if (!bodyShape) {
+      e.push("اختاري شكل جسمك عشان نرتّب لك النتائج بدقة (خصوصًا العبايات).");
+    }
 
-      // ✅ باقي المناسبات: ممنوع العبايات تطلع فيها
-      if (p.category === "abaya") return false;
+    return e;
+  }, [heightCm, bustCm, waistCm, hipCm, bodyShape]);
 
-      // لازم المناسبة تطابق
-      if (p.occasion !== occasion) return false;
+  const canSubmit = errors.length === 0;
 
-      // ✅ الزواج: لازم weddingStyle يطابق (صارم)
-      if (occasion === "wedding") {
-        if (!weddingStyle) return false;
-        if (!p.weddingStyle) return false;
-        if (p.weddingStyle !== weddingStyle) return false;
-      }
+  function goResults() {
+    if (!canSubmit) return;
 
-      return true;
-    });
+    const params = new URLSearchParams();
 
-    const scored = filtered.map((p) => {
-      let score = 0;
-      score += 4;
+    // ✅ ثبّتي كل البرامز المهمة
+    if (occasion) params.set("occasion", occasion);
+    if (weddingStyle) params.set("weddingStyle", weddingStyle);
+    if (depth) params.set("depth", depth);
+    if (undertone) params.set("undertone", undertone);
 
-      if (depth && p.bestFor?.depth?.includes(depth as any)) score += 3;
-      if (undertone && p.bestFor?.undertone?.includes(undertone as any)) score += 3;
+    params.set("height", String(toNum(heightCm)));
+    params.set("bust", String(toNum(bustCm)));
+    params.set("waist", String(toNum(waistCm)));
+    params.set("hip", String(toNum(hipCm)));
 
-      if (occasion === "abaya" && bodyShape) {
-        if (p.abayaBestForShapes?.includes(bodyShape)) score += 6;
-        else score += 1;
-      }
+    params.set("bodyShape", bodyShape);
 
-      return { p, score };
-    });
-
-    return scored
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 6)
-      .map((x) => x.p);
-  }, [occasion, weddingStyle, depth, undertone, bodyShape]);
-
-  const explainText = useMemo(() => {
-    const parts: string[] = [];
-
-    if (occasion) parts.push(`المناسبة: ${OCCASION_LABEL[occasion] || occasion}`);
-    if (occasion === "wedding" && weddingStyle) parts.push(`ستايل الزفاف: ${weddingStyle}`);
-    if (depth) parts.push(`درجة البشرة: ${depth}`);
-    if (undertone) parts.push(`الأندرتون: ${undertone}`);
-
-    if (occasion === "abaya" && bodyShape) parts.push(`شكل الجسم: ${bodyShape}`);
-
-    return parts.length ? parts.join(" • ") : "";
-  }, [occasion, weddingStyle, depth, undertone, bodyShape]);
+    router.push(`/results?${params.toString()}`);
+  }
 
   return (
-    <main dir="rtl" className="px-6 py-10">
-      <div className="mx-auto max-w-6xl">
-        <div className="text-center">
-          <p className="text-sm text-neutral-400">نتائجك</p>
-
+    <main
+      dir="rtl"
+      className="min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-900 to-black p-6"
+    >
+      <div className="mx-auto max-w-2xl">
+        {/* Header */}
+        <header className="mb-6 text-center">
+          <p className="text-sm text-neutral-400">الخطوة الأخيرة</p>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white">
-            اخترنا لك اطلالات تليق بك
+            خلّينا نضبط المقاس المثالي لك
           </h1>
-
           <p className="mt-3 text-sm text-neutral-400">
-            هذه الإطلالات تم اختيارها بناءً على اختياراتك، لتظهر عليك بأفضل شكل ممكن.
+            عشان نطلع لك اقتراحات فخمة + مقاس محسوب عليك 🔥
           </p>
+        </header>
 
-          {explainText ? (
-            <p className="mt-3 text-xs text-neutral-500">
-              <span className="text-neutral-300">{explainText}</span>
+        {/* Luxury Card */}
+        <div className="relative overflow-hidden rounded-3xl border border-[#d6b56a]/35 bg-white/5 p-6 shadow-[0_0_0_1px_rgba(214,181,106,0.12),0_20px_60px_rgba(0,0,0,0.55)] backdrop-blur">
+          <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-[#d6b56a]/25" />
+          <div className="pointer-events-none absolute -top-24 left-1/2 h-40 w-[520px] -translate-x-1/2 rounded-full bg-[#d6b56a]/10 blur-3xl" />
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="طولك (سم)" value={heightCm} onChange={setHeightCm} placeholder="مثال: 165" />
+            <Field label="محيط الصدر (سم)" value={bustCm} onChange={setBustCm} placeholder="مثال: 90" />
+            <Field label="محيط الخصر (سم)" value={waistCm} onChange={setWaistCm} placeholder="مثال: 70" />
+            <Field label="محيط الأرداف (سم)" value={hipCm} onChange={setHipCm} placeholder="مثال: 98" />
+          </div>
+
+          <div className="mt-6">
+            <p className="text-sm font-semibold text-white">
+              شكل جسمك <span className="text-[#f3e0b0]">(إلزامي)</span>
             </p>
+
+            <p className="mt-2 text-xs text-neutral-400">
+              نستخدمه فقط لترتيب النتائج بدقة — خصوصًا في قسم العبايات.
+            </p>
+
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <Chip label="ساعة رملية" active={bodyShape === "ساعة رملية"} onClick={() => setBodyShape("ساعة رملية")} />
+              <Chip label="كمثري" active={bodyShape === "كمثري"} onClick={() => setBodyShape("كمثري")} />
+              <Chip label="مستقيم" active={bodyShape === "مستقيم"} onClick={() => setBodyShape("مستقيم")} />
+              <Chip label="تفاحة" active={bodyShape === "تفاحة"} onClick={() => setBodyShape("تفاحة")} />
+            </div>
+          </div>
+
+          {errors.length > 0 ? (
+            <div className="mt-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4">
+              <p className="text-sm font-semibold text-red-200">تأكدي من التالي:</p>
+              <ul className="mt-2 list-disc pr-5 text-sm text-red-100/90 space-y-1">
+                {errors.map((x, i) => (
+                  <li key={i}>{x}</li>
+                ))}
+              </ul>
+            </div>
           ) : null}
 
-          {occasion === "abaya" ? (
-            <p className="mt-3 text-xs text-neutral-500">
-              * العبايات تُرتّب حسب شكل الجسم، وباقي القطع حسب لون البشرة + القياسات.
-            </p>
-          ) : null}
+          <button
+            onClick={goResults}
+            disabled={!canSubmit}
+            className="mt-6 w-full rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/15 py-3 text-sm font-extrabold text-white shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:border-[#d6b56a]/70 disabled:opacity-40 disabled:hover:border-[#d6b56a]/45"
+            type="button"
+          >
+            عرض النتائج
+          </button>
+
+          <p className="mt-3 text-center text-xs text-neutral-400">
+            * القياسات بالسنتيمتر — نستخدمها فقط لحساب المقاس المقترح.
+          </p>
         </div>
-
-        {/* ✅ لو فيه سبب يمنع النتائج */}
-        {blockingReason ? (
-          <div className="mx-auto mt-10 max-w-2xl rounded-2xl border border-[#d6b56a]/25 bg-white/5 p-5 text-center">
-            <p className="text-sm text-neutral-200 leading-relaxed">{blockingReason}</p>
-          </div>
-        ) : null}
-
-        <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {top6.map((p) => {
-            const rec = recommendSize(p, {
-              heightCm: height,
-              bustCm: bust,
-              waistCm: waist,
-              hipCm: hip,
-            });
-
-            return (
-              <LuxuryCard
-                key={p.id}
-                p={p}
-                recommendedSize={rec.size}
-                sizeNote={rec.note}
-                occasion={occasion}
-                bodyShape={bodyShape}
-              />
-            );
-          })}
-        </div>
-
-        {top6.length === 0 && !blockingReason ? (
-          <div className="mt-10 text-center text-neutral-300">
-            ما لقينا نتائج تناسب اختياراتك حاليًا.
-          </div>
-        ) : null}
       </div>
     </main>
   );
 }
 
-function LuxuryCard({
-  p,
-  recommendedSize,
-  sizeNote,
-  occasion,
-  bodyShape,
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
 }: {
-  p: Product;
-  recommendedSize: string;
-  sizeNote: string;
-  occasion: "" | Occasion;
-  bodyShape: "" | BodyShapeArabic;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
 }) {
-  const why =
-    occasion === "abaya" && bodyShape
-      ? `تناسب شكل جسمك (${bodyShape}) + محسوبة على طولك`
-      : "ألوان مناسبة لبشرتك + مقاس محسوب على قياساتك";
-
   return (
-    <div className="group relative overflow-hidden rounded-3xl border border-[#d6b56a]/35 bg-white/5 p-4 shadow-[0_0_0_1px_rgba(214,181,106,0.12),0_20px_60px_rgba(0,0,0,0.55)] backdrop-blur">
-      <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-[#d6b56a]/25" />
-      <div className="pointer-events-none absolute -top-24 left-1/2 h-40 w-[520px] -translate-x-1/2 rounded-full bg-[#d6b56a]/10 blur-3xl opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+    <label className="block">
+      <span className="text-sm font-semibold text-white">{label}</span>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        inputMode="numeric"
+        placeholder={placeholder}
+        className="mt-2 w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none placeholder:text-neutral-500 focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10"
+      />
+    </label>
+  );
+}
 
-      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-neutral-900/40">
-        <img
-          src={p.image}
-          alt={p.title}
-          className="h-64 w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-          loading="lazy"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).src =
-              "https://via.placeholder.com/600x800?text=No+Image";
-          }}
-        />
-      </div>
-
-      <div className="mt-4">
-        <h3 className="text-base font-semibold text-white">{p.title}</h3>
-        <p className="mt-1 text-sm text-neutral-400">{p.store}</p>
-
-        <p className="mt-2 text-xs text-neutral-400 leading-relaxed">{why}</p>
-
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="text-lg font-bold text-white">
-            {p.priceSar}{" "}
-            <span className="text-sm font-semibold text-neutral-300">ر.س</span>
-          </p>
-
-          <span className="inline-flex items-center rounded-full border border-[#d6b56a]/40 bg-[#d6b56a]/10 px-3 py-1 text-xs font-semibold text-[#f3e0b0]">
-            المقاس المقترح: {recommendedSize}
-          </span>
-        </div>
-
-        {sizeNote ? (
-          <p className="mt-2 text-xs text-neutral-400 leading-relaxed">{sizeNote}</p>
-        ) : null}
-
-        <a
-          href={p.url}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-4 inline-flex w-full items-center justify-center rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/20 via-white/5 to-[#d6b56a]/15 px-4 py-3 text-sm font-bold text-white shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:border-[#d6b56a]/70"
-        >
-          روحي للمتجر
-        </a>
-      </div>
-    </div>
+function Chip({
+  label,
+  active,
+  onClick,
+}: {
+  label: BodyShapeArabic;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      type="button"
+      className={[
+        "rounded-2xl border px-4 py-3 text-sm font-semibold transition",
+        "bg-black/20 border-white/10 text-white hover:bg-black/30",
+        active ? "ring-2 ring-[#d6b56a]/40 border-[#d6b56a]/35 bg-[#d6b56a]/10" : "",
+      ].join(" ")}
+    >
+      {label}
+    </button>
   );
 }

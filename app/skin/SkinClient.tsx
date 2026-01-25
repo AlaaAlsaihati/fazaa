@@ -34,13 +34,12 @@ export default function SkinPage() {
   const [depth, setDepth] = useState<Depth>("");
   const [undertone, setUndertone] = useState<Undertone>("");
 
-  // ✅ Dropdown لحكاية "كيف أعرف الأندرتون؟"
   const [showUndertoneHelp, setShowUndertoneHelp] = useState(false);
 
   function next() {
     if (!depth || !undertone) return;
 
-    // ✅ المهم: نكمل على البرامز الحالية (عشان ما يضيع occasion ويخرب النتائج)
+    // ✅ نكمل على البرامز الحالية (عشان ما يضيع occasion ويخرب النتائج)
     const params = new URLSearchParams(sp.toString());
     params.set("depth", depth);
     params.set("undertone", undertone);
@@ -51,9 +50,9 @@ export default function SkinPage() {
   return (
     <main
       dir="rtl"
-      className="min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-900 to-black p-6"
+      className="min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-900 to-black p-6 flex flex-col"
     >
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto w-full max-w-2xl flex-1">
         {/* Header */}
         <header className="mb-6">
           <p className="text-neutral-400 text-sm">فزعة</p>
@@ -64,11 +63,19 @@ export default function SkinPage() {
         </header>
 
         {/* ===== درجة البشرة ===== */}
-        <section className="rounded-2xl border border-white/10 bg-black/20 p-4">
-          <h2 className="text-white font-semibold">درجة البشرة</h2>
-          <p className="text-neutral-400 text-sm mt-1">
-            اختاري الدرجة الأقرب لك
-          </p>
+        <section className="rounded-2xl border border-[#d6b56a]/18 bg-white/5 p-4 shadow-[0_0_0_1px_rgba(214,181,106,0.08)] backdrop-blur">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-white font-semibold">درجة البشرة</h2>
+              <p className="text-neutral-400 text-sm mt-1">
+                اختاري الدرجة الأقرب لك
+              </p>
+            </div>
+
+            <div className="h-10 w-10 rounded-full border border-[#d6b56a]/25 bg-[#d6b56a]/10 flex items-center justify-center">
+              <span className="text-[#f3e0b0] text-sm font-bold">1</span>
+            </div>
+          </div>
 
           <div className="mt-4 grid grid-cols-3 gap-4">
             {DEPTH_OPTIONS.map((opt) => {
@@ -83,17 +90,17 @@ export default function SkinPage() {
                 >
                   <div
                     className={[
-                      "h-16 w-16 rounded-full border-2 transition",
+                      "h-14 w-14 sm:h-16 sm:w-16 rounded-full border-2 transition",
                       active
-                        ? "border-[#d6b56a] ring-4 ring-[#d6b56a]/30"
-                        : "border-white/20",
+                        ? "border-[#d6b56a] ring-4 ring-[#d6b56a]/25"
+                        : "border-white/15 hover:border-white/25",
                     ].join(" ")}
                     style={{ backgroundColor: opt.color }}
                   />
 
                   <span
                     className={[
-                      "text-sm font-semibold",
+                      "text-[12px] sm:text-sm font-semibold",
                       active ? "text-[#f3e0b0]" : "text-neutral-300",
                     ].join(" ")}
                   >
@@ -106,7 +113,7 @@ export default function SkinPage() {
         </section>
 
         {/* ===== الأندرتون ===== */}
-        <section className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+        <section className="mt-4 rounded-2xl border border-[#d6b56a]/18 bg-white/5 p-4 shadow-[0_0_0_1px_rgba(214,181,106,0.08)] backdrop-blur">
           {/* عنوان + زر السهم الذهبي */}
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -117,18 +124,17 @@ export default function SkinPage() {
             <button
               type="button"
               onClick={() => setShowUndertoneHelp((v) => !v)}
-              className="shrink-0 inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-white/5 px-3 py-2 text-amber-200 hover:bg-white/10 transition"
+              className="shrink-0 inline-flex items-center gap-2 rounded-full border border-[#d6b56a]/25 bg-black/20 px-3 py-2 text-[#f3e0b0] hover:bg-black/30 transition"
               aria-expanded={showUndertoneHelp}
               aria-controls="undertone-help"
               title="كيف أعرف الأندرتون؟"
             >
               <span className="text-sm font-semibold">كيف أعرف؟</span>
 
-              {/* سهم ذهبي */}
               <span
                 className={[
                   "inline-flex h-8 w-8 items-center justify-center rounded-full",
-                  "border border-amber-300/40 bg-amber-300/10",
+                  "border border-[#d6b56a]/30 bg-[#d6b56a]/10",
                   "transition",
                   showUndertoneHelp ? "rotate-90" : "",
                 ].join(" ")}
@@ -155,13 +161,13 @@ export default function SkinPage() {
           <div
             id="undertone-help"
             className={[
-              "mt-4 overflow-hidden rounded-2xl border border-amber-300/20 bg-amber-300/10 px-4 transition-all",
+              "mt-4 overflow-hidden rounded-2xl border border-[#d6b56a]/18 bg-[#d6b56a]/10 px-4 transition-all",
               showUndertoneHelp
                 ? "max-h-[260px] py-4 opacity-100"
                 : "max-h-0 py-0 opacity-0",
             ].join(" ")}
           >
-            <h3 className="text-amber-200 font-bold mb-2">
+            <h3 className="text-[#f3e0b0] font-bold mb-2">
               كيف أعرف الأندرتون؟
             </h3>
 
@@ -235,12 +241,45 @@ export default function SkinPage() {
         >
           التالي
         </button>
+
+        {/* Footer داخل الصفحة */}
+        <footer className="mt-10 text-center text-xs text-neutral-400">
+          <div className="mx-auto mb-2 h-px w-32 bg-gradient-to-r from-transparent via-[#d6b56a]/40 to-transparent" />
+          <div className="text-neutral-500">© 2026 FAZAA — All Rights Reserved</div>
+
+          <div className="mt-1 inline-flex items-center gap-2 justify-center" dir="ltr">
+            <span className="text-neutral-300">For contact</span>
+
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4 text-[#d6b56a]"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M21.75 6.75v10.5A2.25 2.25 0 0 1 19.5 19.5H4.5A2.25 2.25 0 0 1 2.25 17.25V6.75m19.5 0-7.5 5.25a2.25 2.25 0 0 1-2.5 0l-7.5-5.25"
+              />
+            </svg>
+
+            <span className="text-neutral-500">:</span>
+
+            <a
+              href="mailto:contact.fazaa@gmail.com"
+              className="font-semibold tracking-[0.08em] text-[#f3e0b0] hover:text-[#d6b56a] transition"
+              style={{ fontFamily: "ui-serif, Georgia, serif" }}
+            >
+              contact.fazaa@gmail.com
+            </a>
+          </div>
+        </footer>
       </div>
     </main>
   );
 }
-
-/* ===== Components ===== */
 
 function UndertoneButton({
   label,
@@ -260,7 +299,7 @@ function UndertoneButton({
       className={[
         "rounded-xl border px-4 py-3 font-semibold transition flex items-center justify-center gap-2",
         "bg-black/20 border-white/10 text-white hover:bg-black/30",
-        active ? "ring-2 ring-white/50 border-white/30" : "",
+        active ? "ring-2 ring-[#d6b56a]/30 border-[#d6b56a]/35 bg-[#d6b56a]/10" : "",
       ].join(" ")}
     >
       <span>{emoji}</span>
