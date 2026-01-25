@@ -1,12 +1,19 @@
-import { Suspense } from "react";
 import ResultsClient from "./ResultsClient";
 
-export const dynamic = "force-dynamic";
-
-export default function ResultsPage() {
-  return (
-    <Suspense fallback={null}>
-      <ResultsClient />
-    </Suspense>
-  );
+export default function Page({
+  searchParams,
+}: {
+  searchParams: {
+    occasion?: string;
+    weddingStyle?: string;
+    depth?: string;
+    undertone?: string;
+    height?: string;
+    bust?: string;
+    waist?: string;
+    hip?: string;
+    bodyShape?: string;
+  };
+}) {
+  return <ResultsClient initialParams={searchParams} />;
 }

@@ -66,9 +66,9 @@ export default function MeasurementsClient({
   function goResults() {
     if (!canSubmit) return;
 
+    // ✅ نخليها تكمل على اللي جاينا من الصفحات السابقة (بدون فقدان بارامز)
     const params = new URLSearchParams();
 
-    // تثبيت اللي جاينا من الصفحات السابقة
     if (initialParams.occasion) params.set("occasion", initialParams.occasion);
     if (initialParams.weddingStyle)
       params.set("weddingStyle", initialParams.weddingStyle);

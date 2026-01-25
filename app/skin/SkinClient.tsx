@@ -299,7 +299,9 @@ function UndertoneButton({
       className={[
         "rounded-xl border px-4 py-3 font-semibold transition flex items-center justify-center gap-2",
         "bg-black/20 border-white/10 text-white hover:bg-black/30",
-        active ? "ring-2 ring-[#d6b56a]/30 border-[#d6b56a]/35 bg-[#d6b56a]/10" : "",
+        active
+          ? "ring-2 ring-[#d6b56a]/30 border-[#d6b56a]/35 bg-[#d6b56a]/10"
+          : "",
       ].join(" ")}
     >
       <span>{emoji}</span>
