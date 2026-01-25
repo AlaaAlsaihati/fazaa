@@ -10,6 +10,7 @@ import {
   type WeddingStyle,
 } from "@/app/data/products";
 import { recommendSize } from "@/app/lib/recommendSize";
+import SiteFooter from "@/app/components/FazaaFooter";
 
 type BodyShape = "" | BodyShapeArabic;
 
@@ -36,29 +37,25 @@ const OCCASION_LABEL: Record<string, string> = {
 };
 
 export default function ResultsClient({
-  initialParams,
+  // ✅ هذا هو اللي يمنع خطأ Typescript حتى لو ما انرسل شي
+  initialParams = {},
 }: {
   initialParams?: InitialParams;
 }) {
   const sp = useSearchParams();
 
-  const occasion = ((initialParams?.occasion ?? sp.get("occasion") ?? "") as
-    | Occasion
-    | "");
-  const weddingStyle = ((initialParams?.weddingStyle ??
-    sp.get("weddingStyle") ??
-    "") as WeddingStyle | "");
+  const occasion = ((initialParams.occasion ?? sp.get("occasion") ?? "") as Occasion | "");
+  const weddingStyle = ((initialParams.weddingStyle ?? sp.get("weddingStyle") ?? "") as WeddingStyle | "");
 
-  const depth = initialParams?.depth ?? sp.get("depth") ?? "";
-  const undertone = initialParams?.undertone ?? sp.get("undertone") ?? "";
+  const depth = initialParams.depth ?? sp.get("depth") ?? "";
+  const undertone = initialParams.undertone ?? sp.get("undertone") ?? "";
 
-  const height = Number(initialParams?.height ?? sp.get("height") ?? 0);
-  const bust = Number(initialParams?.bust ?? sp.get("bust") ?? 0);
-  const waist = Number(initialParams?.waist ?? sp.get("waist") ?? 0);
-  const hip = Number(initialParams?.hip ?? sp.get("hip") ?? 0);
+  const height = Number(initialParams.height ?? sp.get("height") ?? 0);
+  const bust = Number(initialParams.bust ?? sp.get("bust") ?? 0);
+  const waist = Number(initialParams.waist ?? sp.get("waist") ?? 0);
+  const hip = Number(initialParams.hip ?? sp.get("hip") ?? 0);
 
-  const bodyShape = ((initialParams?.bodyShape ?? sp.get("bodyShape") ?? "") as
-    | BodyShape);
+  const bodyShape = ((initialParams.bodyShape ?? sp.get("bodyShape") ?? "") as BodyShape);
 
   const top6 = useMemo(() => {
     if (!occasion) return [];
@@ -82,8 +79,7 @@ export default function ResultsClient({
       let score = 4;
 
       if (depth && p.bestFor?.depth?.includes(depth as any)) score += 3;
-      if (undertone && p.bestFor?.undertone?.includes(undertone as any))
-        score += 3;
+      if (undertone && p.bestFor?.undertone?.includes(undertone as any)) score += 3;
 
       if (occasion === "abaya" && bodyShape) {
         if (p.abayaBestForShapes?.includes(bodyShape)) score += 6;
@@ -102,10 +98,8 @@ export default function ResultsClient({
   const explainText = useMemo(() => {
     const parts: string[] = [];
 
-    if (occasion)
-      parts.push(`المناسبة: ${OCCASION_LABEL[occasion] || occasion}`);
-    if (occasion === "wedding" && weddingStyle)
-      parts.push(`ستايل الزفاف: ${weddingStyle}`);
+    if (occasion) parts.push(`المناسبة: ${OCCASION_LABEL[occasion] || occasion}`);
+    if (occasion === "wedding" && weddingStyle) parts.push(`ستايل الزفاف: ${weddingStyle}`);
     if (depth) parts.push(`درجة البشرة: ${depth}`);
     if (undertone) parts.push(`الأندرتون: ${undertone}`);
     if (occasion === "abaya" && bodyShape) parts.push(`شكل الجسم: ${bodyShape}`);
@@ -127,8 +121,7 @@ export default function ResultsClient({
           </h1>
 
           <p className="mt-3 text-sm text-neutral-400">
-            هذه الإطلالات تم اختيارها بناءً على اختياراتك، لتظهر عليك بأفضل شكل
-            ممكن.
+            هذه الإطلالات تم اختيارها بناءً على اختياراتك، لتظهر عليك بأفضل شكل ممكن.
           </p>
 
           {explainText ? (
@@ -172,42 +165,8 @@ export default function ResultsClient({
           </div>
         ) : null}
 
-        {/* ✅ Footer (بدون اسمك) */}
-        <footer className="mt-12 text-center text-xs text-neutral-400 leading-tight">
-          <div className="text-neutral-500">© 2026 FAZAA</div>
-          <div className="text-neutral-500">All Rights Reserved</div>
-
-          <div dir="ltr" className="mt-1 text-neutral-400">
-            <span className="inline-flex items-center gap-2">
-              <span>For contact</span>
-
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4 text-[#d6b56a]"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.5}
-                aria-hidden
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M21.75 6.75v10.5A2.25 2.25 0 0 1 19.5 19.5H4.5A2.25 2.25 0 0 1 2.25 17.25V6.75M21.75 6.75A2.25 2.25 0 0 0 19.5 4.5H4.5A2.25 2.25 0 0 0 2.25 6.75m19.5 0-7.5 5.25a2.25 2.25 0 0 1-2.5 0l-7.5-5.25"
-                />
-              </svg>
-
-              <span>:</span>
-
-              <a
-                href="mailto:contact.fazaa@gmail.com"
-                className="text-[#f3e0b0] hover:underline font-medium tracking-wide"
-              >
-                contact.fazaa@gmail.com
-              </a>
-            </span>
-          </div>
-        </footer>
+        {/* ✅ Footer موحّد */}
+        <SiteFooter />
       </div>
     </main>
   );
@@ -266,9 +225,7 @@ function LuxuryCard({
         </div>
 
         {sizeNote ? (
-          <p className="mt-2 text-xs text-neutral-400 leading-relaxed">
-            {sizeNote}
-          </p>
+          <p className="mt-2 text-xs text-neutral-400 leading-relaxed">{sizeNote}</p>
         ) : null}
 
         <a

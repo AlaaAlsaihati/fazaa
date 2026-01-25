@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import SiteFooter from "@/app/components/FazaaFooter";
 
 type InitialParams = {
   occasion?: string;
@@ -23,6 +24,13 @@ export default function MeasurementsClient({
   initialParams: InitialParams;
 }) {
   const router = useRouter();
+  const sp = useSearchParams();
+
+  // ✅ حل جذري: ناخذ البرامز من initialParams أو من URL
+  const occasion = initialParams.occasion || sp.get("occasion") || "";
+  const weddingStyle = initialParams.weddingStyle || sp.get("weddingStyle") || "";
+  const depth = initialParams.depth || sp.get("depth") || "";
+  const undertone = initialParams.undertone || sp.get("undertone") || "";
 
   // القياسات
   const [heightCm, setHeightCm] = useState("");
@@ -30,7 +38,7 @@ export default function MeasurementsClient({
   const [waistCm, setWaistCm] = useState("");
   const [hipCm, setHipCm] = useState("");
 
-  // ✅ إلزامي
+  // شكل الجسم
   const [bodyShape, setBodyShape] = useState<BodyShapeArabic | "">("");
 
   const errors = useMemo(() => {
@@ -66,22 +74,19 @@ export default function MeasurementsClient({
   function goResults() {
     if (!canSubmit) return;
 
-    // ✅ نخليها تكمل على اللي جاينا من الصفحات السابقة (بدون فقدان بارامز)
     const params = new URLSearchParams();
 
-    if (initialParams.occasion) params.set("occasion", initialParams.occasion);
-    if (initialParams.weddingStyle)
-      params.set("weddingStyle", initialParams.weddingStyle);
-    if (initialParams.depth) params.set("depth", initialParams.depth);
-    if (initialParams.undertone) params.set("undertone", initialParams.undertone);
+    // ✅ أهم نقطة: ثبتي البرامز من القيم المحلولة (مو initialParams فقط)
+    if (occasion) params.set("occasion", occasion);
+    if (weddingStyle) params.set("weddingStyle", weddingStyle);
+    if (depth) params.set("depth", depth);
+    if (undertone) params.set("undertone", undertone);
 
-    // القياسات
     params.set("height", String(toNum(heightCm)));
     params.set("bust", String(toNum(bustCm)));
     params.set("waist", String(toNum(waistCm)));
     params.set("hip", String(toNum(hipCm)));
 
-    // إلزامي
     params.set("bodyShape", bodyShape);
 
     router.push(`/results?${params.toString()}`);
@@ -106,44 +111,19 @@ export default function MeasurementsClient({
 
         {/* Luxury Card */}
         <div className="relative overflow-hidden rounded-3xl border border-[#d6b56a]/35 bg-white/5 p-6 shadow-[0_0_0_1px_rgba(214,181,106,0.12),0_20px_60px_rgba(0,0,0,0.55)] backdrop-blur">
-          {/* Gold inner frame */}
           <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-[#d6b56a]/22" />
-
-          {/* Soft gold glow */}
           <div className="pointer-events-none absolute -top-24 left-1/2 h-40 w-[520px] -translate-x-1/2 rounded-full bg-[#d6b56a]/10 blur-3xl" />
 
-          {/* Inputs */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field
-              label="طولك (سم)"
-              value={heightCm}
-              onChange={setHeightCm}
-              placeholder="مثال: 165"
-            />
-            <Field
-              label="محيط الصدر (سم)"
-              value={bustCm}
-              onChange={setBustCm}
-              placeholder="مثال: 90"
-            />
-            <Field
-              label="محيط الخصر (سم)"
-              value={waistCm}
-              onChange={setWaistCm}
-              placeholder="مثال: 70"
-            />
-            <Field
-              label="محيط الأرداف (سم)"
-              value={hipCm}
-              onChange={setHipCm}
-              placeholder="مثال: 98"
-            />
+            <Field label="طولك (سم)" value={heightCm} onChange={setHeightCm} placeholder="مثال: 165" />
+            <Field label="محيط الصدر (سم)" value={bustCm} onChange={setBustCm} placeholder="مثال: 90" />
+            <Field label="محيط الخصر (سم)" value={waistCm} onChange={setWaistCm} placeholder="مثال: 70" />
+            <Field label="محيط الأرداف (سم)" value={hipCm} onChange={setHipCm} placeholder="مثال: 98" />
           </div>
 
-          {/* Body shape */}
           <div className="mt-6">
             <p className="text-sm font-semibold text-white">
-              شكل جسمك <span className="text-[#f3e0b0]">(إلزامي)</span>
+              شكل جسمك
             </p>
 
             <p className="mt-2 text-xs text-neutral-400">
@@ -151,30 +131,13 @@ export default function MeasurementsClient({
             </p>
 
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <Chip
-                label="ساعة رملية"
-                active={bodyShape === "ساعة رملية"}
-                onClick={() => setBodyShape("ساعة رملية")}
-              />
-              <Chip
-                label="كمثري"
-                active={bodyShape === "كمثري"}
-                onClick={() => setBodyShape("كمثري")}
-              />
-              <Chip
-                label="مستقيم"
-                active={bodyShape === "مستقيم"}
-                onClick={() => setBodyShape("مستقيم")}
-              />
-              <Chip
-                label="تفاحة"
-                active={bodyShape === "تفاحة"}
-                onClick={() => setBodyShape("تفاحة")}
-              />
+              <Chip label="ساعة رملية" active={bodyShape === "ساعة رملية"} onClick={() => setBodyShape("ساعة رملية")} />
+              <Chip label="كمثري" active={bodyShape === "كمثري"} onClick={() => setBodyShape("كمثري")} />
+              <Chip label="مستقيم" active={bodyShape === "مستقيم"} onClick={() => setBodyShape("مستقيم")} />
+              <Chip label="تفاحة" active={bodyShape === "تفاحة"} onClick={() => setBodyShape("تفاحة")} />
             </div>
           </div>
 
-          {/* Errors */}
           {errors.length > 0 ? (
             <div className="mt-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4">
               <p className="text-sm font-semibold text-red-200">تأكدي من التالي:</p>
@@ -186,7 +149,6 @@ export default function MeasurementsClient({
             </div>
           ) : null}
 
-          {/* CTA */}
           <button
             onClick={goResults}
             disabled={!canSubmit}
@@ -196,49 +158,13 @@ export default function MeasurementsClient({
             عرض النتائج
           </button>
 
-          {/* Hint */}
           <p className="mt-3 text-center text-xs text-neutral-400">
             * القياسات بالسنتيمتر — نستخدمها فقط لحساب المقاس المقترح.
           </p>
         </div>
 
-        {/* Footer (داخل الصفحة فقط — بدون اسمك) */}
-        <footer className="mt-10 text-center text-xs text-neutral-400 leading-tight">
-          <div className="text-neutral-500">© 2026 FAZAA</div>
-          <div className="text-neutral-500">All Rights Reserved</div>
-
-          <div dir="ltr" className="mt-1 text-neutral-400">
-            <span className="inline-flex items-center gap-2">
-              <span>For contact</span>
-
-              {/* Mail icon (SVG) */}
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4 text-[#d6b56a]"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.5}
-                aria-hidden
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M21.75 6.75v10.5A2.25 2.25 0 0 1 19.5 19.5H4.5A2.25 2.25 0 0 1 2.25 17.25V6.75M21.75 6.75A2.25 2.25 0 0 0 19.5 4.5H4.5A2.25 2.25 0 0 0 2.25 6.75m19.5 0-7.5 5.25a2.25 2.25 0 0 1-2.5 0l-7.5-5.25"
-                />
-              </svg>
-
-              <span>:</span>
-
-              <a
-                href="mailto:contact.fazaa@gmail.com"
-                className="text-[#f3e0b0] hover:underline font-medium tracking-wide"
-              >
-                contact.fazaa@gmail.com
-              </a>
-            </span>
-          </div>
-        </footer>
+        {/* ✅ Footer موحّد */}
+        <SiteFooter />
       </div>
     </main>
   );
@@ -285,9 +211,7 @@ function Chip({
       className={[
         "rounded-2xl border px-4 py-3 text-sm font-semibold transition",
         "bg-black/20 border-white/10 text-white hover:bg-black/30",
-        active
-          ? "ring-2 ring-[#d6b56a]/40 border-[#d6b56a]/35 bg-[#d6b56a]/10"
-          : "",
+        active ? "ring-2 ring-[#d6b56a]/40 border-[#d6b56a]/35 bg-[#d6b56a]/10" : "",
       ].join(" ")}
     >
       {label}

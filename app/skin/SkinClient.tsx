@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import SiteFooter from "@/app/components/FazaaFooter";
 
 type Depth =
   | "فاتح جدًا"
@@ -39,7 +40,6 @@ export default function SkinPage() {
   function next() {
     if (!depth || !undertone) return;
 
-    // ✅ نكمل على البرامز الحالية (عشان ما يضيع occasion ويخرب النتائج)
     const params = new URLSearchParams(sp.toString());
     params.set("depth", depth);
     params.set("undertone", undertone);
@@ -54,7 +54,7 @@ export default function SkinPage() {
     >
       <div className="mx-auto w-full max-w-2xl flex-1">
         {/* Header */}
-        <header className="mb-6">
+        <header className="mb-5">
           <p className="text-neutral-400 text-sm">فزعة</p>
           <h1 className="text-2xl font-bold text-white">اختاري لون البشرة</h1>
           <p className="text-neutral-400 mt-2">
@@ -72,9 +72,7 @@ export default function SkinPage() {
               </p>
             </div>
 
-            <div className="h-10 w-10 rounded-full border border-[#d6b56a]/25 bg-[#d6b56a]/10 flex items-center justify-center">
-              <span className="text-[#f3e0b0] text-sm font-bold">1</span>
-            </div>
+            {/* ✅ تم حذف دائرة الرقم 1 */}
           </div>
 
           <div className="mt-4 grid grid-cols-3 gap-4">
@@ -90,7 +88,8 @@ export default function SkinPage() {
                 >
                   <div
                     className={[
-                      "h-14 w-14 sm:h-16 sm:w-16 rounded-full border-2 transition",
+                      // ✅ صغرناها شوي فقط
+                      "h-12 w-12 sm:h-14 sm:w-14 rounded-full border-2 transition",
                       active
                         ? "border-[#d6b56a] ring-4 ring-[#d6b56a]/25"
                         : "border-white/15 hover:border-white/25",
@@ -114,7 +113,6 @@ export default function SkinPage() {
 
         {/* ===== الأندرتون ===== */}
         <section className="mt-4 rounded-2xl border border-[#d6b56a]/18 bg-white/5 p-4 shadow-[0_0_0_1px_rgba(214,181,106,0.08)] backdrop-blur">
-          {/* عنوان + زر السهم الذهبي */}
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-white font-semibold">الأندرتون</h2>
@@ -157,7 +155,6 @@ export default function SkinPage() {
             </button>
           </div>
 
-          {/* Dropdown help */}
           <div
             id="undertone-help"
             className={[
@@ -203,7 +200,6 @@ export default function SkinPage() {
             </p>
           </div>
 
-          {/* Buttons */}
           <div className="mt-4 grid grid-cols-2 gap-3">
             <UndertoneButton
               label="بارد"
@@ -232,50 +228,17 @@ export default function SkinPage() {
           </div>
         </section>
 
-        {/* Next */}
         <button
           onClick={next}
           disabled={!depth || !undertone}
-          className="mt-6 w-full rounded-2xl bg-white text-black py-3 font-bold disabled:opacity-40"
+          className="mt-4 w-full rounded-2xl bg-white text-black py-3 font-bold disabled:opacity-40"
           type="button"
         >
           التالي
         </button>
 
-        {/* Footer داخل الصفحة */}
-        <footer className="mt-10 text-center text-xs text-neutral-400">
-          <div className="mx-auto mb-2 h-px w-32 bg-gradient-to-r from-transparent via-[#d6b56a]/40 to-transparent" />
-          <div className="text-neutral-500">© 2026 FAZAA — All Rights Reserved</div>
-
-          <div className="mt-1 inline-flex items-center gap-2 justify-center" dir="ltr">
-            <span className="text-neutral-300">For contact</span>
-
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4 text-[#d6b56a]"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.5}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M21.75 6.75v10.5A2.25 2.25 0 0 1 19.5 19.5H4.5A2.25 2.25 0 0 1 2.25 17.25V6.75m19.5 0-7.5 5.25a2.25 2.25 0 0 1-2.5 0l-7.5-5.25"
-              />
-            </svg>
-
-            <span className="text-neutral-500">:</span>
-
-            <a
-              href="mailto:contact.fazaa@gmail.com"
-              className="font-semibold tracking-[0.08em] text-[#f3e0b0] hover:text-[#d6b56a] transition"
-              style={{ fontFamily: "ui-serif, Georgia, serif" }}
-            >
-              contact.fazaa@gmail.com
-            </a>
-          </div>
-        </footer>
+        {/* ✅ Footer موحّد */}
+        <SiteFooter />
       </div>
     </main>
   );

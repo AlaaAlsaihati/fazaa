@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Occasion, WeddingStyle } from "@/app/data/products";
+import SiteFooter from "@/app/components/FazaaFooter";
 
 const OCCASIONS: {
   key: Occasion;
@@ -76,11 +77,9 @@ export default function OccasionPage() {
           {OCCASIONS.map((o) => {
             const isActive = occasion === o.key;
 
-            // Disabled (Coming soon)
             if (o.disabled) {
               return (
                 <div key={o.key} className="relative group">
-                  {/* Tooltip */}
                   <div className="pointer-events-none absolute -top-3 left-1/2 -translate-x-1/2 -translate-y-full opacity-0 group-hover:opacity-100 transition duration-200 z-10">
                     <div className="rounded-xl border border-[#d6b56a]/40 bg-black/80 px-3 py-2 text-xs text-[#f3e0b0] shadow-[0_12px_40px_rgba(0,0,0,0.55)] backdrop-blur">
                       {o.comingSoonText}
@@ -88,7 +87,6 @@ export default function OccasionPage() {
                     <div className="mx-auto mt-1 h-2 w-2 rotate-45 border-r border-b border-[#d6b56a]/40 bg-black/80" />
                   </div>
 
-                  {/* Smaller card + gold frame */}
                   <div className="relative overflow-hidden rounded-2xl border border-[#d6b56a]/25 bg-white/5 p-3 opacity-60 cursor-not-allowed">
                     <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-[#d6b56a]/15" />
                     <div className="flex items-start justify-between">
@@ -107,7 +105,6 @@ export default function OccasionPage() {
               );
             }
 
-            // Normal clickable
             return (
               <button
                 key={o.key}
@@ -124,10 +121,7 @@ export default function OccasionPage() {
                 ].join(" ")}
                 type="button"
               >
-                {/* Gold inner frame */}
                 <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-[#d6b56a]/16" />
-
-                {/* Soft gold glow */}
                 <div className="pointer-events-none absolute -top-16 left-1/2 h-28 w-[420px] -translate-x-1/2 rounded-full bg-[#d6b56a]/10 blur-3xl opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
 
                 <div className="flex items-start justify-between">
@@ -176,53 +170,18 @@ export default function OccasionPage() {
           </section>
         )}
 
-        {/* Next */}
+        {/* ✅ Next — صار نفس ستايل الرئيسية */}
         <button
           onClick={next}
           disabled={!occasion || (occasion === "wedding" && !weddingStyle)}
-          className="mt-6 w-full rounded-2xl bg-white text-black py-3 font-bold disabled:opacity-40"
+          className="mt-6 w-full rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/15 py-3 text-sm font-extrabold text-white shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:border-[#d6b56a]/70 disabled:opacity-40 disabled:hover:border-[#d6b56a]/45"
           type="button"
         >
           التالي
         </button>
 
-        {/* Footer (داخل الصفحة فقط — بدون اسمك) */}
-        <footer className="mt-10 text-center text-xs text-neutral-400 leading-tight">
-          <div className="text-neutral-500">© 2026 FAZAA</div>
-          <div className="text-neutral-500">All Rights Reserved</div>
-
-          <div dir="ltr" className="mt-1 text-neutral-400">
-            <span className="inline-flex items-center gap-2">
-              <span>For contact</span>
-
-              {/* Mail icon (SVG) */}
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4 text-[#d6b56a]"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.5}
-                aria-hidden
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M21.75 6.75v10.5A2.25 2.25 0 0 1 19.5 19.5H4.5A2.25 2.25 0 0 1 2.25 17.25V6.75M21.75 6.75A2.25 2.25 0 0 0 19.5 4.5H4.5A2.25 2.25 0 0 0 2.25 6.75m19.5 0-7.5 5.25a2.25 2.25 0 0 1-2.5 0l-7.5-5.25"
-                />
-              </svg>
-
-              <span>:</span>
-
-              <a
-                href="mailto:contact.fazaa@gmail.com"
-                className="text-[#f3e0b0] hover:underline font-medium tracking-wide"
-              >
-                contact.fazaa@gmail.com
-              </a>
-            </span>
-          </div>
-        </footer>
+        {/* ✅ Footer موحّد */}
+        <SiteFooter />
       </div>
     </main>
   );

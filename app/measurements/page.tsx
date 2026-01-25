@@ -1,29 +1,16 @@
 import MeasurementsClient from "./MeasurementsClient";
 
-export default function MeasurementsPage({
+export default function Page({
   searchParams,
 }: {
-  searchParams?: { [key: string]: string | string[] | undefined };
+  searchParams: Record<string, string | string[] | undefined>;
 }) {
-  return (
-    <MeasurementsClient
-      initialParams={{
-        occasion: Array.isArray(searchParams?.occasion)
-          ? searchParams?.occasion[0]
-          : searchParams?.occasion,
+  const initialParams = {
+    occasion: typeof searchParams.occasion === "string" ? searchParams.occasion : undefined,
+    weddingStyle: typeof searchParams.weddingStyle === "string" ? searchParams.weddingStyle : undefined,
+    depth: typeof searchParams.depth === "string" ? searchParams.depth : undefined,
+    undertone: typeof searchParams.undertone === "string" ? searchParams.undertone : undefined,
+  };
 
-        weddingStyle: Array.isArray(searchParams?.weddingStyle)
-          ? searchParams?.weddingStyle[0]
-          : searchParams?.weddingStyle,
-
-        depth: Array.isArray(searchParams?.depth)
-          ? searchParams?.depth[0]
-          : searchParams?.depth,
-
-        undertone: Array.isArray(searchParams?.undertone)
-          ? searchParams?.undertone[0]
-          : searchParams?.undertone,
-      }}
-    />
-  );
+  return <MeasurementsClient initialParams={initialParams} />;
 }
