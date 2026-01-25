@@ -238,7 +238,7 @@ export default function SkinPage() {
 </button>
 
         {/* ✅ Footer موحّد */}
-        <SiteFooter />
+        <FazaaFooter />
       </div>
     </main>
   );

@@ -164,7 +164,7 @@ export default function MeasurementsClient({
         </div>
 
         {/* ✅ Footer موحّد */}
-        <SiteFooter />
+        <FazaaFooter />
       </div>
     </main>
   );
