@@ -10,6 +10,8 @@ type InitialParams = {
   undertone?: string;
 };
 
+type BodyShapeArabic = "ساعة رملية" | "كمثري" | "مستقيم" | "تفاحة";
+
 function toNum(v: string) {
   const n = Number(String(v || "").trim());
   return Number.isFinite(n) ? n : NaN;
@@ -33,8 +35,8 @@ export default function MeasurementsClient({
   const [waistCm, setWaistCm] = useState("");
   const [hipCm, setHipCm] = useState("");
 
-  // اختياري (شكل الجسم)
-  const [bodyShape, setBodyShape] = useState<string>("");
+  // ✅ صار إلزامي
+  const [bodyShape, setBodyShape] = useState<BodyShapeArabic | "">("");
 
   const errors = useMemo(() => {
     const e: string[] = [];
@@ -57,8 +59,13 @@ export default function MeasurementsClient({
       e.push("محيط الأرداف لازم يكون بين 60 و 180 سم.");
     }
 
+    // ✅ إلزامي: شكل الجسم
+    if (!bodyShape) {
+      e.push("اختاري شكل جسمك عشان نرتّب لك النتائج بدقة (خصوصًا العبايات).");
+    }
+
     return e;
-  }, [heightCm, bustCm, waistCm, hipCm]);
+  }, [heightCm, bustCm, waistCm, hipCm, bodyShape]);
 
   const canSubmit = errors.length === 0;
 
@@ -70,18 +77,18 @@ export default function MeasurementsClient({
     if (occasion) params.set("occasion", occasion);
     if (weddingStyle) params.set("weddingStyle", weddingStyle);
 
-    // ✅ اللي جاي من صفحة البشرة
+    // اللي جاي من صفحة البشرة
     if (depth) params.set("depth", depth);
     if (undertone) params.set("undertone", undertone);
 
-    // ✅ القياسات
+    // القياسات
     params.set("height", String(toNum(heightCm)));
     params.set("bust", String(toNum(bustCm)));
     params.set("waist", String(toNum(waistCm)));
     params.set("hip", String(toNum(hipCm)));
 
-    // اختياري
-    if (bodyShape) params.set("bodyShape", bodyShape);
+    // ✅ الآن إلزامي
+    params.set("bodyShape", bodyShape);
 
     router.push(`/results?${params.toString()}`);
   }
@@ -139,10 +146,14 @@ export default function MeasurementsClient({
             />
           </div>
 
-          {/* Body shape (اختياري) */}
+          {/* Body shape (صار إلزامي) */}
           <div className="mt-6">
             <p className="text-sm font-semibold text-white">
-              شكل جسمك <span className="text-neutral-400">(اختياري)</span>
+              شكل جسمك <span className="text-[#f3e0b0]">(إلزامي)</span>
+            </p>
+
+            <p className="mt-2 text-xs text-neutral-400">
+              نستخدمه فقط لترتيب النتائج بدقة — خصوصًا في قسم العبايات.
             </p>
 
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -230,7 +241,7 @@ function Chip({
   active,
   onClick,
 }: {
-  label: string;
+  label: BodyShapeArabic;
   active: boolean;
   onClick: () => void;
 }) {

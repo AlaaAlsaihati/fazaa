@@ -2,8 +2,14 @@
 
 import { useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import { products, type Product } from "@/app/data/products";
+import {
+  products,
+  type Product,
+  type BodyShapeArabic,
+} from "@/app/data/products";
 import { recommendSize } from "@/app/lib/recommendSize";
+
+type BodyShape = "" | BodyShapeArabic;
 
 export default function ResultsClient() {
   const sp = useSearchParams();
@@ -13,11 +19,17 @@ export default function ResultsClient() {
   const depth = sp.get("depth") || "";
   const undertone = sp.get("undertone") || "";
 
+  // القياسات
+  const height = Number(sp.get("height") || 0);
   const bust = Number(sp.get("bust") || 0);
   const waist = Number(sp.get("waist") || 0);
   const hip = Number(sp.get("hip") || 0);
 
+  // شكل الجسم (عربي)
+  const bodyShape = (sp.get("bodyShape") || "") as BodyShape;
+
   const top6 = useMemo(() => {
+    // 1) فلترة حسب المناسبة + ستايل الزواج
     const filtered = products.filter((p) => {
       if (occasion && p.occasion !== occasion) return false;
 
@@ -26,18 +38,30 @@ export default function ResultsClient() {
         weddingStyle &&
         p.weddingStyle &&
         p.weddingStyle !== weddingStyle
-      )
+      ) {
         return false;
+      }
 
       return true;
     });
 
+    // 2) سكورينغ + ترتيب
     const scored = filtered.map((p) => {
       let score = 0;
+
+      // Base
       score += 4;
 
+      // لون البشرة
       if (depth && p.bestFor?.depth?.includes(depth as any)) score += 3;
-      if (undertone && p.bestFor?.undertone?.includes(undertone as any)) score += 3;
+      if (undertone && p.bestFor?.undertone?.includes(undertone as any))
+        score += 3;
+
+      // ✅ العبايات فقط: شكل الجسم
+      if (p.category === "abaya" && bodyShape) {
+        if (p.abayaBestForShapes?.includes(bodyShape)) score += 6;
+        else score += 1; // ما نبيها تختفي بالكامل
+      }
 
       return { p, score };
     });
@@ -46,7 +70,7 @@ export default function ResultsClient() {
       .sort((a, b) => b.score - a.score)
       .slice(0, 6)
       .map((x) => x.p);
-  }, [occasion, weddingStyle, depth, undertone]);
+  }, [occasion, weddingStyle, depth, undertone, bodyShape]);
 
   return (
     <main
@@ -60,21 +84,61 @@ export default function ResultsClient() {
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white">
             اخترنا لك اطلالات تليق بك
           </h1>
+
           <p className="mt-3 text-sm text-neutral-400">
             حسب اختياراتك:{" "}
             <span className="text-neutral-200">
               {occasion}
               {weddingStyle ? ` • ${weddingStyle}` : ""}{" "}
               {depth ? ` • ${depth}` : ""}{" "}
-              {undertone ? ` • ${undertone}` : ""}
+              {undertone ? ` • ${undertone}` : ""}{" "}
+              {bodyShape ? ` • ${bodyShape}` : ""}
             </span>
           </p>
+        </div>
+
+        {/* ✅ تفسير الاختيار للمستخدم (بدون أي كلام تقني) */}
+        <div className="mt-6 rounded-3xl border border-[#d6b56a]/25 bg-white/5 p-5 text-sm text-neutral-300 shadow-[0_0_0_1px_rgba(214,181,106,0.08)] backdrop-blur">
+          <p className="font-semibold text-white mb-2">
+            ليش اخترنا لك هذي الإطلالات؟ ✨
+          </p>
+
+          <ul className="space-y-1 leading-relaxed">
+            {occasion === "abaya" ? (
+              <>
+                <li>
+                  • العبايات مرتبة حسب <span className="text-amber-300">شكل جسمك</span>{" "}
+                  عشان القَصّة تطلع متناسقة عليك وتبرزك بأجمل شكل.
+                </li>
+                <li>
+                  • المقاس المقترح للعباية يعتمد على <span className="text-amber-300">طولك</span>{" "}
+                  بشكل تقديري (وتقدرين تتأكدين من جدول المنتج قبل الطلب).
+                </li>
+              </>
+            ) : (
+              <>
+                <li>
+                  • اخترنا الألوان اللي تليق على <span className="text-amber-300">لون بشرتك</span>{" "}
+                  عشان تطلع عليك “خيالية”.
+                </li>
+                <li>
+                  • المقاس المقترح محسوب من <span className="text-amber-300">قياساتك</span>{" "}
+                  (صدر/خصر/أرداف).
+                </li>
+                <li>
+                  • الترتيب النهائي يراعي <span className="text-amber-300">المناسبة</span>{" "}
+                  اللي اخترتيها.
+                </li>
+              </>
+            )}
+          </ul>
         </div>
 
         {/* Grid */}
         <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {top6.map((p) => {
             const rec = recommendSize(p, {
+              heightCm: height, // ✅ مهم للعبايات
               bustCm: bust,
               waistCm: waist,
               hipCm: hip,
@@ -86,6 +150,7 @@ export default function ResultsClient() {
                 p={p}
                 recommendedSize={rec.size}
                 sizeNote={rec.note}
+                bodyShape={bodyShape}
               />
             );
           })}
@@ -106,17 +171,16 @@ function LuxuryCard({
   p,
   recommendedSize,
   sizeNote,
+  bodyShape,
 }: {
   p: Product;
   recommendedSize: string;
   sizeNote: string;
+  bodyShape: "" | BodyShapeArabic;
 }) {
   return (
     <div className="group relative overflow-hidden rounded-3xl border border-[#d6b56a]/35 bg-white/5 p-4 shadow-[0_0_0_1px_rgba(214,181,106,0.12),0_20px_60px_rgba(0,0,0,0.55)] backdrop-blur">
-      {/* إطار ذهبي حول الكرت */}
       <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-[#d6b56a]/25" />
-
-      {/* لمعة خفيفة على الكرت (مو الخلفية) */}
       <div className="pointer-events-none absolute -top-24 left-1/2 h-40 w-[520px] -translate-x-1/2 rounded-full bg-[#d6b56a]/10 blur-3xl opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
 
       {/* صورة */}
@@ -138,7 +202,6 @@ function LuxuryCard({
         <h3 className="text-base font-semibold text-white">{p.title}</h3>
         <p className="mt-1 text-sm text-neutral-400">{p.store}</p>
 
-        {/* سعر + المقاس المقترح */}
         <div className="mt-3 flex items-center justify-between gap-3">
           <p className="text-lg font-bold text-white">
             {p.priceSar}{" "}
@@ -150,11 +213,20 @@ function LuxuryCard({
           </span>
         </div>
 
-        {sizeNote ? (
-          <p className="mt-2 text-xs text-neutral-400 leading-relaxed">{sizeNote}</p>
+        {/* ✅ سبب إضافي للعبايات فقط */}
+        {p.category === "abaya" && bodyShape ? (
+          <p className="mt-2 text-xs text-neutral-400 leading-relaxed">
+            اخترناها لأنها تناسب <span className="text-amber-300">شكل جسمك</span>{" "}
+            ({bodyShape}) وتطلع القَصّة متناسقة عليك.
+          </p>
         ) : null}
 
-        {/* زر المتجر */}
+        {sizeNote ? (
+          <p className="mt-2 text-xs text-neutral-400 leading-relaxed">
+            {sizeNote}
+          </p>
+        ) : null}
+
         <a
           href={p.url}
           target="_blank"

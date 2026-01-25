@@ -93,4 +93,29 @@ function Feature({ title, desc }: { title: string; desc: string }) {
       <p className="mt-2 text-sm text-neutral-300">{desc}</p>
     </div>
   );
+  <footer className="mt-16 text-center text-xs text-neutral-400">
+  <span className="inline-flex items-center gap-2">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className="h-4 w-4 text-[#d6b56a]"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={1.5}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25H4.5a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5H4.5A2.25 2.25 0 002.25 6.75m19.5 0l-7.5 5.25a2.25 2.25 0 01-2.5 0l-7.5-5.25"
+      />
+    </svg>
+    <span>For contact:</span>
+    <a
+      href="mailto:contact.fazaa@gmail.com"
+      className="text-[#f3e0b0] hover:underline"
+    >
+      contact.fazaa@gmail.com
+    </a>
+  </span>
+</footer>
 }
