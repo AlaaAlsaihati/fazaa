@@ -232,7 +232,7 @@ export default function SkinPage() {
   onClick={next}
   disabled={!depth || !undertone}
   type="button"
-  className="mt-6 w-full rounded-2xl bg-white text-black py-3 font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
+  className="mt-6 w-full rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/15 py-3 text-sm font-extrabold text-white shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:border-[#d6b56a]/70 disabled:opacity-40 disabled:hover:border-[#d6b56a]/45"
 >
   التالي
 </button>
