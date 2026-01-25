@@ -106,14 +106,30 @@ export default function HomePage() {
 
           <div className="text-xs mt-1 text-neutral-500">All Rights Reserved</div>
 
-          {/* For contact (LTR + تحت الحقوق ع طول) */}
-          <div
-            dir="ltr"
-            className="mt-0 text-xs text-neutral-400"
-          >
+          {/* خط ذهبي خفيف (لمسة أفخم) */}
+          <div className="mx-auto mt-3 h-px w-32 bg-gradient-to-r from-transparent via-amber-300/30 to-transparent" />
+
+          {/* For contact (LTR + تحت الحقوق بدون مسافة كبيرة) */}
+          <div dir="ltr" className="mt-2 text-xs text-neutral-400">
             <span className="inline-flex items-center gap-2">
               <span>For contact</span>
-              <span aria-hidden>✉️</span>
+
+              {/* Mail icon (SVG بدل الايموجي) */}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 text-amber-300/80"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M21.75 6.75v10.5A2.25 2.25 0 0 1 19.5 19.5H4.5A2.25 2.25 0 0 1 2.25 17.25V6.75M21.75 6.75A2.25 2.25 0 0 0 19.5 4.5H4.5A2.25 2.25 0 0 0 2.25 6.75m19.5 0-7.5 5.25a2.25 2.25 0 0 1-2.5 0l-7.5-5.25"
+                />
+              </svg>
+
               <span>:</span>
               <a
                 href="mailto:contact.fazaa@gmail.com"

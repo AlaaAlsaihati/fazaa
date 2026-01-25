@@ -6,16 +6,30 @@ import {
   products,
   type Product,
   type BodyShapeArabic,
+  type Occasion,
+  type WeddingStyle,
 } from "@/app/data/products";
 import { recommendSize } from "@/app/lib/recommendSize";
 
 type BodyShape = "" | BodyShapeArabic;
 
+const OCCASION_LABEL: Record<string, string> = {
+  wedding: "زواج",
+  engagement: "خطوبة",
+  work: "عمل",
+  abaya: "عبايات",
+  ramadan: "غبقة / رمضان",
+  beach: "بحر",
+  chalets: "شاليهات",
+};
+
 export default function ResultsClient() {
   const sp = useSearchParams();
 
-  const occasion = sp.get("occasion") || "";
-  const weddingStyle = sp.get("weddingStyle") || "";
+  // ✅ نقرأها كـ types (مع fallback)
+  const occasion = (sp.get("occasion") || "") as Occasion | "";
+  const weddingStyle = (sp.get("weddingStyle") || "") as WeddingStyle | "";
+
   const depth = sp.get("depth") || "";
   const undertone = sp.get("undertone") || "";
 
@@ -29,25 +43,35 @@ export default function ResultsClient() {
   const bodyShape = (sp.get("bodyShape") || "") as BodyShape;
 
   const top6 = useMemo(() => {
-    // 1) فلترة حسب المناسبة + ستايل الزواج (صارمة عشان ما يطلع غلط)
+    // ✅ 1) فلترة صارمة جدًا
     const filtered = products.filter((p) => {
-      // لازم المناسبة تطابق
-      if (occasion && p.occasion !== occasion) return false;
+      // إذا ما فيه occasion أصلاً → لا نعرض شيء (عشان ما يطلع خربطة)
+      if (!occasion) return false;
 
-      // إذا المناسبة زواج → لازم weddingStyle يطابق اختيار المستخدم
+      // ✅ قفل العبايات: لازم occasion="abaya" و category="abaya"
+      if (occasion === "abaya") {
+        if (p.occasion !== "abaya") return false;
+        if (p.category !== "abaya") return false;
+        return true;
+      }
+
+      // ✅ باقي المناسبات: ممنوع العبايات تطلع فيها
+      if (p.category === "abaya") return false;
+
+      // لازم المناسبة تطابق
+      if (p.occasion !== occasion) return false;
+
+      // ✅ الزواج: لازم weddingStyle يطابق (صارم)
       if (occasion === "wedding") {
-        if (weddingStyle) {
-          // المنتج لازم يكون عنده weddingStyle
-          if (!p.weddingStyle) return false;
-          // ولازم يطابق
-          if (p.weddingStyle !== weddingStyle) return false;
-        }
+        if (!weddingStyle) return false; // لأن اختيار الزواج عندك فيه ناعم/ثقيل
+        if (!p.weddingStyle) return false;
+        if (p.weddingStyle !== weddingStyle) return false;
       }
 
       return true;
     });
 
-    // 2) سكورينغ + ترتيب
+    // ✅ 2) سكورينغ
     const scored = filtered.map((p) => {
       let score = 0;
 
@@ -59,37 +83,34 @@ export default function ResultsClient() {
       if (undertone && p.bestFor?.undertone?.includes(undertone as any))
         score += 3;
 
-      // ✅ العبايات فقط: نرفع اللي تناسب شكل الجسم
-      if (p.category === "abaya" && bodyShape) {
+      // ✅ العبايات فقط: شكل الجسم يرفع الترتيب
+      if (occasion === "abaya" && bodyShape) {
         if (p.abayaBestForShapes?.includes(bodyShape)) score += 6;
-        else score += 1; // ما نبيها تختفي بالكامل
+        else score += 1;
       }
 
       return { p, score };
     });
 
+    // ✅ 3) ترتيب + حد أعلى 6
     return scored
       .sort((a, b) => b.score - a.score)
       .slice(0, 6)
       .map((x) => x.p);
   }, [occasion, weddingStyle, depth, undertone, bodyShape]);
 
-  // سبب مبسط للنتائج (نطلع للمستخدم "ليش اخترناها")
+  // ✅ نص فاخر واحد فوق (زي ما تبين)
   const explainText = useMemo(() => {
     const parts: string[] = [];
 
-    // السبب العام
-    if (occasion) parts.push(`المناسبة: ${occasion}`);
-
-    if (occasion === "wedding" && weddingStyle) {
-      parts.push(`ستايل الزفاف: ${weddingStyle}`);
-    }
-
+    if (occasion) parts.push(`المناسبة: ${OCCASION_LABEL[occasion] || occasion}`);
+    if (occasion === "wedding" && weddingStyle) parts.push(`ستايل الزفاف: ${weddingStyle}`);
     if (depth) parts.push(`درجة البشرة: ${depth}`);
     if (undertone) parts.push(`الأندرتون: ${undertone}`);
 
-    // نذكر شكل الجسم كسبب للعبايات فقط
-    if (bodyShape) parts.push(`شكل الجسم (لترتيب العبايات): ${bodyShape}`);
+    if (occasion === "abaya" && bodyShape) {
+      parts.push(`شكل الجسم: ${bodyShape}`);
+    }
 
     return parts.length ? parts.join(" • ") : "";
   }, [occasion, weddingStyle, depth, undertone, bodyShape]);
@@ -108,24 +129,29 @@ export default function ResultsClient() {
             اخترنا لك اطلالات تليق بك
           </h1>
 
+          <p className="mt-3 text-sm text-neutral-400">
+            هذه الإطلالات تم اختيارها بناءً على اختياراتك، لتظهر عليك بأفضل شكل ممكن.
+          </p>
+
           {explainText ? (
-            <p className="mt-3 text-sm text-neutral-400">
-              اخترنا النتائج بناءً على:{" "}
-              <span className="text-neutral-200">{explainText}</span>
+            <p className="mt-3 text-xs text-neutral-500">
+              <span className="text-neutral-300">{explainText}</span>
             </p>
           ) : null}
 
-          <p className="mt-3 text-xs text-neutral-500">
-            * العبايات تُرتّب حسب شكل الجسم، وباقي القطع حسب لون البشرة + القياسات.
-          </p>
+          {/* ✅ السطر هذا يظهر فقط لو occasion عبايات */}
+          {occasion === "abaya" ? (
+            <p className="mt-3 text-xs text-neutral-500">
+              * العبايات تُرتّب حسب شكل الجسم، وباقي القطع حسب لون البشرة + القياسات.
+            </p>
+          ) : null}
         </div>
 
         {/* Grid */}
         <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {top6.map((p) => {
-            // ✅ هنا مكان recommendSize الصح
             const rec = recommendSize(p, {
-              heightCm: height, // مهم للعبايات
+              heightCm: height,
               bustCm: bust,
               waistCm: waist,
               hipCm: hip,
@@ -137,6 +163,7 @@ export default function ResultsClient() {
                 p={p}
                 recommendedSize={rec.size}
                 sizeNote={rec.note}
+                occasion={occasion}
                 bodyShape={bodyShape}
               />
             );
@@ -158,16 +185,17 @@ function LuxuryCard({
   p,
   recommendedSize,
   sizeNote,
+  occasion,
   bodyShape,
 }: {
   p: Product;
   recommendedSize: string;
   sizeNote: string;
+  occasion: "" | Occasion;
   bodyShape: "" | BodyShapeArabic;
 }) {
-  // سبب بسيط لكل كرت
   const why =
-    p.category === "abaya" && bodyShape
+    occasion === "abaya" && bodyShape
       ? `تناسب شكل جسمك (${bodyShape}) + محسوبة على طولك`
       : "ألوان مناسبة لبشرتك + مقاس محسوب على قياساتك";
 
@@ -195,12 +223,8 @@ function LuxuryCard({
         <h3 className="text-base font-semibold text-white">{p.title}</h3>
         <p className="mt-1 text-sm text-neutral-400">{p.store}</p>
 
-        {/* سبب بسيط */}
-        <p className="mt-2 text-xs text-neutral-400 leading-relaxed">
-          {why}
-        </p>
+        <p className="mt-2 text-xs text-neutral-400 leading-relaxed">{why}</p>
 
-        {/* سعر + المقاس المقترح */}
         <div className="mt-3 flex items-center justify-between gap-3">
           <p className="text-lg font-bold text-white">
             {p.priceSar}{" "}
@@ -212,14 +236,10 @@ function LuxuryCard({
           </span>
         </div>
 
-        {/* ملاحظة المقاس */}
         {sizeNote ? (
-          <p className="mt-2 text-xs text-neutral-400 leading-relaxed">
-            {sizeNote}
-          </p>
+          <p className="mt-2 text-xs text-neutral-400 leading-relaxed">{sizeNote}</p>
         ) : null}
 
-        {/* زر المتجر */}
         <a
           href={p.url}
           target="_blank"

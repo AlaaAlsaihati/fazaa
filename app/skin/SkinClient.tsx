@@ -31,9 +31,6 @@ export default function SkinPage() {
   const router = useRouter();
   const sp = useSearchParams();
 
-  const occasion = sp.get("occasion") || "";
-  const weddingStyle = sp.get("weddingStyle") || "";
-
   const [depth, setDepth] = useState<Depth>("");
   const [undertone, setUndertone] = useState<Undertone>("");
 
@@ -43,9 +40,8 @@ export default function SkinPage() {
   function next() {
     if (!depth || !undertone) return;
 
-    const params = new URLSearchParams();
-    if (occasion) params.set("occasion", occasion);
-    if (weddingStyle) params.set("weddingStyle", weddingStyle);
+    // ✅ المهم: نكمل على البرامز الحالية (عشان ما يضيع occasion ويخرب النتائج)
+    const params = new URLSearchParams(sp.toString());
     params.set("depth", depth);
     params.set("undertone", undertone);
 
@@ -70,7 +66,9 @@ export default function SkinPage() {
         {/* ===== درجة البشرة ===== */}
         <section className="rounded-2xl border border-white/10 bg-black/20 p-4">
           <h2 className="text-white font-semibold">درجة البشرة</h2>
-          <p className="text-neutral-400 text-sm mt-1">اختاري الدرجة الأقرب لك</p>
+          <p className="text-neutral-400 text-sm mt-1">
+            اختاري الدرجة الأقرب لك
+          </p>
 
           <div className="mt-4 grid grid-cols-3 gap-4">
             {DEPTH_OPTIONS.map((opt) => {
@@ -158,27 +156,39 @@ export default function SkinPage() {
             id="undertone-help"
             className={[
               "mt-4 overflow-hidden rounded-2xl border border-amber-300/20 bg-amber-300/10 px-4 transition-all",
-              showUndertoneHelp ? "max-h-[260px] py-4 opacity-100" : "max-h-0 py-0 opacity-0",
+              showUndertoneHelp
+                ? "max-h-[260px] py-4 opacity-100"
+                : "max-h-0 py-0 opacity-0",
             ].join(" ")}
           >
-            <h3 className="text-amber-200 font-bold mb-2">كيف أعرف الأندرتون؟</h3>
+            <h3 className="text-amber-200 font-bold mb-2">
+              كيف أعرف الأندرتون؟
+            </h3>
 
             <ul className="space-y-2 text-sm text-neutral-100/90 leading-relaxed">
               <li className="flex gap-2">
                 <span className="mt-[2px]">❄️</span>
-                <span><b>بارد:</b> عروق المعصم تميل للأزرق أو البنفسجي.</span>
+                <span>
+                  <b>بارد:</b> عروق المعصم تميل للأزرق أو البنفسجي.
+                </span>
               </li>
               <li className="flex gap-2">
                 <span className="mt-[2px]">🔥</span>
-                <span><b>دافئ:</b> العروق تميل للأخضر.</span>
+                <span>
+                  <b>دافئ:</b> العروق تميل للأخضر.
+                </span>
               </li>
               <li className="flex gap-2">
                 <span className="mt-[2px]">⚖️</span>
-                <span><b>محايد:</b> صعب تمييز لون العروق بوضوح.</span>
+                <span>
+                  <b>محايد:</b> صعب تمييز لون العروق بوضوح.
+                </span>
               </li>
               <li className="flex gap-2">
                 <span className="mt-[2px]">🫒</span>
-                <span><b>زيتوني:</b> لمحة خضراء/رمادية خفيفة بالبشرة.</span>
+                <span>
+                  <b>زيتوني:</b> لمحة خضراء/رمادية خفيفة بالبشرة.
+                </span>
               </li>
             </ul>
 

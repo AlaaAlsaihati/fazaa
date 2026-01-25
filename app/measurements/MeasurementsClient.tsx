@@ -24,11 +24,6 @@ export default function MeasurementsClient({
 }) {
   const router = useRouter();
 
-  const occasion = initialParams.occasion || "";
-  const weddingStyle = initialParams.weddingStyle || "";
-  const depth = initialParams.depth || "";
-  const undertone = initialParams.undertone || "";
-
   // القياسات
   const [heightCm, setHeightCm] = useState("");
   const [bustCm, setBustCm] = useState("");
@@ -72,14 +67,14 @@ export default function MeasurementsClient({
   function goResults() {
     if (!canSubmit) return;
 
+    // ✅ الأهم: كمّلي على اللي جاك بدل ما تبدين من الصفر
     const params = new URLSearchParams();
 
-    if (occasion) params.set("occasion", occasion);
-    if (weddingStyle) params.set("weddingStyle", weddingStyle);
-
-    // اللي جاي من صفحة البشرة
-    if (depth) params.set("depth", depth);
-    if (undertone) params.set("undertone", undertone);
+    // خلّي الموجود (لو جاء) يثبت
+    if (initialParams.occasion) params.set("occasion", initialParams.occasion);
+    if (initialParams.weddingStyle) params.set("weddingStyle", initialParams.weddingStyle);
+    if (initialParams.depth) params.set("depth", initialParams.depth);
+    if (initialParams.undertone) params.set("undertone", initialParams.undertone);
 
     // القياسات
     params.set("height", String(toNum(heightCm)));
@@ -87,7 +82,7 @@ export default function MeasurementsClient({
     params.set("waist", String(toNum(waistCm)));
     params.set("hip", String(toNum(hipCm)));
 
-    // ✅ الآن إلزامي
+    // ✅ إلزامي
     params.set("bodyShape", bodyShape);
 
     router.push(`/results?${params.toString()}`);
@@ -252,7 +247,9 @@ function Chip({
       className={[
         "rounded-2xl border px-4 py-3 text-sm font-semibold transition",
         "bg-black/20 border-white/10 text-white hover:bg-black/30",
-        active ? "ring-2 ring-[#d6b56a]/40 border-[#d6b56a]/35 bg-[#d6b56a]/10" : "",
+        active
+          ? "ring-2 ring-[#d6b56a]/40 border-[#d6b56a]/35 bg-[#d6b56a]/10"
+          : "",
       ].join(" ")}
     >
       {label}

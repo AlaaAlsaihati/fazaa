@@ -7,7 +7,7 @@ import type { Occasion, WeddingStyle } from "@/app/data/products";
 const OCCASIONS: {
   key: Occasion;
   title: string;
-  subtitle: string;
+  subtitle?: string;
   icon: string;
   disabled?: boolean;
   comingSoonText?: string;
@@ -18,11 +18,9 @@ const OCCASIONS: {
   { key: "abaya", title: "عبايات", subtitle: "فخامة يومية", icon: "🧿" },
   { key: "ramadan", title: "غبقة / رمضان", subtitle: "لمعة هادية", icon: "🌙" },
 
-  // ⛔️ قادمًا
   {
     key: "beach",
     title: "البحر",
-    subtitle: "",
     icon: "🌊",
     disabled: true,
     comingSoonText: "قريبًا — نجهزها بذوق فزعة",
@@ -30,7 +28,6 @@ const OCCASIONS: {
   {
     key: "chalets",
     title: "الشاليهات",
-    subtitle: "",
     icon: "🏝️",
     disabled: true,
     comingSoonText: "قريبًا — نجهزها بذوق فزعة",
@@ -63,7 +60,6 @@ export default function OccasionPage() {
       className="min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-900 to-black p-6"
     >
       <div className="mx-auto max-w-2xl">
-        {/* Header */}
         <header className="mb-6">
           <p className="text-neutral-400 text-sm">فزعة</p>
           <h1 className="text-2xl font-bold text-white">اختاري المناسبة</h1>
@@ -72,16 +68,13 @@ export default function OccasionPage() {
           </p>
         </header>
 
-        {/* Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {OCCASIONS.map((o) => {
             const isActive = occasion === o.key;
 
-            // ✅ Disabled card with Tooltip
             if (o.disabled) {
               return (
                 <div key={o.key} className="relative group">
-                  {/* Tooltip */}
                   <div
                     className={[
                       "pointer-events-none absolute -top-3 left-1/2 -translate-x-1/2 -translate-y-full",
@@ -92,11 +85,9 @@ export default function OccasionPage() {
                     <div className="rounded-xl border border-[#d6b56a]/40 bg-black/80 px-3 py-2 text-xs text-[#f3e0b0] shadow-[0_12px_40px_rgba(0,0,0,0.55)] backdrop-blur">
                       {o.comingSoonText}
                     </div>
-                    {/* Arrow */}
                     <div className="mx-auto mt-1 h-2 w-2 rotate-45 border-r border-b border-[#d6b56a]/40 bg-black/80" />
                   </div>
 
-                  {/* Card */}
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 opacity-60 cursor-not-allowed">
                     <div className="flex items-start justify-between">
                       <div>
@@ -104,7 +95,7 @@ export default function OccasionPage() {
                           {o.title}
                         </h2>
                         <p className="mt-2 text-xs text-[#d6b56a]">
-                          قريبًا — نجهزها بذوق فزعة
+                          {o.comingSoonText}
                         </p>
                       </div>
                       <div className="text-2xl">{o.icon}</div>
@@ -114,7 +105,6 @@ export default function OccasionPage() {
               );
             }
 
-            // ✅ Normal clickable cards
             return (
               <button
                 key={o.key}
@@ -133,11 +123,11 @@ export default function OccasionPage() {
                     <h2 className="text-white font-semibold text-lg">
                       {o.title}
                     </h2>
-                    {o.subtitle && (
+                    {o.subtitle ? (
                       <p className="text-neutral-400 text-sm mt-1">
                         {o.subtitle}
                       </p>
-                    )}
+                    ) : null}
                   </div>
                   <div className="text-2xl">{o.icon}</div>
                 </div>
@@ -149,13 +139,10 @@ export default function OccasionPage() {
           })}
         </div>
 
-        {/* Wedding Style */}
         {occasion === "wedding" && (
           <section className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4">
             <h3 className="text-white font-semibold">ستايل الزواج</h3>
-            <p className="text-neutral-400 text-sm mt-1">
-              اختاري ناعم أو ثقيل
-            </p>
+            <p className="text-neutral-400 text-sm mt-1">اختاري ناعم أو ثقيل</p>
 
             <div className="mt-3 grid grid-cols-2 gap-2">
               <StyleButton
@@ -172,7 +159,6 @@ export default function OccasionPage() {
           </section>
         )}
 
-        {/* Next */}
         <button
           onClick={next}
           disabled={!occasion || (occasion === "wedding" && !weddingStyle)}
