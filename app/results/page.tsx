@@ -4,23 +4,20 @@ import ResultsClient from "./ResultsClient";
 export default function Page({
   searchParams,
 }: {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams: Record<string, string | string[] | undefined>;
 }) {
-  const get = (k: string) => {
-    const v = searchParams?.[k];
-    return Array.isArray(v) ? v[0] : v;
-  };
-
   const initialParams = {
-    occasion: get("occasion"),
-    weddingStyle: get("weddingStyle"),
-    depth: get("depth"),
-    undertone: get("undertone"),
-    height: get("height"),
-    bust: get("bust"),
-    waist: get("waist"),
-    hip: get("hip"),
-    bodyShape: get("bodyShape"),
+    occasion: typeof searchParams.occasion === "string" ? searchParams.occasion : undefined,
+    weddingStyle:
+      typeof searchParams.weddingStyle === "string" ? searchParams.weddingStyle : undefined,
+    depth: typeof searchParams.depth === "string" ? searchParams.depth : undefined,
+    undertone: typeof searchParams.undertone === "string" ? searchParams.undertone : undefined,
+    height: typeof searchParams.height === "string" ? searchParams.height : undefined,
+    bust: typeof searchParams.bust === "string" ? searchParams.bust : undefined,
+    waist: typeof searchParams.waist === "string" ? searchParams.waist : undefined,
+    hip: typeof searchParams.hip === "string" ? searchParams.hip : undefined,
+    bodyShape:
+      typeof searchParams.bodyShape === "string" ? searchParams.bodyShape : undefined,
   };
 
   return (
