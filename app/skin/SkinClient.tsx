@@ -228,14 +228,14 @@ export default function SkinPage() {
           </div>
         </section>
 
-        <button
-          onClick={next}
-          disabled={!depth || !undertone}
-          className="mt-4 w-full rounded-2xl bg-white text-black py-3 font-bold disabled:opacity-40"
-          type="button"
-        >
-          التالي
-        </button>
+ <button
+  onClick={next}
+  disabled={!depth || !undertone}
+  type="button"
+  className="mt-6 w-full rounded-2xl bg-white text-black py-3 font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
+>
+  التالي
+</button>
 
         {/* ✅ Footer موحّد */}
         <SiteFooter />
