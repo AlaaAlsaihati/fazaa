@@ -26,28 +26,31 @@ const OCCASION_LABEL: Record<string, string> = {
 export default function ResultsClient() {
   const sp = useSearchParams();
 
-  // ✅ نقرأها كـ types (مع fallback)
   const occasion = (sp.get("occasion") || "") as Occasion | "";
   const weddingStyle = (sp.get("weddingStyle") || "") as WeddingStyle | "";
 
   const depth = sp.get("depth") || "";
   const undertone = sp.get("undertone") || "";
 
-  // القياسات
   const height = Number(sp.get("height") || 0);
   const bust = Number(sp.get("bust") || 0);
   const waist = Number(sp.get("waist") || 0);
   const hip = Number(sp.get("hip") || 0);
 
-  // شكل الجسم (عربي)
   const bodyShape = (sp.get("bodyShape") || "") as BodyShape;
 
-  const top6 = useMemo(() => {
-    // ✅ 1) فلترة صارمة جدًا
-    const filtered = products.filter((p) => {
-      // إذا ما فيه occasion أصلاً → لا نعرض شيء (عشان ما يطلع خربطة)
-      if (!occasion) return false;
+  // ✅ أسباب “ليش ممكن ما تطلع نتائج”
+  const blockingReason = useMemo(() => {
+    if (!occasion) return "واضح إن المناسبة ما وصلت للنتائج (occasion مفقود). ارجعي خطوة للخلف واختاري المناسبة مرة ثانية.";
+    if (occasion === "wedding" && !weddingStyle)
+      return "انتي اخترتي زواج لكن ستايل الزواج (ناعم/ثقيل) ما وصل للنتائج. ارجعي واختاريه مرة ثانية.";
+    return "";
+  }, [occasion, weddingStyle]);
 
+  const top6 = useMemo(() => {
+    if (!occasion) return [];
+
+    const filtered = products.filter((p) => {
       // ✅ قفل العبايات: لازم occasion="abaya" و category="abaya"
       if (occasion === "abaya") {
         if (p.occasion !== "abaya") return false;
@@ -63,7 +66,7 @@ export default function ResultsClient() {
 
       // ✅ الزواج: لازم weddingStyle يطابق (صارم)
       if (occasion === "wedding") {
-        if (!weddingStyle) return false; // لأن اختيار الزواج عندك فيه ناعم/ثقيل
+        if (!weddingStyle) return false;
         if (!p.weddingStyle) return false;
         if (p.weddingStyle !== weddingStyle) return false;
       }
@@ -71,19 +74,13 @@ export default function ResultsClient() {
       return true;
     });
 
-    // ✅ 2) سكورينغ
     const scored = filtered.map((p) => {
       let score = 0;
-
-      // Base
       score += 4;
 
-      // ألوان البشرة
       if (depth && p.bestFor?.depth?.includes(depth as any)) score += 3;
-      if (undertone && p.bestFor?.undertone?.includes(undertone as any))
-        score += 3;
+      if (undertone && p.bestFor?.undertone?.includes(undertone as any)) score += 3;
 
-      // ✅ العبايات فقط: شكل الجسم يرفع الترتيب
       if (occasion === "abaya" && bodyShape) {
         if (p.abayaBestForShapes?.includes(bodyShape)) score += 6;
         else score += 1;
@@ -92,14 +89,12 @@ export default function ResultsClient() {
       return { p, score };
     });
 
-    // ✅ 3) ترتيب + حد أعلى 6
     return scored
       .sort((a, b) => b.score - a.score)
       .slice(0, 6)
       .map((x) => x.p);
   }, [occasion, weddingStyle, depth, undertone, bodyShape]);
 
-  // ✅ نص فاخر واحد فوق (زي ما تبين)
   const explainText = useMemo(() => {
     const parts: string[] = [];
 
@@ -108,20 +103,14 @@ export default function ResultsClient() {
     if (depth) parts.push(`درجة البشرة: ${depth}`);
     if (undertone) parts.push(`الأندرتون: ${undertone}`);
 
-    if (occasion === "abaya" && bodyShape) {
-      parts.push(`شكل الجسم: ${bodyShape}`);
-    }
+    if (occasion === "abaya" && bodyShape) parts.push(`شكل الجسم: ${bodyShape}`);
 
     return parts.length ? parts.join(" • ") : "";
   }, [occasion, weddingStyle, depth, undertone, bodyShape]);
 
   return (
-    <main
-      dir="rtl"
-      className="min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-900 to-black px-6 py-10"
-    >
+    <main dir="rtl" className="px-6 py-10">
       <div className="mx-auto max-w-6xl">
-        {/* عنوان + وصف */}
         <div className="text-center">
           <p className="text-sm text-neutral-400">نتائجك</p>
 
@@ -139,7 +128,6 @@ export default function ResultsClient() {
             </p>
           ) : null}
 
-          {/* ✅ السطر هذا يظهر فقط لو occasion عبايات */}
           {occasion === "abaya" ? (
             <p className="mt-3 text-xs text-neutral-500">
               * العبايات تُرتّب حسب شكل الجسم، وباقي القطع حسب لون البشرة + القياسات.
@@ -147,7 +135,13 @@ export default function ResultsClient() {
           ) : null}
         </div>
 
-        {/* Grid */}
+        {/* ✅ لو فيه سبب يمنع النتائج */}
+        {blockingReason ? (
+          <div className="mx-auto mt-10 max-w-2xl rounded-2xl border border-[#d6b56a]/25 bg-white/5 p-5 text-center">
+            <p className="text-sm text-neutral-200 leading-relaxed">{blockingReason}</p>
+          </div>
+        ) : null}
+
         <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {top6.map((p) => {
             const rec = recommendSize(p, {
@@ -170,8 +164,7 @@ export default function ResultsClient() {
           })}
         </div>
 
-        {/* لا توجد نتائج */}
-        {top6.length === 0 ? (
+        {top6.length === 0 && !blockingReason ? (
           <div className="mt-10 text-center text-neutral-300">
             ما لقينا نتائج تناسب اختياراتك حاليًا.
           </div>
@@ -204,7 +197,6 @@ function LuxuryCard({
       <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-[#d6b56a]/25" />
       <div className="pointer-events-none absolute -top-24 left-1/2 h-40 w-[520px] -translate-x-1/2 rounded-full bg-[#d6b56a]/10 blur-3xl opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
 
-      {/* صورة */}
       <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-neutral-900/40">
         <img
           src={p.image}
@@ -218,7 +210,6 @@ function LuxuryCard({
         />
       </div>
 
-      {/* نصوص */}
       <div className="mt-4">
         <h3 className="text-base font-semibold text-white">{p.title}</h3>
         <p className="mt-1 text-sm text-neutral-400">{p.store}</p>

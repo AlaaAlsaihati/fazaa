@@ -7,7 +7,7 @@ import type { Occasion, WeddingStyle } from "@/app/data/products";
 const OCCASIONS: {
   key: Occasion;
   title: string;
-  subtitle?: string;
+  subtitle: string;
   icon: string;
   disabled?: boolean;
   comingSoonText?: string;
@@ -17,10 +17,10 @@ const OCCASIONS: {
   { key: "work", title: "عمل", subtitle: "رسمي وأنيق", icon: "🖤" },
   { key: "abaya", title: "عبايات", subtitle: "فخامة يومية", icon: "🧿" },
   { key: "ramadan", title: "غبقة / رمضان", subtitle: "لمعة هادية", icon: "🌙" },
-
   {
     key: "beach",
     title: "البحر",
+    subtitle: "",
     icon: "🌊",
     disabled: true,
     comingSoonText: "قريبًا — نجهزها بذوق فزعة",
@@ -28,6 +28,7 @@ const OCCASIONS: {
   {
     key: "chalets",
     title: "الشاليهات",
+    subtitle: "",
     icon: "🏝️",
     disabled: true,
     comingSoonText: "قريبًا — نجهزها بذوق فزعة",
@@ -55,10 +56,7 @@ export default function OccasionPage() {
   }
 
   return (
-    <main
-      dir="rtl"
-      className="min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-900 to-black p-6"
-    >
+    <main dir="rtl" className="p-6">
       <div className="mx-auto max-w-2xl">
         <header className="mb-6">
           <p className="text-neutral-400 text-sm">فزعة</p>
@@ -75,30 +73,25 @@ export default function OccasionPage() {
             if (o.disabled) {
               return (
                 <div key={o.key} className="relative group">
-                  <div
-                    className={[
-                      "pointer-events-none absolute -top-3 left-1/2 -translate-x-1/2 -translate-y-full",
-                      "opacity-0 group-hover:opacity-100 transition duration-200",
-                      "z-10",
-                    ].join(" ")}
-                  >
+                  {/* Tooltip */}
+                  <div className="pointer-events-none absolute -top-3 left-1/2 -translate-x-1/2 -translate-y-full opacity-0 group-hover:opacity-100 transition duration-200 z-10">
                     <div className="rounded-xl border border-[#d6b56a]/40 bg-black/80 px-3 py-2 text-xs text-[#f3e0b0] shadow-[0_12px_40px_rgba(0,0,0,0.55)] backdrop-blur">
                       {o.comingSoonText}
                     </div>
                     <div className="mx-auto mt-1 h-2 w-2 rotate-45 border-r border-b border-[#d6b56a]/40 bg-black/80" />
                   </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 opacity-60 cursor-not-allowed">
+                  <div className="rounded-2xl border border-[#d6b56a]/20 bg-white/5 p-3 opacity-60 cursor-not-allowed">
                     <div className="flex items-start justify-between">
                       <div>
-                        <h2 className="text-white font-semibold text-lg">
+                        <h2 className="text-white font-semibold text-base">
                           {o.title}
                         </h2>
-                        <p className="mt-2 text-xs text-[#d6b56a]">
-                          {o.comingSoonText}
+                        <p className="mt-2 text-[11px] text-[#d6b56a]">
+                          قريبًا — نجهزها بذوق فزعة
                         </p>
                       </div>
-                      <div className="text-2xl">{o.icon}</div>
+                      <div className="text-xl">{o.icon}</div>
                     </div>
                   </div>
                 </div>
@@ -113,14 +106,15 @@ export default function OccasionPage() {
                   if (o.key !== "wedding") setWeddingStyle("");
                 }}
                 className={[
-                  "group text-right rounded-2xl border p-4 transition",
-                  "bg-white/5 border-white/10 hover:bg-white/10",
-                  isActive ? "ring-2 ring-white/50 border-white/30" : "",
+                  "group text-right rounded-2xl border p-3 transition",
+                  "bg-white/5 hover:bg-white/10",
+                  "border-[#d6b56a]/18 hover:border-[#d6b56a]/35",
+                  isActive ? "ring-2 ring-[#d6b56a]/30 border-[#d6b56a]/45" : "",
                 ].join(" ")}
               >
                 <div className="flex items-start justify-between">
                   <div>
-                    <h2 className="text-white font-semibold text-lg">
+                    <h2 className="text-white font-semibold text-base">
                       {o.title}
                     </h2>
                     {o.subtitle ? (
@@ -129,11 +123,11 @@ export default function OccasionPage() {
                       </p>
                     ) : null}
                   </div>
-                  <div className="text-2xl">{o.icon}</div>
+                  <div className="text-xl">{o.icon}</div>
                 </div>
 
                 <div className="mt-3 h-[1px] bg-white/10" />
-                <p className="mt-3 text-xs text-neutral-400">اضغطي للاختيار</p>
+                <p className="mt-2 text-[11px] text-neutral-400">اضغطي للاختيار</p>
               </button>
             );
           })}
@@ -186,7 +180,7 @@ function StyleButton({
       className={[
         "rounded-xl border px-4 py-3 font-semibold transition",
         "bg-black/20 border-white/10 text-white hover:bg-black/30",
-        active ? "ring-2 ring-white/50 border-white/30" : "",
+        active ? "ring-2 ring-[#d6b56a]/30 border-[#d6b56a]/35" : "",
       ].join(" ")}
     >
       {label}

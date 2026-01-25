@@ -12,7 +12,7 @@ export default function HomePage() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.8, ease: "easeOut" }}
       dir="rtl"
-      className="min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-900 to-black text-white flex items-center justify-center p-6"
+      className="text-white flex items-center justify-center p-6"
     >
       <div className="w-full max-w-6xl">
         {/* Hero Card */}
@@ -61,7 +61,7 @@ export default function HomePage() {
             ومقاساتك — مع ترشيحات فخمة ومقاس محسوب بدقة.
           </motion.p>
 
-          {/* CTA Button (واحد فقط) */}
+          {/* CTA Button */}
           <div className="mt-10 flex items-center justify-center">
             <motion.button
               whileHover={{ scale: 1.04 }}
@@ -87,53 +87,29 @@ export default function HomePage() {
             }}
             className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-5"
           >
-            <Feature
-              title="اختيار ذكي"
-              desc="تحليل المناسبة، لون البشرة والمقاسات"
-            />
+            <Feature title="اختيار ذكي" desc="تحليل المناسبة، لون البشرة والمقاسات" />
             <Feature title="مقاس مقترح" desc="نحسب لك المقاس الأنسب لكل قطعة" />
             <Feature title="متاجر مختارة" desc="روابط مباشرة لمنتجات فخمة" />
           </motion.div>
         </motion.div>
 
-        {/* Footer */}
-        <footer className="mt-10 text-center text-sm text-neutral-400">
-          <div className="text-xs text-neutral-500 mb-1">© 2026</div>
-
-          <div className="text-amber-300 font-semibold tracking-wide">
+        {/* Footer (Home) — بدون مسافات بين السطور */}
+        <footer className="mt-10 text-center text-sm text-neutral-400 leading-none">
+          <div className="text-xs text-neutral-500">© 2026</div>
+          <div className="mt-1 text-amber-300 font-semibold tracking-wide">
             Alaa Abdullah
           </div>
+          <div className="mt-1 text-xs text-neutral-500">All Rights Reserved</div>
 
-          <div className="text-xs mt-1 text-neutral-500">All Rights Reserved</div>
-
-          {/* خط ذهبي خفيف (لمسة أفخم) */}
-          <div className="mx-auto mt-3 h-px w-32 bg-gradient-to-r from-transparent via-amber-300/30 to-transparent" />
-
-          {/* For contact (LTR + تحت الحقوق بدون مسافة كبيرة) */}
-          <div dir="ltr" className="mt-2 text-xs text-neutral-400">
+          {/* For contact */}
+          <div dir="ltr" className="mt-2 text-xs">
             <span className="inline-flex items-center gap-2">
               <span>For contact</span>
-
-              {/* Mail icon (SVG بدل الايموجي) */}
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4 text-amber-300/80"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.5}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M21.75 6.75v10.5A2.25 2.25 0 0 1 19.5 19.5H4.5A2.25 2.25 0 0 1 2.25 17.25V6.75M21.75 6.75A2.25 2.25 0 0 0 19.5 4.5H4.5A2.25 2.25 0 0 0 2.25 6.75m19.5 0-7.5 5.25a2.25 2.25 0 0 1-2.5 0l-7.5-5.25"
-                />
-              </svg>
-
+              <span aria-hidden>✉️</span>
               <span>:</span>
               <a
                 href="mailto:contact.fazaa@gmail.com"
-                className="text-[#f3e0b0] hover:underline"
+                className="font-mono tracking-[0.08em] text-[#f3e0b0] hover:underline"
               >
                 contact.fazaa@gmail.com
               </a>
@@ -148,10 +124,7 @@ export default function HomePage() {
 function Feature({ title, desc }: { title: string; desc: string }) {
   return (
     <motion.div
-      variants={{
-        hidden: { opacity: 0, y: 12 },
-        show: { opacity: 1, y: 0 },
-      }}
+      variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}
       transition={{ duration: 0.6, ease: "easeOut" }}
       className="rounded-2xl border border-white/10 bg-white/5 p-5 text-center backdrop-blur-sm"
     >
