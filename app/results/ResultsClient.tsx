@@ -29,17 +29,19 @@ export default function ResultsClient() {
   const bodyShape = (sp.get("bodyShape") || "") as BodyShape;
 
   const top6 = useMemo(() => {
-    // 1) فلترة حسب المناسبة + ستايل الزواج
+    // 1) فلترة حسب المناسبة + ستايل الزواج (صارمة عشان ما يطلع غلط)
     const filtered = products.filter((p) => {
+      // لازم المناسبة تطابق
       if (occasion && p.occasion !== occasion) return false;
 
-      if (
-        occasion === "wedding" &&
-        weddingStyle &&
-        p.weddingStyle &&
-        p.weddingStyle !== weddingStyle
-      ) {
-        return false;
+      // إذا المناسبة زواج → لازم weddingStyle يطابق اختيار المستخدم
+      if (occasion === "wedding") {
+        if (weddingStyle) {
+          // المنتج لازم يكون عنده weddingStyle
+          if (!p.weddingStyle) return false;
+          // ولازم يطابق
+          if (p.weddingStyle !== weddingStyle) return false;
+        }
       }
 
       return true;
@@ -52,12 +54,12 @@ export default function ResultsClient() {
       // Base
       score += 4;
 
-      // لون البشرة
+      // ألوان البشرة
       if (depth && p.bestFor?.depth?.includes(depth as any)) score += 3;
       if (undertone && p.bestFor?.undertone?.includes(undertone as any))
         score += 3;
 
-      // ✅ العبايات فقط: شكل الجسم
+      // ✅ العبايات فقط: نرفع اللي تناسب شكل الجسم
       if (p.category === "abaya" && bodyShape) {
         if (p.abayaBestForShapes?.includes(bodyShape)) score += 6;
         else score += 1; // ما نبيها تختفي بالكامل
@@ -72,6 +74,26 @@ export default function ResultsClient() {
       .map((x) => x.p);
   }, [occasion, weddingStyle, depth, undertone, bodyShape]);
 
+  // سبب مبسط للنتائج (نطلع للمستخدم "ليش اخترناها")
+  const explainText = useMemo(() => {
+    const parts: string[] = [];
+
+    // السبب العام
+    if (occasion) parts.push(`المناسبة: ${occasion}`);
+
+    if (occasion === "wedding" && weddingStyle) {
+      parts.push(`ستايل الزفاف: ${weddingStyle}`);
+    }
+
+    if (depth) parts.push(`درجة البشرة: ${depth}`);
+    if (undertone) parts.push(`الأندرتون: ${undertone}`);
+
+    // نذكر شكل الجسم كسبب للعبايات فقط
+    if (bodyShape) parts.push(`شكل الجسم (لترتيب العبايات): ${bodyShape}`);
+
+    return parts.length ? parts.join(" • ") : "";
+  }, [occasion, weddingStyle, depth, undertone, bodyShape]);
+
   return (
     <main
       dir="rtl"
@@ -81,64 +103,29 @@ export default function ResultsClient() {
         {/* عنوان + وصف */}
         <div className="text-center">
           <p className="text-sm text-neutral-400">نتائجك</p>
+
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white">
             اخترنا لك اطلالات تليق بك
           </h1>
 
-          <p className="mt-3 text-sm text-neutral-400">
-            حسب اختياراتك:{" "}
-            <span className="text-neutral-200">
-              {occasion}
-              {weddingStyle ? ` • ${weddingStyle}` : ""}{" "}
-              {depth ? ` • ${depth}` : ""}{" "}
-              {undertone ? ` • ${undertone}` : ""}{" "}
-              {bodyShape ? ` • ${bodyShape}` : ""}
-            </span>
-          </p>
-        </div>
+          {explainText ? (
+            <p className="mt-3 text-sm text-neutral-400">
+              اخترنا النتائج بناءً على:{" "}
+              <span className="text-neutral-200">{explainText}</span>
+            </p>
+          ) : null}
 
-        {/* ✅ تفسير الاختيار للمستخدم (بدون أي كلام تقني) */}
-        <div className="mt-6 rounded-3xl border border-[#d6b56a]/25 bg-white/5 p-5 text-sm text-neutral-300 shadow-[0_0_0_1px_rgba(214,181,106,0.08)] backdrop-blur">
-          <p className="font-semibold text-white mb-2">
-            ليش اخترنا لك هذي الإطلالات؟ ✨
+          <p className="mt-3 text-xs text-neutral-500">
+            * العبايات تُرتّب حسب شكل الجسم، وباقي القطع حسب لون البشرة + القياسات.
           </p>
-
-          <ul className="space-y-1 leading-relaxed">
-            {occasion === "abaya" ? (
-              <>
-                <li>
-                  • العبايات مرتبة حسب <span className="text-amber-300">شكل جسمك</span>{" "}
-                  عشان القَصّة تطلع متناسقة عليك وتبرزك بأجمل شكل.
-                </li>
-                <li>
-                  • المقاس المقترح للعباية يعتمد على <span className="text-amber-300">طولك</span>{" "}
-                  بشكل تقديري (وتقدرين تتأكدين من جدول المنتج قبل الطلب).
-                </li>
-              </>
-            ) : (
-              <>
-                <li>
-                  • اخترنا الألوان اللي تليق على <span className="text-amber-300">لون بشرتك</span>{" "}
-                  عشان تطلع عليك “خيالية”.
-                </li>
-                <li>
-                  • المقاس المقترح محسوب من <span className="text-amber-300">قياساتك</span>{" "}
-                  (صدر/خصر/أرداف).
-                </li>
-                <li>
-                  • الترتيب النهائي يراعي <span className="text-amber-300">المناسبة</span>{" "}
-                  اللي اخترتيها.
-                </li>
-              </>
-            )}
-          </ul>
         </div>
 
         {/* Grid */}
         <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {top6.map((p) => {
+            // ✅ هنا مكان recommendSize الصح
             const rec = recommendSize(p, {
-              heightCm: height, // ✅ مهم للعبايات
+              heightCm: height, // مهم للعبايات
               bustCm: bust,
               waistCm: waist,
               hipCm: hip,
@@ -178,6 +165,12 @@ function LuxuryCard({
   sizeNote: string;
   bodyShape: "" | BodyShapeArabic;
 }) {
+  // سبب بسيط لكل كرت
+  const why =
+    p.category === "abaya" && bodyShape
+      ? `تناسب شكل جسمك (${bodyShape}) + محسوبة على طولك`
+      : "ألوان مناسبة لبشرتك + مقاس محسوب على قياساتك";
+
   return (
     <div className="group relative overflow-hidden rounded-3xl border border-[#d6b56a]/35 bg-white/5 p-4 shadow-[0_0_0_1px_rgba(214,181,106,0.12),0_20px_60px_rgba(0,0,0,0.55)] backdrop-blur">
       <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-[#d6b56a]/25" />
@@ -202,6 +195,12 @@ function LuxuryCard({
         <h3 className="text-base font-semibold text-white">{p.title}</h3>
         <p className="mt-1 text-sm text-neutral-400">{p.store}</p>
 
+        {/* سبب بسيط */}
+        <p className="mt-2 text-xs text-neutral-400 leading-relaxed">
+          {why}
+        </p>
+
+        {/* سعر + المقاس المقترح */}
         <div className="mt-3 flex items-center justify-between gap-3">
           <p className="text-lg font-bold text-white">
             {p.priceSar}{" "}
@@ -213,20 +212,14 @@ function LuxuryCard({
           </span>
         </div>
 
-        {/* ✅ سبب إضافي للعبايات فقط */}
-        {p.category === "abaya" && bodyShape ? (
-          <p className="mt-2 text-xs text-neutral-400 leading-relaxed">
-            اخترناها لأنها تناسب <span className="text-amber-300">شكل جسمك</span>{" "}
-            ({bodyShape}) وتطلع القَصّة متناسقة عليك.
-          </p>
-        ) : null}
-
+        {/* ملاحظة المقاس */}
         {sizeNote ? (
           <p className="mt-2 text-xs text-neutral-400 leading-relaxed">
             {sizeNote}
           </p>
         ) : null}
 
+        {/* زر المتجر */}
         <a
           href={p.url}
           target="_blank"
