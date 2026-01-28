@@ -15,17 +15,83 @@ type Depth =
 
 type Undertone = "بارد" | "دافئ" | "محايد" | "زيتوني" | "";
 
+/* ========= أيقونات ذهبية (خطوط فقط) ========= */
+
+function IconSparkle() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4 text-[#d6b56a]"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      aria-hidden="true"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3l1.6 5.2L19 10l-5.4 1.8L12 17l-1.6-5.2L5 10l5.4-1.8L12 3Z" />
+    </svg>
+  );
+}
+
+function IconSun() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4 text-[#d6b56a]"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="3.2" />
+      <path strokeLinecap="round" d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M4.4 4.4l1.6 1.6M18 18l1.6 1.6M19.6 4.4 18 6M6 18l-1.6 1.6" />
+    </svg>
+  );
+}
+
+function IconBalance() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4 text-[#d6b56a]"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      aria-hidden="true"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 8h12" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 8l-3 5h6l-3-5Z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M18 8l-3 5h6l-3-5Z" />
+    </svg>
+  );
+}
+
+function IconOlive() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4 text-[#d6b56a]"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      aria-hidden="true"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14 6c3 0 5 2.3 5 5.3 0 4.4-3.9 7.2-7 7.2S5 15.7 5 11.3C5 8.3 7 6 10 6" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 5c0-1.6 1.2-2.7 3-3" />
+    </svg>
+  );
+}
+
 const DEPTH_OPTIONS: {
   label: Exclude<Depth, "">;
-  emoji: string;
   color: string;
 }[] = [
-  { label: "فاتح جدًا", emoji: "🌸", color: "#fdecef" },
-  { label: "فاتح", emoji: "🤍", color: "#f6e6d8" },
-  { label: "حنطي", emoji: "🌾", color: "#e1c4a8" },
-  { label: "حنطي غامق", emoji: "🌰", color: "#c49a6c" },
-  { label: "أسمر", emoji: "🤎", color: "#8d5a3b" },
-  { label: "داكن", emoji: "🖤", color: "#3b2a23" },
+  { label: "فاتح جدًا", color: "#fdecef" },
+  { label: "فاتح", color: "#f6e6d8" },
+  { label: "حنطي", color: "#e1c4a8" },
+  { label: "حنطي غامق", color: "#c49a6c" },
+  { label: "أسمر", color: "#8d5a3b" },
+  { label: "داكن", color: "#3b2a23" },
 ];
 
 export default function SkinPage() {
@@ -71,8 +137,6 @@ export default function SkinPage() {
                 اختاري الدرجة الأقرب لك
               </p>
             </div>
-
-            {/* ✅ تم حذف دائرة الرقم 1 */}
           </div>
 
           <div className="mt-4 grid grid-cols-3 gap-4">
@@ -88,7 +152,6 @@ export default function SkinPage() {
                 >
                   <div
                     className={[
-                      // ✅ صغرناها شوي فقط
                       "h-12 w-12 sm:h-14 sm:w-14 rounded-full border-2 transition",
                       active
                         ? "border-[#d6b56a] ring-4 ring-[#d6b56a]/25"
@@ -97,13 +160,14 @@ export default function SkinPage() {
                     style={{ backgroundColor: opt.color }}
                   />
 
+                  {/* ✅ شلنا الإيموجي – صار ستايل براند */}
                   <span
                     className={[
                       "text-[12px] sm:text-sm font-semibold",
                       active ? "text-[#f3e0b0]" : "text-neutral-300",
                     ].join(" ")}
                   >
-                    {opt.emoji} {opt.label}
+                    {opt.label}
                   </span>
                 </button>
               );
@@ -116,7 +180,7 @@ export default function SkinPage() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-white font-semibold">الأندرتون</h2>
-              <p className="text-neutral-400 text-sm mt-1">حددي حرارة بشرتك</p>
+              <p className="text-neutral-400 text-sm mt-1"> اختاري التدرج الأنسب لبشرتك</p>
             </div>
 
             <button
@@ -170,25 +234,25 @@ export default function SkinPage() {
 
             <ul className="space-y-2 text-sm text-neutral-100/90 leading-relaxed">
               <li className="flex gap-2">
-                <span className="mt-[2px]">❄️</span>
+                <span className="mt-[2px]">•</span>
                 <span>
                   <b>بارد:</b> عروق المعصم تميل للأزرق أو البنفسجي.
                 </span>
               </li>
               <li className="flex gap-2">
-                <span className="mt-[2px]">🔥</span>
+                <span className="mt-[2px]">•</span>
                 <span>
                   <b>دافئ:</b> العروق تميل للأخضر.
                 </span>
               </li>
               <li className="flex gap-2">
-                <span className="mt-[2px]">⚖️</span>
+                <span className="mt-[2px]">•</span>
                 <span>
                   <b>محايد:</b> صعب تمييز لون العروق بوضوح.
                 </span>
               </li>
               <li className="flex gap-2">
-                <span className="mt-[2px]">🫒</span>
+                <span className="mt-[2px]">•</span>
                 <span>
                   <b>زيتوني:</b> لمحة خضراء/رمادية خفيفة بالبشرة.
                 </span>
@@ -203,41 +267,42 @@ export default function SkinPage() {
           <div className="mt-4 grid grid-cols-2 gap-3">
             <UndertoneButton
               label="بارد"
-              emoji="❄️"
+              icon={<IconSparkle />}
               active={undertone === "بارد"}
               onClick={() => setUndertone("بارد")}
             />
             <UndertoneButton
               label="دافئ"
-              emoji="🔥"
+              icon={<IconSun />}
               active={undertone === "دافئ"}
               onClick={() => setUndertone("دافئ")}
             />
             <UndertoneButton
               label="محايد"
-              emoji="⚖️"
+              icon={<IconBalance />}
               active={undertone === "محايد"}
               onClick={() => setUndertone("محايد")}
             />
             <UndertoneButton
               label="زيتوني"
-              emoji="🫒"
+              icon={<IconOlive />}
               active={undertone === "زيتوني"}
               onClick={() => setUndertone("زيتوني")}
             />
           </div>
         </section>
 
- <button
-  onClick={next}
-  disabled={!depth || !undertone}
-  type="button"
-  className="mt-6 w-full rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/15 py-3 text-sm font-extrabold text-white shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:border-[#d6b56a]/70 disabled:opacity-40 disabled:hover:border-[#d6b56a]/45"
->
-  التالي
-</button>
+        {/* Next */}
+        <button
+          onClick={next}
+          disabled={!depth || !undertone}
+          type="button"
+          className="mt-6 w-full rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/15 py-3 text-sm font-extrabold text-white shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:border-[#d6b56a]/70 disabled:opacity-40 disabled:hover:border-[#d6b56a]/45"
+        >
+          التالي
+        </button>
 
-        {/* ✅ Footer موحّد */}
+        {/* Footer */}
         <SiteFooter />
       </div>
     </main>
@@ -246,12 +311,12 @@ export default function SkinPage() {
 
 function UndertoneButton({
   label,
-  emoji,
+  icon,
   active,
   onClick,
 }: {
   label: Undertone;
-  emoji: string;
+  icon: React.ReactNode;
   active: boolean;
   onClick: () => void;
 }) {
@@ -267,7 +332,7 @@ function UndertoneButton({
           : "",
       ].join(" ")}
     >
-      <span>{emoji}</span>
+      {icon}
       {label}
     </button>
   );

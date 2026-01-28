@@ -125,10 +125,10 @@ export default function HomePage() {
               <span>:</span>
 
               <a
-                href="mailto:contact.fazaa@gmail.com"
-                className="text-[#f3e0b0] hover:underline font-medium tracking-wide"
+                href="mailto:contact@fazaa-app.com"
+                className="text-[#f3e0b0] text-sm sm:text-base font-semibold tracking-[0.15em] hover:text-[#d6b56a] transition no-underline hover:no-underline"
               >
-                contact.fazaa@gmail.com
+                contact@fazaa-app.com
               </a>
             </span>
           </div>
