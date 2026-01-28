@@ -61,7 +61,7 @@ export default function HomePage() {
             ومقاساتك — مع ترشيحات فخمة ومقاس محسوب بدقة.
           </motion.p>
 
-          {/* CTA Button */}
+          {/* CTA */}
           <div className="mt-10 flex items-center justify-center">
             <motion.button
               whileHover={{ scale: 1.04 }}
@@ -74,7 +74,7 @@ export default function HomePage() {
             </motion.button>
           </div>
 
-          {/* Feature Cards */}
+          {/* Features */}
           <motion.div
             initial="hidden"
             animate="show"
@@ -93,19 +93,17 @@ export default function HomePage() {
           </motion.div>
         </motion.div>
 
-        {/* Footer (الحقوق: تحت بعض بدون مسافات) */}
-        <footer className="mt-10 text-center text-xs text-neutral-400 leading-tight">
+        {/* Footer */}
+        <footer className="mt-10 text-center text-xs text-neutral-400 leading-tight space-y-1">
           <div className="text-neutral-500">© 2026</div>
-
           <div className="text-amber-300 font-semibold">Alaa Abdullah</div>
-
           <div className="text-neutral-500">All Rights Reserved</div>
 
-          <div dir="ltr" className="text-neutral-400">
+          {/* Contact */}
+          <div dir="ltr" className="mt-2">
             <span className="inline-flex items-center gap-2">
               <span>For contact</span>
 
-              {/* Mail icon (SVG) */}
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-4 w-4 text-[#d6b56a]"
@@ -126,11 +124,22 @@ export default function HomePage() {
 
               <a
                 href="mailto:contact@fazaa-app.com"
-                className="text-[#f3e0b0] text-sm sm:text-base font-semibold tracking-[0.15em] hover:text-[#d6b56a] transition no-underline hover:no-underline"
+                className="text-[#f3e0b0] text-sm font-semibold tracking-[0.12em] hover:text-[#d6b56a] transition no-underline"
               >
                 contact@fazaa-app.com
               </a>
             </span>
+          </div>
+
+          {/* Privacy & Terms */}
+          <div className="mt-3 flex items-center justify-center gap-4 text-[11px] text-neutral-400">
+            <a href="/privacy-policy" className="hover:text-[#d6b56a] transition">
+              Privacy Policy
+            </a>
+            <span className="opacity-40">|</span>
+            <a href="/terms-and-conditions" className="hover:text-[#d6b56a] transition">
+              Terms & Conditions
+            </a>
           </div>
         </footer>
       </div>
