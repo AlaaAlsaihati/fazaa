@@ -12,9 +12,25 @@ export default function HomePage() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.8, ease: "easeOut" }}
       dir="rtl"
-      className="min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-900 to-black text-white flex items-center justify-center p-6"
+      className="relative min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-900 to-black text-white flex items-center justify-center p-6 overflow-hidden"
     >
-      <div className="w-full max-w-6xl">
+      {/* ===== Wedding Hero Icon (Background) ===== */}
+      <img
+        src="/icons/wedding-hero.png"
+        alt="Wedding Dress"
+        className="
+          pointer-events-none
+          absolute
+          left-0
+          top-1/2
+          -translate-y-1/2
+          w-[75%]
+          opacity-35
+          blur-[0.5px]
+        "
+      />
+
+      <div className="relative w-full max-w-6xl">
         {/* Hero Card */}
         <motion.div
           initial={{ opacity: 0, y: 14 }}
@@ -94,37 +110,19 @@ export default function HomePage() {
         </motion.div>
 
         {/* Footer */}
-        <footer className="mt-10 text-center text-xs text-neutral-400 leading-tight space-y-1">
+        <footer className="mt-8 text-center text-xs text-neutral-400 leading-tight space-y-1">
           <div className="text-neutral-500">© 2026</div>
           <div className="text-amber-300 font-semibold">Alaa Abdullah</div>
           <div className="text-neutral-500">All Rights Reserved</div>
 
           {/* Contact */}
-          <div dir="ltr" className="mt-2">
+          <div dir="ltr" className="mt-1">
             <span className="inline-flex items-center gap-2">
               <span>For contact</span>
-
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4 text-[#d6b56a]"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.5}
-                aria-hidden
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M21.75 6.75v10.5A2.25 2.25 0 0 1 19.5 19.5H4.5A2.25 2.25 0 0 1 2.25 17.25V6.75M21.75 6.75A2.25 2.25 0 0 0 19.5 4.5H4.5A2.25 2.25 0 0 0 2.25 6.75m19.5 0-7.5 5.25a2.25 2.25 0 0 1-2.5 0l-7.5-5.25"
-                />
-              </svg>
-
-              <span>:</span>
-
+              <span>•</span>
               <a
                 href="mailto:contact@fazaa-app.com"
-                className="text-[#f3e0b0] text-sm font-semibold tracking-[0.12em] hover:text-[#d6b56a] transition no-underline"
+                className="text-[#f3e0b0] text-sm font-semibold tracking-[0.12em] hover:text-[#d6b56a] transition"
               >
                 contact@fazaa-app.com
               </a>
@@ -132,11 +130,11 @@ export default function HomePage() {
           </div>
 
           {/* Privacy & Terms */}
-          <div className="mt-3 flex items-center justify-center gap-4 text-[11px] text-neutral-400">
+          <div className="mt-2 flex items-center justify-center gap-2 text-[11px] text-neutral-400">
             <a href="/privacy-policy" className="hover:text-[#d6b56a] transition">
               Privacy Policy
             </a>
-            <span className="opacity-40">|</span>
+            <span>•</span>
             <a href="/terms-and-conditions" className="hover:text-[#d6b56a] transition">
               Terms & Conditions
             </a>
