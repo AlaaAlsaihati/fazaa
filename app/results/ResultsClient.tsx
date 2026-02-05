@@ -105,7 +105,7 @@ export default function ResultsClient({
             إطلالات مختارة بذوق فزعة
           </h1>
           <p className="mt-3 text-sm text-neutral-400">
-            اخترناها لك بعناية لتناسبك من كل ناحية ✨
+             مختاره لك بعناية لتناسب مناسـبتك، لون بشرتك، ومقاسك✨
           </p>
         </div>
 
@@ -203,31 +203,32 @@ function LuxuryCard({
           </span>
         </div>
 
-        {/* ✅ كود الخصم تحت السعر مع زر نسخ */}
-        {deal?.discountCode ? (
-          <div className="mt-3 rounded-2xl border border-[#d6b56a]/30 bg-[#d6b56a]/10 p-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-sm text-[#f3e0b0]">
-                <span className="text-neutral-300">
-                  {deal.discountLabel || "كود خصم"}
-                </span>
-                <span className="text-neutral-400">:</span>{" "}
-                <b className="tracking-widest">{deal.discountCode}</b>
-              </div>
-
-              <button
-                type="button"
-                onClick={copyCode}
-                className={[
-                  "shrink-0 rounded-xl border px-3 py-2 text-xs font-bold transition",
-                  "border-[#d6b56a]/45 bg-black/20 text-white hover:bg-black/30",
-                ].join(" ")}
-              >
-                {copied ? "تم النسخ ✓" : "نسخ"}
-              </button>
-            </div>
-          </div>
-        ) : null}
+        {/* ✅ كود الخصم (Chip صغير نفس المقاس المقترح) */}
+{deal?.discountCode ? (
+  <div className="mt-2 flex justify-end">
+    <button
+      type="button"
+      onClick={copyCode}
+      className={[
+        "rounded-full border border-[#d6b56a]/40 bg-[#d6b56a]/10 px-3 py-1 text-xs font-semibold text-[#f3e0b0]",
+        "transition hover:border-[#d6b56a]/60",
+      ].join(" ")}
+      title="اضغطي للنسخ"
+    >
+      {copied ? (
+        "تم النسخ ✓"
+      ) : (
+        <>
+          <span className="text-neutral-300">
+            {deal.discountLabel || "كود خصم"}
+          </span>
+          <span className="text-neutral-400">:</span>{" "}
+          <b className="tracking-widest">{deal.discountCode}</b>
+        </>
+      )}
+    </button>
+  </div>
+) : null}
 
         {sizeNote ? (
           <p className="mt-2 text-xs text-neutral-400">{sizeNote}</p>

@@ -24,64 +24,46 @@ function range(min: number, max: number, step = 1) {
   return out;
 }
 
-/* ========= أيقونات ذهبية لِـ شكل الجسم ========= */
-function ShapeIcon({ type }: { type: BodyShapeArabic }) {
-  const base = "h-5 w-5 text-[#d6b56a] shrink-0";
-  const common = {
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 1.4,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-    className: base,
-    "aria-hidden": true,
+/* ========= أيقونات القياسات (PNG) ========= */
+function MeasureIconImg({ type }: { type: "height" | "bust" | "waist" | "hip" }) {
+  const map: Record<"height" | "bust" | "waist" | "hip", string> = {
+    height: "/icons/measurements/height.png",
+    bust: "/icons/measurements/bust.png",
+    waist: "/icons/measurements/waist.png",
+    hip: "/icons/measurements/hip.png",
   };
 
-  if (type === "ساعة رملية") {
-    return (
-      <svg {...common}>
-        <path d="M8 4h8" />
-        <path d="M9 6c3 3 3 9 0 12" />
-        <path d="M15 6c-3 3-3 9 0 12" />
-        <path d="M8 20h8" />
-      </svg>
-    );
-  }
-
-  if (type === "كمثري") {
-    return (
-      <svg {...common}>
-        <path d="M9 5c2-1 4-1 6 0" />
-        <path d="M9 7c-1 4 0 10 3 12" />
-        <path d="M15 7c1 4 0 10-3 12" />
-        <path d="M7.5 18c3 2 6 2 9 0" />
-      </svg>
-    );
-  }
-
-  if (type === "مستقيم") {
-    return (
-      <svg {...common}>
-        <path d="M9 5v14" />
-        <path d="M15 5v14" />
-        <path d="M9 5h6" />
-        <path d="M9 19h6" />
-      </svg>
-    );
-  }
-
-  // تفاحة
   return (
-    <svg {...common}>
-      <path d="M12 6c-3 0-5 2.4-5 5.4 0 4.2 2.2 7.1 5 7.1s5-2.9 5-7.1C17 8.4 15 6 12 6Z" />
-      <path d="M12 6c.7-1.2 1.7-2 3-2" />
-    </svg>
+    <img
+  src={map[type]}
+  alt=""
+  draggable={false}
+  className="h-7 w-7 shrink-0 object-contain transform scale-[5] -translate-x-2"
+/>
+  );
+}
+
+function ShapeIcon({ type }: { type: BodyShapeArabic }) {
+  const map: Record<BodyShapeArabic, string> = {
+    "ساعة رملية": "/icons/body-shapes/hourglass.png",
+    "كمثري": "/icons/body-shapes/pear.png",
+    "مستقيم": "/icons/body-shapes/straight.png",
+    "تفاحة": "/icons/body-shapes/apple.png",
+  };
+
+  return (
+    <img
+      src={map[type]}
+      alt=""
+      className="h-30 w-30 object-contain select-none pointer-events-none ml-6"
+      draggable={false}
+    />
   );
 }
 
 /* ========= خيارات Dropdown ========= */
-const HEIGHT_OPTIONS = range(120, 210, 1);
+/* ✅ الطول يبدأ من 140 */
+const HEIGHT_OPTIONS = range(140, 210, 1);
 const BUST_OPTIONS = range(60, 160, 1);
 const WAIST_OPTIONS = range(45, 160, 1);
 const HIP_OPTIONS = range(60, 180, 1);
@@ -108,6 +90,7 @@ export default function MeasurementsClient({
 
   const [bodyShape, setBodyShape] = useState<BodyShapeArabic | "">("");
 
+  // ✅ التحقق موجود عشان زر النتائج يشتغل صح (بس بدون رسائل/أحمر)
   const fieldErrors = useMemo(() => {
     const h = toNum(heightCm);
     const b = toNum(bustCm);
@@ -115,13 +98,11 @@ export default function MeasurementsClient({
     const hip = toNum(hipCm);
 
     return {
-      height:
-        !heightCm || h < 120 || h > 210 ? "اختاري طولك (120–210 سم)." : "",
-      bust: !bustCm || b < 60 || b > 160 ? "اختاري محيط الصدر (60–160 سم)." : "",
-      waist:
-        !waistCm || w < 45 || w > 160 ? "اختاري محيط الخصر (45–160 سم)." : "",
-      hip: !hipCm || hip < 60 || hip > 180 ? "اختاري محيط الأرداف (60–180 سم)." : "",
-      bodyShape: !bodyShape ? "اختاري شكل جسمك (يفيد خصوصًا في العبايات)." : "",
+      height: !heightCm || h < 140 || h > 210 ? "x" : "",
+      bust: !bustCm || b < 60 || b > 160 ? "x" : "",
+      waist: !waistCm || w < 45 || w > 160 ? "x" : "",
+      hip: !hipCm || hip < 60 || hip > 180 ? "x" : "",
+      bodyShape: !bodyShape ? "x" : "",
     };
   }, [heightCm, bustCm, waistCm, hipCm, bodyShape]);
 
@@ -179,48 +160,48 @@ export default function MeasurementsClient({
           {/* Dropdown Fields */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <SelectField
-              label="طولك (سم)"
+              label="الطول (سم)"
+              iconType="height"
               value={heightCm}
               onChange={setHeightCm}
               placeholder="اختاري"
               options={HEIGHT_OPTIONS}
-              error={fieldErrors.height}
             />
 
             <SelectField
               label="محيط الصدر (سم)"
+              iconType="bust"
               value={bustCm}
               onChange={setBustCm}
               placeholder="اختاري"
               options={BUST_OPTIONS}
-              error={fieldErrors.bust}
             />
 
             <SelectField
               label="محيط الخصر (سم)"
+              iconType="waist"
               value={waistCm}
               onChange={setWaistCm}
               placeholder="اختاري"
               options={WAIST_OPTIONS}
-              error={fieldErrors.waist}
             />
 
             <SelectField
               label="محيط الأرداف (سم)"
+              iconType="hip"
               value={hipCm}
               onChange={setHipCm}
               placeholder="اختاري"
               options={HIP_OPTIONS}
-              error={fieldErrors.hip}
             />
           </div>
 
           {/* Body shape */}
           <div className="mt-6">
-            <p className="text-sm font-semibold text-white">شكل جسمك</p>
+            <p className="text-sm font-semibold text-white">شكل الجسم</p>
 
             <p className="mt-2 text-xs text-neutral-400">
-              نستخدمه فقط لترتيب النتائج بدقة — خصوصًا في قسم العبايات.
+              نستخدمه فقط لترتيب النتائج بدقة
             </p>
 
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -245,12 +226,6 @@ export default function MeasurementsClient({
                 onClick={() => setBodyShape("تفاحة")}
               />
             </div>
-
-            {fieldErrors.bodyShape ? (
-              <p className="mt-2 text-xs text-red-200/90">
-                {fieldErrors.bodyShape}
-              </p>
-            ) : null}
           </div>
 
           {/* CTA */}
@@ -276,40 +251,46 @@ export default function MeasurementsClient({
 
 function SelectField({
   label,
+  iconType,
   value,
   onChange,
   placeholder,
   options,
-  error,
 }: {
   label: string;
+  iconType: "height" | "bust" | "waist" | "hip";
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   options: number[];
-  error?: string;
 }) {
   return (
     <label className="block">
-      <span className="text-sm font-semibold text-white">{label}</span>
+      {/* ✅ النص + الأيقونة (الأيقونة يسار النص) */}
+      <span className="text-sm font-semibold text-white inline-flex items-center gap-2">
+  <span>{label}</span>
+  <span className="pointer-events-none">
+    <MeasureIconImg type={iconType} />
+  </span>
+</span>
 
       <div className="relative mt-2">
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          style={{ colorScheme: "dark" }}
           className={[
-            "w-full appearance-none rounded-2xl border px-4 py-3 text-white outline-none transition",
-            "border-white/10 bg-black/30",
+            "w-full appearance-none rounded-2xl border px-4 py-3 text-sm font-semibold transition overflow-hidden shrink-0",
+            "border-white/10 bg-neutral-950 text-white",
             "focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10",
-            error ? "border-red-500/30" : "",
           ].join(" ")}
         >
-          <option value="" disabled className="text-neutral-500">
+          <option value="" disabled className="bg-neutral-950 text-neutral-400">
             {placeholder || "اختاري"}
           </option>
 
           {options.map((n) => (
-            <option key={n} value={n} className="text-black">
+            <option key={n} value={n} className="bg-neutral-950 text-white">
               {n}
             </option>
           ))}
@@ -325,12 +306,14 @@ function SelectField({
             stroke="currentColor"
             strokeWidth={2}
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M19 9l-7 7-7-7"
+            />
           </svg>
         </div>
       </div>
-
-      {error ? <p className="mt-2 text-xs text-red-200/90">{error}</p> : null}
     </label>
   );
 }
@@ -349,16 +332,27 @@ function Chip({
       onClick={onClick}
       type="button"
       className={[
-        "rounded-2xl border px-4 py-3 text-sm font-semibold transition",
+        // ✅ ثبّت الحجم
+        "h-[48px] w-full",
+        "rounded-2xl border px-4 text-sm font-semibold transition",
         "bg-black/20 border-white/10 text-white hover:bg-black/30",
+
+        // ✅ ترتيب ثابت + منع تمدد
         "flex items-center justify-center gap-2",
+        "overflow-hidden",
+
         active
           ? "ring-2 ring-[#d6b56a]/40 border-[#d6b56a]/35 bg-[#d6b56a]/10"
           : "",
       ].join(" ")}
     >
-      <ShapeIcon type={label} />
-      {label}
+      {/* ✅ النص ما يلف */}
+      <span className="mr-18 whitespace-nowrap">{label}</span>
+
+      {/* ✅ الأيقونة ثابتة المقاس */}
+      <span className="shrink-0">
+        <ShapeIcon type={label} />
+      </span>
     </button>
   );
 }
