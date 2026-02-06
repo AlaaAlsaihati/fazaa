@@ -334,7 +334,7 @@ function Chip({
       className={[
         // ✅ ثبّت الحجم
         "h-[48px] w-full",
-        "rounded-2xl border px-4 text-sm font-semibold transition",
+        "rounded-2xl border px-4 text-xs font-semibold transition",
         "bg-black/20 border-white/10 text-white hover:bg-black/30",
 
         // ✅ ترتيب ثابت + منع تمدد
