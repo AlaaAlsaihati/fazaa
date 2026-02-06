@@ -226,7 +226,7 @@ function UndertoneCard({
     >
       {active && <SelectedBadge />}
 
-     <div className="absolute left-[20px] top-1/2 -translate-y-1/2">
+     <div className="absolute left-[1px] top-1/2 -translate-y-1/2">
   <UndertoneIcon src={iconSrc} alt={label} />
 </div>
 
