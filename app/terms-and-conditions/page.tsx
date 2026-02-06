@@ -83,7 +83,8 @@ export default function TermsPage() {
             {/* English (Left) */}
             <div dir="ltr" className="text-left">
               <b className="text-[#f3e0b0]">1) Nature of Service</b><br />
-              Fazaa is a recommendation platform that helps users choose outfits (occasion/colors/measurements) and provides links to external stores. Fazaa is not a seller and does not sell products directly.
+              Fazaa is a recommendation platform that helps users choose outfits (occasion/colors/measurements)
+               and provides links to external stores. Fazaa is not a seller and does not sell products directly.
 
               <br /><br />
 
