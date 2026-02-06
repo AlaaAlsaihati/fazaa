@@ -56,7 +56,7 @@ function UndertoneIcon({ src, alt }: { src: string; alt: string }) {
       alt={alt}
       draggable={false}
       className="
-        h-[130px] w-[130px]
+        h-[100px] w-[100px]
         object-contain select-none
         drop-shadow-[0_0_12px_rgba(214,181,106,0.55)]
         brightness-110 saturate-110
@@ -226,7 +226,7 @@ function UndertoneCard({
     >
       {active && <SelectedBadge />}
 
-     <div className="absolute left-[1px] top-1/2 -translate-y-1/2">
+     <div className="absolute left-[0px] top-1/2 -translate-y-1/2">
   <UndertoneIcon src={iconSrc} alt={label} />
 </div>
 
