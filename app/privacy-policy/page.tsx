@@ -104,13 +104,7 @@ export default function PrivacyPolicyPage() {
             <a
   href="mailto:contact@fazaa-app.com"
   className="text-[#f3e0b0] break-words"
-  style={{
-    overflowWrap: "anywhere",
-    display: "-webkit-box",
-    WebkitLineClamp: 2,
-    WebkitBoxOrient: "vertical",
-    overflow: "hidden",
-  }}
+  style={{ overflowWrap: "anywhere" }}
 >
   contact@fazaa-app.com
 </a>
