@@ -55,7 +55,9 @@ export default function PrivacyPolicyPage() {
 
               <b className="text-[#f3e0b0]">8) التواصل</b><br />
               لأي استفسار بخصوص الخصوصية:{" "}
-              <span className="text-[#f3e0b0]">contact@fazaa-app.com</span>
+              <span className="text-[#f3e0b0] whitespace-nowrap overflow-hidden text-ellipsis block">
+  contact@fazaa-app.com
+</span>
             </div>
 
             {/* English */}
@@ -99,7 +101,9 @@ export default function PrivacyPolicyPage() {
 
               <b className="text-[#f3e0b0]">8) Contact</b><br />
               Privacy inquiries:{" "}
-              <span className="text-[#f3e0b0]">contact@fazaa-app.com</span>
+             <span className="text-[#f3e0b0] whitespace-nowrap overflow-hidden text-ellipsis block">
+  contact@fazaa-app.com
+</span>
             </div>
           </div>
         </div>
