@@ -113,9 +113,19 @@ export default function TermsPage() {
               <b className="text-[#f3e0b0]">13) التواصل</b>
               <br />
               للاستفسارات أو البلاغات:{" "}
-              <span className="text-[#f3e0b0] whitespace-nowrap overflow-hidden text-ellipsis block">
+              <a
+  href="mailto:contact@fazaa-app.com"
+  className="text-[#f3e0b0] break-words"
+  style={{
+    overflowWrap: "anywhere",
+    display: "-webkit-box",
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: "vertical",
+    overflow: "hidden",
+  }}
+>
   contact@fazaa-app.com
-</span>
+</a>
             </div>
 
             {/* English (Left) */}
@@ -220,9 +230,19 @@ export default function TermsPage() {
               <b className="text-[#f3e0b0]">13) Contact</b>
               <br />
               For inquiries or notices:{" "}
-              <span className="text-[#f3e0b0] whitespace-nowrap overflow-hidden text-ellipsis block">
+              <a
+  href="mailto:contact@fazaa-app.com"
+  className="text-[#f3e0b0] break-words"
+  style={{
+    overflowWrap: "anywhere",
+    display: "-webkit-box",
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: "vertical",
+    overflow: "hidden",
+  }}
+>
   contact@fazaa-app.com
-</span>
+</a>
             </div>
           </div>
         </div>

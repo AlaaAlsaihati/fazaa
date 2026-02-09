@@ -55,9 +55,19 @@ export default function PrivacyPolicyPage() {
 
               <b className="text-[#f3e0b0]">8) التواصل</b><br />
               لأي استفسار بخصوص الخصوصية:{" "}
-              <span className="text-[#f3e0b0] whitespace-nowrap overflow-hidden text-ellipsis block">
+              <a
+  href="mailto:contact@fazaa-app.com"
+  className="text-[#f3e0b0] break-words"
+  style={{
+    overflowWrap: "anywhere",
+    display: "-webkit-box",
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: "vertical",
+    overflow: "hidden",
+  }}
+>
   contact@fazaa-app.com
-</span>
+</a>
             </div>
 
             {/* English */}
@@ -104,7 +114,13 @@ export default function PrivacyPolicyPage() {
             <a
   href="mailto:contact@fazaa-app.com"
   className="text-[#f3e0b0] break-words"
-  style={{ overflowWrap: "anywhere" }}
+  style={{
+    overflowWrap: "anywhere",
+    display: "-webkit-box",
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: "vertical",
+    overflow: "hidden",
+  }}
 >
   contact@fazaa-app.com
 </a>
