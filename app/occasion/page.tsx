@@ -1,10 +1,46 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import type { Occasion, WeddingStyle } from "@/app/data/products";
 import SiteFooter from "@/app/components/FazaaFooter";
+import FazaaDrawer from "@/app/components/fazaaDrawer";
+
+const MEASUREMENTS_KEY = "fazaa_measurements_v1";
+const HISTORY_KEY = "fazaa_history_v1";
+
+function safeGet(key: string) {
+  try {
+    if (typeof window === "undefined") return null;
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+type SavedMeasurements = {
+  heightCm?: string;
+  bust?: string;
+  waist?: string;
+  hip?: string;
+};
+
+type RawHistoryItem = {
+  id?: string;
+  occasionLabel?: string; // مثال: زواج
+  date?: string; // مثال: 2026/02/10
+  heightCm?: number;
+  bustCm?: number;
+  waistCm?: number;
+  hipCm?: number;
+};
+
+type DrawerHistoryItem = {
+  id: string;
+  title: string; // "زواج • 2026/02/10"
+  subtitle: string; // "طول 165 • صدر 92 • خصر 70"
+};
 
 type OccasionCard = {
   key: Occasion;
@@ -82,10 +118,113 @@ const CHALET_CARD: OccasionCard = {
   comingSoonText: "قريبًا — نجهزها بذوق فزعة",
 };
 
+function ThreeDotsButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="القائمة"
+      className={[
+        "fixed top-6 right-6 z-50",
+        "h-12 w-12 rounded-2xl",
+        "border border-[#d6b56a]/45 bg-black/35 backdrop-blur",
+        "shadow-[0_10px_30px_rgba(0,0,0,0.45)]",
+        "flex items-center justify-center",
+        "active:scale-95 transition",
+      ].join(" ")}
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-5 w-5 text-[#d6b56a]"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+      >
+       <circle cx="5" cy="12" r="1.4" />
+<circle cx="12" cy="12" r="1.4" />
+<circle cx="19" cy="12" r="1.4" />
+      </svg>
+    </button>
+  );
+}
+
+function BackFab({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="رجوع"
+      className={[
+        "fixed bottom-6 right-6 z-50",
+        "h-12 w-12 rounded-2xl",
+        "border border-[#d6b56a]/55 bg-black/35 backdrop-blur",
+        "shadow-[0_10px_30px_rgba(0,0,0,0.45)]",
+        "flex items-center justify-center",
+        "active:scale-95 transition",
+      ].join(" ")}
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-5 w-5 text-[#d6b56a]"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2.5}
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M10 7l5 5-5 5" />
+      </svg>
+    </button>
+  );
+}
+
 export default function OccasionPage() {
   const router = useRouter();
   const [occasion, setOccasion] = useState<Occasion | "">("");
   const [weddingStyle, setWeddingStyle] = useState<WeddingStyle>("");
+
+  // ✅ Drawer state
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // (حالياً بدون حساب)
+  const userName: string | null = null;
+
+  const [savedMeas, setSavedMeas] = useState<SavedMeasurements | null>(null);
+  const [history, setHistory] = useState<DrawerHistoryItem[]>([]);
+
+  useEffect(() => {
+    const rawM = safeGet(MEASUREMENTS_KEY);
+    if (rawM) {
+      try {
+        const m = JSON.parse(rawM) as any;
+        setSavedMeas({
+          heightCm: typeof m.heightCm === "string" ? m.heightCm : "",
+          bust: typeof m.bust === "string" ? m.bust : "",
+          waist: typeof m.waist === "string" ? m.waist : "",
+          hip: typeof m.hip === "string" ? m.hip : "",
+        });
+      } catch {}
+    }
+
+    const rawH = safeGet(HISTORY_KEY);
+    if (rawH) {
+      try {
+        const arr = JSON.parse(rawH) as RawHistoryItem[];
+        if (Array.isArray(arr)) {
+          const mapped: DrawerHistoryItem[] = arr.map((it, idx) => {
+            const title = `${it.occasionLabel ?? "تجربة"} • ${it.date ?? ""}`.trim();
+            const subtitle =
+              `طول ${it.heightCm ?? "—"} • صدر ${it.bustCm ?? "—"} • خصر ${it.waistCm ?? "—"}`.trim();
+
+            return {
+              id: it.id ?? String(idx),
+              title,
+              subtitle,
+            };
+          });
+          setHistory(mapped);
+        }
+      } catch {}
+    }
+  }, []);
 
   const selectedCard = [...CARDS_TOP6, CHALET_CARD].find((c) => c.key === occasion);
 
@@ -113,6 +252,34 @@ export default function OccasionPage() {
       dir="rtl"
       className="min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-900 to-black p-6"
     >
+      {/* ✅ الثلاث نقاط */}
+      <ThreeDotsButton onClick={() => setMenuOpen(true)} />
+
+      {/* ✅ Drawer (نفس الملف اللي عندك) */}
+      <FazaaDrawer
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        userName={userName}
+        history={history}
+        onLoginClick={() => {
+          setMenuOpen(false);
+          // لاحقاً: route لصفحة الدخول/التسجيل
+          // router.push("/auth");
+        }}
+        onMeasurementsClick={() => {
+          setMenuOpen(false);
+          router.push("/measurements");
+        }}
+        onHistoryClick={(id) => {
+          setMenuOpen(false);
+          // لاحقاً: افتحي النتائج المحفوظة حسب id
+          // router.push(`/results?saved=${id}`);
+        }}
+        onLogoutClick={() => {
+          // لاحقاً لما نفعل الحسابات
+        }}
+      />
+
       <div className="mx-auto max-w-2xl">
         {/* Header */}
         <header className="mb-6">
@@ -191,13 +358,15 @@ export default function OccasionPage() {
           disabled={nextDisabled}
           type="button"
           className="relative z-10 mt-6 w-full rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/15 py-3 text-sm font-extrabold text-white transition disabled:opacity-40"
-          /* ✅ FIX: رفعنا الزر فوق أي عناصر طالعة من الكروت */
         >
           التالي
         </button>
 
         <SiteFooter />
       </div>
+
+      {/* ✅ زر الرجوع */}
+      <BackFab onClick={() => router.back()} />
     </main>
   );
 }
@@ -243,11 +412,7 @@ function OccasionButton({
       )}
 
       {/* ✅ الأيقونة يسار + كبيرة + مدموجة */}
-      <div
-        className="absolute left-[-57px] top-1/2 -translate-y-1/2 pointer-events-none"
-        /* ✅ FIX: أهم سطر — يمنع الأيقونة تغطي زر التالي وتخطف الضغط */
-      >
-        {/* glow base (خففناه شوي) */}
+      <div className="absolute left-[-57px] top-1/2 -translate-y-1/2 pointer-events-none">
         <div className="absolute inset-0 -z-10 h-[110px] w-[110px] rounded-full bg-[#d6b56a]/10 blur-2xl" />
         {o.icon}
       </div>
@@ -257,7 +422,9 @@ function OccasionButton({
         <div>
           <h2 className="text-white font-semibold">{o.title}</h2>
 
-          {o.subtitle ? <p className="text-neutral-400 text-sm mt-1">{o.subtitle}</p> : null}
+          {o.subtitle ? (
+            <p className="text-neutral-400 text-sm mt-1">{o.subtitle}</p>
+          ) : null}
 
           {o.disabled ? (
             <p className="mt-2 text-[11px] text-[#d6b56a]/90">
@@ -267,7 +434,9 @@ function OccasionButton({
         </div>
 
         <div className="mt-3 h-px bg-white/10" />
-        <p className="mt-2 text-[11px] text-neutral-400">{o.disabled ? "قريبًا" : "اضغطي للاختيار"}</p>
+        <p className="mt-2 text-[11px] text-neutral-400">
+          {o.disabled ? "قريبًا" : ""}
+        </p>
       </div>
     </button>
   );

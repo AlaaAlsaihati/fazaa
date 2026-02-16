@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import SiteFooter from "@/app/components/FazaaFooter";
+import FazaaDrawer from "@/app/components/fazaaDrawer";
 
 type Depth =
   | "فاتح جدًا"
@@ -48,7 +49,7 @@ function SelectedBadge() {
   );
 }
 
-/* ===== أيقونة الأندرتون (نفس الحجم – لا يتغير) ===== */
+/* ===== أيقونة الأندرتون ===== */
 function UndertoneIcon({ src, alt }: { src: string; alt: string }) {
   return (
     <img
@@ -66,12 +67,78 @@ function UndertoneIcon({ src, alt }: { src: string; alt: string }) {
   );
 }
 
+/* ===== زر الرجوع ===== */
+function BackFab({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="رجوع"
+      className="
+        fixed bottom-6 right-6 z-50
+        h-12 w-12 rounded-2xl
+        border border-[#d6b56a]/55 bg-black/35 backdrop-blur
+        shadow-[0_10px_30px_rgba(0,0,0,0.45)]
+        flex items-center justify-center
+        transition active:scale-95
+      "
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-5 w-5 text-[#d6b56a]"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2.5}
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M10 7l5 5-5 5" />
+      </svg>
+    </button>
+  );
+}
+
+/* ===== زر الثلاث نقاط (نفس باقي الصفحات - أفقي) ===== */
+function ThreeDotsButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="القائمة"
+      className={[
+        "fixed top-6 right-6 z-50",
+        "h-12 w-12 rounded-2xl",
+        "border border-[#d6b56a]/45 bg-black/35 backdrop-blur",
+        "shadow-[0_10px_30px_rgba(0,0,0,0.45)]",
+        "flex items-center justify-center",
+        "active:scale-95 transition",
+      ].join(" ")}
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-5 w-5 text-[#d6b56a]"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+      >
+        <circle cx="5" cy="12" r="1.4" />
+        <circle cx="12" cy="12" r="1.4" />
+        <circle cx="19" cy="12" r="1.4" />
+      </svg>
+    </button>
+  );
+}
+
 export default function SkinClient() {
   const router = useRouter();
   const sp = useSearchParams();
 
   const [depth, setDepth] = useState<Depth>("");
   const [undertone, setUndertone] = useState<Undertone>("");
+
+  // ✅ Drawer state
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // ✅ حالياً نخليه "غير مسجل"
+  const userName: string | null = null;
 
   function next() {
     if (!depth || !undertone) return;
@@ -118,7 +185,6 @@ export default function SkinClient() {
                   className="flex flex-col items-center gap-2"
                   type="button"
                 >
-                  {/* wrapper */}
                   <div className="relative overflow-visible">
                     <div
                       className={[
@@ -129,7 +195,6 @@ export default function SkinClient() {
                       ].join(" ")}
                       style={{ backgroundColor: opt.color }}
                     />
-
                     {active && <SelectedBadge />}
                   </div>
 
@@ -168,7 +233,6 @@ export default function SkinClient() {
             </div>
           </details>
 
-          {/* كروت الأندرتون */}
           <div className="grid grid-cols-2 gap-3">
             {(["بارد", "دافئ", "محايد", "زيتوني"] as const).map((u) => (
               <UndertoneCard
@@ -195,11 +259,41 @@ export default function SkinClient() {
           <SiteFooter />
         </div>
       </div>
+
+      {/* ✅ ثلاث نقاط (نفس باقي الصفحات) */}
+      <ThreeDotsButton onClick={() => setDrawerOpen(true)} />
+
+      {/* ✅ Drawer */}
+      <FazaaDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        userName={userName}
+        history={[]}
+        onLoginClick={() => {
+          setDrawerOpen(false);
+          alert("صفحة الدخول/التسجيل بنضيفها بعدين ✨");
+        }}
+        onMeasurementsClick={() => {
+          setDrawerOpen(false);
+          alert("صفحة/مودال المقاسات داخل الدروار بنسويها الخطوة الجاية ✨");
+        }}
+        onHistoryClick={() => {
+          setDrawerOpen(false);
+          alert("الهستوري بيشتغل لما نربطه بالحساب ✨");
+        }}
+        onLogoutClick={() => {
+          setDrawerOpen(false);
+          alert("تسجيل الخروج بيشتغل لما نربطه بالحساب ✨");
+        }}
+      />
+
+      {/* زر الرجوع */}
+      <BackFab onClick={() => router.back()} />
     </main>
   );
 }
 
-/* ===== كرت الأندرتون (أصغر) ===== */
+/* ===== كرت الأندرتون ===== */
 function UndertoneCard({
   label,
   iconSrc,
@@ -226,15 +320,15 @@ function UndertoneCard({
     >
       {active && <SelectedBadge />}
 
-     <div className="absolute left-[0px] top-1/2 -translate-y-1/2">
-  <UndertoneIcon src={iconSrc} alt={label} />
-</div>
+      <div className="absolute left-[0px] top-1/2 -translate-y-1/2">
+        <UndertoneIcon src={iconSrc} alt={label} />
+      </div>
 
-    <div className="pl-[20px]">
-  <div className="flex items-center justify-center gap-1">
-    <span className="text-white font-semibold text-lg">{label}</span>
-  </div>
-</div>
+      <div className="pl-[20px]">
+        <div className="flex items-center justify-center gap-1">
+          <span className="text-white font-semibold text-lg">{label}</span>
+        </div>
+      </div>
     </button>
   );
 }

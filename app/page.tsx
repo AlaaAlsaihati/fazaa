@@ -2,9 +2,99 @@
 
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import FazaaDrawer from "@/app/components/fazaaDrawer";
+
+const MEASUREMENTS_KEY = "fazaa_measurements_v1";
+const HISTORY_KEY = "fazaa_history_v1";
+
+function safeGet(key: string) {
+  try {
+    if (typeof window === "undefined") return null;
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+type RawHistoryItem = {
+  id?: string;
+  occasionLabel?: string; // مثال: زواج
+  date?: string; // مثال: 2026/02/10
+  heightCm?: number;
+  bustCm?: number;
+  waistCm?: number;
+  hipCm?: number;
+};
+
+type DrawerHistoryItem = {
+  id: string;
+  title: string; // "زواج • 2026/02/10"
+  subtitle: string; // "طول 165 • صدر 92 • خصر 70"
+};
+
+function ThreeDotsButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="القائمة"
+      className={[
+        "fixed top-6 right-6 z-50",
+        "h-12 w-12 rounded-2xl",
+        "border border-[#d6b56a]/45 bg-black/35 backdrop-blur",
+        "shadow-[0_10px_30px_rgba(0,0,0,0.45)]",
+        "flex items-center justify-center",
+        "active:scale-95 transition",
+      ].join(" ")}
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-5 w-5 text-[#d6b56a]"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+      >
+        <circle cx="5" cy="12" r="1.4" />
+        <circle cx="12" cy="12" r="1.4" />
+        <circle cx="19" cy="12" r="1.4" />
+      </svg>
+    </button>
+  );
+}
 
 export default function HomePage() {
   const router = useRouter();
+
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // (حالياً بدون حساب)
+  const userName: string | null = null;
+
+  const [history, setHistory] = useState<DrawerHistoryItem[]>([]);
+
+  useEffect(() => {
+    // الهستري (لو موجود)
+    const rawH = safeGet(HISTORY_KEY);
+    if (rawH) {
+      try {
+        const arr = JSON.parse(rawH) as RawHistoryItem[];
+        if (Array.isArray(arr)) {
+          const mapped: DrawerHistoryItem[] = arr.map((it, idx) => {
+            const title = `${it.occasionLabel ?? "تجربة"} • ${it.date ?? ""}`.trim();
+            const subtitle =
+              `طول ${it.heightCm ?? "—"} • صدر ${it.bustCm ?? "—"} • خصر ${it.waistCm ?? "—"}`.trim();
+
+            return {
+              id: it.id ?? String(idx),
+              title,
+              subtitle,
+            };
+          });
+          setHistory(mapped);
+        }
+      } catch {}
+    }
+  }, []);
 
   return (
     <motion.main
@@ -14,7 +104,21 @@ export default function HomePage() {
       dir="rtl"
       className="relative min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-900 to-black text-white flex items-center justify-center p-6 overflow-hidden"
     >
-      
+      {/* ✅ زر الثلاث نقاط */}
+      <ThreeDotsButton onClick={() => setMenuOpen(true)} />
+
+      {/* ✅ Drawer (نفس الملف الموحد) */}
+<FazaaDrawer
+  open={menuOpen}
+  onClose={() => setMenuOpen(false)}
+  history={history}
+  onHistoryClick={(id) => {
+    setMenuOpen(false);
+    // لاحقاً: افتحي النتائج المحفوظة حسب id
+    // router.push(`/results?saved=${id}`);
+  }}
+/>
+
       <div className="relative w-full max-w-6xl">
         {/* Hero Card */}
         <motion.div

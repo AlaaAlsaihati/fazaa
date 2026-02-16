@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   products,
   type Product,
@@ -12,6 +12,7 @@ import {
 import { recommendSize } from "@/app/lib/recommendSize";
 import { STORE_MAP } from "@/app/data/stores";
 import SiteFooter from "@/app/components/FazaaFooter";
+import FazaaDrawer from "@/app/components/fazaaDrawer";
 
 type BodyShape = "" | BodyShapeArabic;
 
@@ -27,15 +28,35 @@ type InitialParams = {
   bodyShape?: string;
 };
 
-const OCCASION_LABEL: Record<string, string> = {
-  wedding: "زواج",
-  engagement: "خطوبة",
-  work: "عمل",
-  abaya: "عبايات",
-  ramadan: "غبقة / رمضان",
-  beach: "بحر",
-  chalets: "شاليهات",
-};
+/* ===== زر الثلاث نقاط (أفقي) ===== */
+function ThreeDotsButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="القائمة"
+      className={[
+        "fixed top-6 right-6 z-50",
+        "h-12 w-12 rounded-2xl",
+        "border border-[#d6b56a]/45 bg-black/35 backdrop-blur",
+        "shadow-[0_10px_30px_rgba(0,0,0,0.45)]",
+        "flex items-center justify-center",
+        "active:scale-95 transition",
+      ].join(" ")}
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-5 w-5 text-[#d6b56a]"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+      >
+        <circle cx="5" cy="12" r="1.4" />
+        <circle cx="12" cy="12" r="1.4" />
+        <circle cx="19" cy="12" r="1.4" />
+      </svg>
+    </button>
+  );
+}
 
 export default function ResultsClient({
   initialParams = {},
@@ -43,6 +64,14 @@ export default function ResultsClient({
   initialParams?: InitialParams;
 }) {
   const sp = useSearchParams();
+  const router = useRouter();
+
+  // ✅ Drawer state
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // ✅ "حساب" لاحقاً — حالياً نخليه null (يعني غير مسجل)
+  const userName: string | null = null;
+  const history: { id: string; title: string; subtitle: string }[] = [];
 
   const occasion = ((initialParams.occasion ?? sp.get("occasion") ?? "") as
     | Occasion
@@ -98,6 +127,34 @@ export default function ResultsClient({
       dir="rtl"
       className="min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-900 to-black px-6 py-10"
     >
+      {/* ✅ الثلاث نقاط */}
+      <ThreeDotsButton onClick={() => setMenuOpen(true)} />
+
+      {/* ✅ Drawer */}
+      <FazaaDrawer
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        userName={userName}
+        history={history}
+        onLoginClick={() => {
+          // لاحقاً: صفحة/مودال تسجيل
+          setMenuOpen(false);
+        }}
+        onMeasurementsClick={() => {
+          setMenuOpen(false);
+          router.push("/measurements");
+        }}
+        onHistoryClick={(id) => {
+          // لاحقاً: فتح تجربة قديمة
+          console.log("history", id);
+          setMenuOpen(false);
+        }}
+        onLogoutClick={() => {
+          // لاحقاً
+          setMenuOpen(false);
+        }}
+      />
+
       <div className="mx-auto max-w-6xl">
         <div className="text-center">
           <p className="text-sm text-neutral-400">نتائجك</p>
@@ -105,7 +162,7 @@ export default function ResultsClient({
             إطلالات مختارة بذوق فزعة
           </h1>
           <p className="mt-3 text-sm text-neutral-400">
-             مختاره لك بعناية لتناسب مناسـبتك، لون بشرتك، ومقاسك✨
+            مختارة لك بعناية لتناسب مناسبتك، لون بشرتك، ومقاسك ✨
           </p>
         </div>
 
@@ -134,6 +191,36 @@ export default function ResultsClient({
 
         <SiteFooter />
       </div>
+
+      {/* زر الرجوع */}
+      <button
+        type="button"
+        onClick={() => router.back()}
+        aria-label="رجوع"
+        className={[
+          "fixed bottom-6 right-6 z-50",
+          "h-12 w-12 rounded-2xl",
+          "border border-[#d6b56a]/55 bg-black/35 backdrop-blur",
+          "shadow-[0_10px_30px_rgba(0,0,0,0.45)]",
+          "flex items-center justify-center",
+          "active:scale-95 transition",
+        ].join(" ")}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-5 w-5 text-[#d6b56a]"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M10 7l5 5-5 5"
+          />
+        </svg>
+      </button>
     </main>
   );
 }
@@ -154,39 +241,22 @@ function LuxuryCard({
   };
 }) {
   const finalUrl = deal?.affiliateBaseUrl || p.url;
-
   const [copied, setCopied] = useState(false);
 
   async function copyCode() {
     if (!deal?.discountCode) return;
-    try {
-      await navigator.clipboard.writeText(deal.discountCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      // fallback بسيط لو المتصفح منع clipboard
-      const ta = document.createElement("textarea");
-      ta.value = deal.discountCode;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    }
+    await navigator.clipboard.writeText(deal.discountCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
   }
 
   return (
-    <div className="rounded-3xl border border-[#d6b56a]/35 bg-white/5 p-4 shadow-[0_0_0_1px_rgba(214,181,106,0.12),0_18px_55px_rgba(0,0,0,0.55)] backdrop-blur">
+    <div className="rounded-3xl border border-[#d6b56a]/35 bg-white/5 p-4 backdrop-blur">
       <img
         src={p.image}
         alt={p.title}
         className="h-64 w-full object-cover rounded-2xl border border-white/10"
         loading="lazy"
-        onError={(e) => {
-          (e.currentTarget as HTMLImageElement).src =
-            "https://via.placeholder.com/600x800?text=No+Image";
-        }}
       />
 
       <div className="mt-4">
@@ -203,42 +273,25 @@ function LuxuryCard({
           </span>
         </div>
 
-        {/* ✅ كود الخصم (Chip صغير نفس المقاس المقترح) */}
-{deal?.discountCode ? (
-  <div className="mt-2 flex justify-end">
-    <button
-      type="button"
-      onClick={copyCode}
-      className={[
-        "rounded-full border border-[#d6b56a]/40 bg-[#d6b56a]/10 px-3 py-1 text-xs font-semibold text-[#f3e0b0]",
-        "transition hover:border-[#d6b56a]/60",
-      ].join(" ")}
-      title="اضغطي للنسخ"
-    >
-      {copied ? (
-        "تم النسخ ✓"
-      ) : (
-        <>
-          <span className="text-neutral-300">
-            {deal.discountLabel || "كود خصم"}
-          </span>
-          <span className="text-neutral-400">:</span>{" "}
-          <b className="tracking-widest">{deal.discountCode}</b>
-        </>
-      )}
-    </button>
-  </div>
-) : null}
+        {deal?.discountCode && (
+          <div className="mt-2 flex justify-end">
+            <button
+              type="button"
+              onClick={copyCode}
+              className="rounded-full border border-[#d6b56a]/40 bg-[#d6b56a]/10 px-3 py-1 text-xs font-semibold text-[#f3e0b0]"
+            >
+              {copied ? "تم النسخ ✓" : deal.discountCode}
+            </button>
+          </div>
+        )}
 
-        {sizeNote ? (
-          <p className="mt-2 text-xs text-neutral-400">{sizeNote}</p>
-        ) : null}
+        {sizeNote && <p className="mt-2 text-xs text-neutral-400">{sizeNote}</p>}
 
         <a
           href={finalUrl}
           target="_blank"
           rel="noreferrer"
-          className="mt-4 inline-flex w-full justify-center rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/10 py-3 text-sm font-extrabold text-white shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:border-[#d6b56a]/70"
+          className="mt-4 inline-flex w-full justify-center rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/10 py-3 text-sm font-extrabold text-white"
         >
           لتصفح المنتج
         </a>
