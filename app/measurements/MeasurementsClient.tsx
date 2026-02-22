@@ -231,7 +231,7 @@ export default function MeasurementsClient({
   // ✅ Drawer
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // ✅ Auth (لو عندك بعد supabase في الداور ما يهم، نخليه مثل ما كان عندك هنا)
+  // ✅ Auth (مثل ما كان عندك)
   const user = useMemo(() => {
     try {
       if (typeof window === "undefined") return null;
@@ -257,21 +257,21 @@ export default function MeasurementsClient({
   // ✅ الوحدة للمحيطات فقط (الطول ثابت سم)
   const [unit, setUnit] = useState<Unit>("cm");
 
-  // ✅ Draft values (هذه اللي المستخدم يشتغل عليها)
+  // ✅ Draft values
   const [heightCm, setHeightCm] = useState<string>("");
   const [bust, setBust] = useState<string>("");
   const [waist, setWaist] = useState<string>("");
   const [hip, setHip] = useState<string>("");
   const [bodyShape, setBodyShape] = useState<BodyShapeArabic | "">("");
 
-  // ✅ Saved snapshot (ما يتغير إلا لو ضغط حفظ/تحديث)
+  // ✅ Saved snapshot
   const [savedSnapshot, setSavedSnapshot] = useState<SavedPayload | null>(null);
   const [savedLastUpdated, setSavedLastUpdated] = useState<number | null>(null);
 
   // ✅ checkbox state
   const [useSaved, setUseSaved] = useState(false);
 
-  // ✅ هل المستخدم عدّل شيء “بعد ما فتح الصفحة/طبق المحفوظ”؟
+  // ✅ dirty
   const [isDirty, setIsDirty] = useState(false);
 
   // ✅ تحميل المحفوظ عند فتح الصفحة
@@ -289,13 +289,10 @@ export default function MeasurementsClient({
       setSavedSnapshot(saved);
       setSavedLastUpdated(typeof saved.lastUpdated === "number" ? saved.lastUpdated : null);
 
-      // ملاحظة مهمة: ما نعبّي الحقول تلقائيًا هنا
-      // عشان لا يصير “لخبطه”، التطبيق يكون فقط إذا ضغط useSaved
       if (!isLoggedIn) {
         setUseSaved(false);
       }
     } catch {
-      // ignore
       setSavedSnapshot(null);
       setSavedLastUpdated(null);
       setUseSaved(false);
@@ -345,26 +342,20 @@ export default function MeasurementsClient({
     );
   }, [fieldErrors]);
 
-  // ✅ زر الحفظ/التحديث: يظهر للمسجل فقط + إذا صار فيه تعديل
   const canUpdate = useMemo(() => {
-    // ما نحفظ إلا إذا كامل البيانات صحيحة
     return isLoggedIn && canSubmit;
   }, [isLoggedIn, canSubmit]);
 
   function markDirty() {
-    // أول ما المستخدم يلمس أي قيمة بيده:
     if (useSaved) setUseSaved(false);
     setIsDirty(true);
   }
 
   function onChangeUnit(u: Unit) {
     if (u === unit) return;
-    // تغيير وحدة المحيطات يعتبر تعديل يدوي
     markDirty();
 
     setUnit(u);
-
-    // نفس سلوكك السابق: نفرّغ المحيطات وشكل الجسم عند تغيير الوحدة
     setBust("");
     setWaist("");
     setHip("");
@@ -374,7 +365,6 @@ export default function MeasurementsClient({
   function applySavedFromSnapshot() {
     if (!savedSnapshot) return;
 
-    // تطبيق المحفوظ = ما يعتبر “dirty”
     setUseSaved(true);
     setIsDirty(false);
 
@@ -401,13 +391,10 @@ export default function MeasurementsClient({
 
     safeLocalStorageSet(STORAGE_KEY, JSON.stringify(payload));
 
-    // تحديث snapshot عشان checkbox يصير منطقي
     setSavedSnapshot(payload);
     setSavedLastUpdated(payload.lastUpdated ?? null);
 
-    // بعد الحفظ، ما عاد يعتبر dirty
     setIsDirty(false);
-    // وممكن نخلي useSaved = true لأنه صار هذا هو المحفوظ فعليًا
     setUseSaved(true);
   }
 
@@ -440,9 +427,8 @@ export default function MeasurementsClient({
     router.push(`/results?${params.toString()}`);
   }
 
-  // ✅ placeholder المطلوب
   const circumPlaceholder = unit === "cm" ? "سنتيمتر" : "إنش";
-  const heightPlaceholder = "سنتيمتر"; // ثابت
+  const heightPlaceholder = "سنتيمتر";
 
   return (
     <main
@@ -557,11 +543,13 @@ export default function MeasurementsClient({
                   checked={useSaved}
                   onChange={(e) => {
                     const v = e.target.checked;
-                    setUseSaved(v);
-                    if (v) applySavedFromSnapshot();
-                    if (!v) {
-                      // لما يفك التشيك بنفسه: يعتبره تعديل (عشان يظهر زر التحديث لو عدّل)
-                      setIsDirty(true);
+
+                    if (v) {
+                      applySavedFromSnapshot();
+                    } else {
+                      // ✅ لا نخليها dirty بس لأنه فك التشِك
+                      // dirty يصير فقط إذا عدّل المقاسات فعلاً
+                      setUseSaved(false);
                     }
                   }}
                   className="h-4 w-4 rounded border-white/20 bg-black/30 accent-[#d6b56a]"
@@ -577,7 +565,7 @@ export default function MeasurementsClient({
             </div>
           ) : null}
 
-          {/* ✅ زر حفظ/تحديث: يظهر فقط إذا صار تعديل (عشان ما يلخبط) */}
+          {/* ✅ زر حفظ/تحديث: يظهر فقط إذا صار تعديل */}
           {isLoggedIn && isDirty ? (
             <button
               type="button"
