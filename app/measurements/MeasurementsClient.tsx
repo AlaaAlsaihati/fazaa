@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import SiteFooter from "@/app/components/FazaaFooter";
 import FazaaDrawer from "@/app/components/fazaaDrawer";
+import { supabase } from "@/app/lib/supabaseClient";
 
 type InitialParams = {
   occasion?: string;
@@ -200,15 +201,72 @@ function ThreeDotsButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+/**
+ * ملاحظة مهمة:
+ * الداور سابقًا كان يحفظ بصيغة:
+ * { unit, height, bust, waist, hip, updatedAt }
+ * والصفحة هنا تحفظ بصيغة:
+ * { unit, heightCm, bust, waist, hip, bodyShape, lastUpdated }
+ *
+ * فسوّينا Normalization عشان الاثنين يشتغلون.
+ */
 type SavedPayload = {
   unit?: Unit;
+  // الجديد
   heightCm?: string;
+  lastUpdated?: number;
+  // القديم (من الداور)
+  height?: string;
+  updatedAt?: number;
+
   bust?: string;
   waist?: string;
   hip?: string;
   bodyShape?: BodyShapeArabic | "";
-  lastUpdated?: number;
 };
+
+function normalizeSaved(raw: any): SavedPayload | null {
+  if (!raw || typeof raw !== "object") return null;
+
+  const unit: Unit =
+    raw.unit === "in" || raw.unit === "cm" ? raw.unit : "cm";
+
+  const heightCm =
+    typeof raw.heightCm === "string"
+      ? raw.heightCm
+      : typeof raw.height === "string"
+        ? raw.height
+        : "";
+
+  const bust = typeof raw.bust === "string" ? raw.bust : "";
+  const waist = typeof raw.waist === "string" ? raw.waist : "";
+  const hip = typeof raw.hip === "string" ? raw.hip : "";
+
+  const bodyShape =
+    raw.bodyShape === "ساعة رملية" ||
+    raw.bodyShape === "كمثري" ||
+    raw.bodyShape === "مستقيم" ||
+    raw.bodyShape === "تفاحة"
+      ? raw.bodyShape
+      : "";
+
+  const lastUpdated =
+    typeof raw.lastUpdated === "number"
+      ? raw.lastUpdated
+      : typeof raw.updatedAt === "number"
+        ? raw.updatedAt
+        : undefined;
+
+  return {
+    unit,
+    heightCm,
+    bust,
+    waist,
+    hip,
+    bodyShape,
+    lastUpdated,
+  };
+}
 
 function hasAnySavedValue(p: SavedPayload | null) {
   if (!p) return false;
@@ -231,26 +289,51 @@ export default function MeasurementsClient({
   // ✅ Drawer
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // ✅ Auth (مثل ما كان عندك)
-  const user = useMemo(() => {
-    try {
-      if (typeof window === "undefined") return null;
-      const raw = window.localStorage.getItem("fazaa_user");
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
+  // ✅ Auth (Supabase)
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userName, setUserName] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function load() {
+      const { data } = await supabase.auth.getSession();
+      const u = data.session?.user ?? null;
+
+      if (!mounted) return;
+
+      setIsLoggedIn(!!u);
+
+      if (!u) {
+        setUserName(null);
+        return;
+      }
+
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("name")
+        .eq("id", u.id)
+        .single();
+
+      const metaName =
+        typeof (u as any)?.user_metadata?.name === "string"
+          ? String((u as any).user_metadata.name)
+          : null;
+
+      setUserName((prof as any)?.name ?? metaName ?? null);
     }
+
+    load();
+
+    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+      load();
+    });
+
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
-
-  const userName: string | null =
-    user && typeof user.name === "string" && user.name.trim() ? user.name.trim() : null;
-
-  const userEmail: string | null =
-    user && typeof user.email === "string" && user.email.trim()
-      ? user.email.trim().toLowerCase()
-      : null;
-
-  const isLoggedIn = !!userEmail;
 
   const history: { id: string; title: string; subtitle: string }[] = [];
 
@@ -271,11 +354,18 @@ export default function MeasurementsClient({
   // ✅ checkbox state
   const [useSaved, setUseSaved] = useState(false);
 
-  // ✅ dirty
+  // ✅ dirty (يبان زر حفظ/تحديث فقط لما تعدّلين فعلاً)
   const [isDirty, setIsDirty] = useState(false);
 
-  // ✅ تحميل المحفوظ عند فتح الصفحة
+  // ✅ تحميل المحفوظ (بس للمسجلين)
   useEffect(() => {
+    if (!isLoggedIn) {
+      setSavedSnapshot(null);
+      setSavedLastUpdated(null);
+      setUseSaved(false);
+      return;
+    }
+
     const raw = safeLocalStorageGet(STORAGE_KEY);
     if (!raw) {
       setSavedSnapshot(null);
@@ -285,13 +375,16 @@ export default function MeasurementsClient({
     }
 
     try {
-      const saved = JSON.parse(raw) as SavedPayload;
-      setSavedSnapshot(saved);
-      setSavedLastUpdated(typeof saved.lastUpdated === "number" ? saved.lastUpdated : null);
+      const parsed = JSON.parse(raw);
+      const normalized = normalizeSaved(parsed);
 
-      if (!isLoggedIn) {
-        setUseSaved(false);
-      }
+      setSavedSnapshot(normalized);
+      setSavedLastUpdated(
+        typeof normalized?.lastUpdated === "number" ? normalized.lastUpdated : null
+      );
+
+      // لا نطبّق الحقول تلقائيًا — التطبيق فقط لو ضغط Use Saved
+      setUseSaved(false);
     } catch {
       setSavedSnapshot(null);
       setSavedLastUpdated(null);
@@ -543,13 +636,11 @@ export default function MeasurementsClient({
                   checked={useSaved}
                   onChange={(e) => {
                     const v = e.target.checked;
-
                     if (v) {
                       applySavedFromSnapshot();
                     } else {
-                      // ✅ لا نخليها dirty بس لأنه فك التشِك
-                      // dirty يصير فقط إذا عدّل المقاسات فعلاً
                       setUseSaved(false);
+                      // لا نخليها dirty بس لأنه فك التشِك
                     }
                   }}
                   className="h-4 w-4 rounded border-white/20 bg-black/30 accent-[#d6b56a]"
