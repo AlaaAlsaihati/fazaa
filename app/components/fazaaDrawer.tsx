@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/app/lib/supabaseClient";
 
 const MEASUREMENTS_KEY = "fazaa_measurements_v1";
-const USE_SAVED_KEY = "fazaa_use_saved_measurements_v1";
 const UNIT_KEY = "fazaa_unit_v1";
 const STALE_DAYS = 60;
 
@@ -36,7 +35,9 @@ function safeSet(key: string, val: string) {
   try {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(key, val);
-  } catch {}
+  } catch {
+    // ignore
+  }
 }
 
 function normalizeEmail(v: string) {
@@ -76,7 +77,7 @@ export default function FazaaDrawer({
 
   // ✅ Backward compat (عشان صفحاتك ما نخربها)
   userName: _userName,
-  onMeasurementsClick, // بنخليه موجود لكنه ما يطلع زر “فتح صفحة المقاسات”
+  onMeasurementsClick, // موجود بس ما نعرض زر “فتح صفحة المقاسات”
   onLoginClick,
   onRegisterClick,
   onLogoutClick,
@@ -120,15 +121,13 @@ export default function FazaaDrawer({
 
   // ===== Measurements (داخل الدروار) =====
   const [measOpen, setMeasOpen] = useState(false);
-  const [unit, setUnit] = useState<"cm" | "in">("cm");
 
+  const [unit, setUnit] = useState<"cm" | "in">("cm");
   const [height, setHeight] = useState("");
   const [bust, setBust] = useState("");
   const [waist, setWaist] = useState("");
   const [hip, setHip] = useState("");
   const [savedAt, setSavedAt] = useState<number | null>(null);
-
-  const [useSaved, setUseSaved] = useState(false);
 
   // ESC close
   useEffect(() => {
@@ -140,12 +139,12 @@ export default function FazaaDrawer({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  // ✅ لما يفتح الدروار: جيب جلسة المستخدم من Supabase + اسمه من profiles + حمّل المقاسات (بس للمسجّل)
+  // ✅ لما يفتح الدروار: جيب الجلسة + الاسم (profiles أو metadata) + حمّل المقاسات (للمسجّل فقط)
   useEffect(() => {
     if (!open) return;
 
     (async () => {
-      // reset auth ui
+      // reset auth UI
       setAuthOpen(false);
       setAuthError(null);
       setAuthSuccess(null);
@@ -164,15 +163,23 @@ export default function FazaaDrawer({
       setUserEmail(u?.email ?? null);
 
       if (u?.id) {
+        // 1) جرّبي الاسم من profiles
         const { data: prof } = await supabase
           .from("profiles")
           .select("name")
           .eq("id", u.id)
           .single();
 
-        setProfileName((prof as any)?.name ?? null);
+        // 2) لو ما فيه، خذيه من user_metadata.name
+        const metaName =
+          typeof (u as any)?.user_metadata?.name === "string"
+            ? String((u as any).user_metadata.name)
+            : null;
 
-        // measurements (local for now) — بس للمسجّل
+        const finalName = (prof as any)?.name ?? metaName ?? null;
+        setProfileName(finalName ? String(finalName) : null);
+
+        // measurements local — بس للمسجّل
         const rawUnit = safeGet(UNIT_KEY);
         const nextUnit = rawUnit === "in" ? "in" : "cm";
         setUnit(nextUnit);
@@ -201,13 +208,8 @@ export default function FazaaDrawer({
           setHip("");
           setSavedAt(null);
         }
-
-        const rawUse = safeGet(USE_SAVED_KEY);
-        setUseSaved(rawUse === "1");
       } else {
         setProfileName(null);
-
-        // لو مو مسجّل: لا نعرض المقاسات أصلاً (فنكسر أي تحميل/عرض)
         setMeasOpen(false);
       }
     })();
@@ -224,20 +226,17 @@ export default function FazaaDrawer({
     return diffDays >= STALE_DAYS;
   }, [savedAt]);
 
-  // ✅ الشيك بوكس فقط للمسجّل + عنده حفظ
-  const canShowUseSaved = isLoggedIn && !!savedAt;
-
   const measSummary = useMemo(() => {
-    const u = unit === "in" ? "إنش" : "سم";
     const h = height || "—";
     const b = bust || "—";
     const w = waist || "—";
     const hp = hip || "—";
-    return `وحدة ${u} • طول ${h} • صدر ${b} • خصر ${w} • أرداف ${hp}`;
-  }, [unit, height, bust, waist, hip]);
+    return `طول ${h} • صدر ${b} • خصر ${w} • أرداف ${hp}`;
+  }, [height, bust, waist, hip]);
 
   function saveMeasurements() {
     if (!canSave) return;
+
     const payload: SavedMeasurements = {
       unit,
       height,
@@ -246,19 +245,10 @@ export default function FazaaDrawer({
       hip,
       updatedAt: Date.now(),
     };
+
     safeSet(UNIT_KEY, unit);
     safeSet(MEASUREMENTS_KEY, JSON.stringify(payload));
     setSavedAt(payload.updatedAt ?? null);
-  }
-
-  function toggleUseSaved(next: boolean) {
-    setUseSaved(next);
-    safeSet(USE_SAVED_KEY, next ? "1" : "0");
-  }
-
-  function setUnitAndPersist(next: "cm" | "in") {
-    setUnit(next);
-    safeSet(UNIT_KEY, next);
   }
 
   // ===== Auth actions =====
@@ -267,7 +257,7 @@ export default function FazaaDrawer({
     setAuthOpen(true);
     setAuthError(null);
     setAuthSuccess(null);
-    onLoginClick?.(); // backward compat (ما يغير صفحاتك)
+    onLoginClick?.();
   }
 
   function openRegister() {
@@ -275,7 +265,7 @@ export default function FazaaDrawer({
     setAuthOpen(true);
     setAuthError(null);
     setAuthSuccess(null);
-    onRegisterClick?.(); // backward compat
+    onRegisterClick?.();
   }
 
   async function doLogout() {
@@ -290,7 +280,7 @@ export default function FazaaDrawer({
     setAuthOpen(false);
     setMeasOpen(false);
 
-    onLogoutClick?.(); // backward compat
+    onLogoutClick?.();
   }
 
   async function doRegister() {
@@ -302,17 +292,23 @@ export default function FazaaDrawer({
 
     if (!name) return setAuthError("الاسم مطلوب.");
     if (!email || !isValidEmail(email)) return setAuthError("يرجى إدخال بريد إلكتروني صحيح.");
-    if (!regPassword || regPassword.length < 6) return setAuthError("الباسورد لازم 6 أحرف أو أكثر.");
+    if (!regPassword || regPassword.length < 6)
+      return setAuthError("الباسورد لازم 6 أحرف أو أكثر.");
 
+    // ✅ نخزن الاسم في metadata عشان يطلع مباشرة حتى لو profiles ما اشتغل
     const { data, error } = await supabase.auth.signUp({
       email,
       password: regPassword,
+      options: {
+        data: { name },
+      },
     });
 
     if (error) return setAuthError(error.message);
 
     const uid = data.user?.id;
     if (uid) {
+      // نخليه موجود أيضًا في profiles (اختياري بس ممتاز)
       await supabase.from("profiles").upsert({ id: uid, name });
     }
 
@@ -339,8 +335,18 @@ export default function FazaaDrawer({
     setUserId(u.id);
     setUserEmail(u.email ?? null);
 
-    const { data: prof } = await supabase.from("profiles").select("name").eq("id", u.id).single();
-    setProfileName((prof as any)?.name ?? null);
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("name")
+      .eq("id", u.id)
+      .single();
+
+    const metaName =
+      typeof (u as any)?.user_metadata?.name === "string"
+        ? String((u as any).user_metadata.name)
+        : null;
+
+    setProfileName((prof as any)?.name ?? metaName ?? null);
 
     setAuthSuccess("تم تسجيل الدخول ✅");
     setAuthOpen(false);
@@ -582,7 +588,7 @@ export default function FazaaDrawer({
             ) : null}
           </div>
 
-          {/* ✅ المقاسات: تظهر فقط للمسجّل */}
+          {/* ✅ المقاسات: تظهر فقط للمسجّل — وفيها "حفظ" فقط */}
           {isLoggedIn ? (
             <div className="rounded-2xl border border-[#d6b56a]/25 bg-white/5 backdrop-blur overflow-hidden">
               <button
@@ -595,24 +601,10 @@ export default function FazaaDrawer({
                     <div className="text-sm font-extrabold text-white">المقاسات</div>
                     <div className="mt-2 text-[11px] text-neutral-300">{measSummary}</div>
 
-                    {/* ✅ الشيك بوكس فقط للمسجّل + عنده حفظ */}
-                    {canShowUseSaved ? (
-                      <div className="mt-2">
-                        <label className="inline-flex items-center gap-2 text-[11px] text-neutral-300">
-                          <input
-                            type="checkbox"
-                            checked={useSaved}
-                            onChange={(e) => toggleUseSaved(e.target.checked)}
-                            className="h-4 w-4 accent-[#d6b56a]"
-                          />
-                          استخدام المقاسات المحفوظة
-                        </label>
-
-                        {useSaved && stale60Days ? (
-                          <div className="mt-2 text-[11px] text-[#f3e0b0]">
-                            ⚠️ مضى {STALE_DAYS} يوم على آخر تحديث — يفضّل تحديثها
-                          </div>
-                        ) : null}
+                    {/* ✅ تنبيه قديم (اختياري) بدون شيك بوكس */}
+                    {savedAt && stale60Days ? (
+                      <div className="mt-2 text-[11px] text-[#f3e0b0]">
+                        ⚠️ مضى {STALE_DAYS} يوم على آخر تحديث — يفضّل تحديثها
                       </div>
                     ) : null}
                   </div>
@@ -629,39 +621,13 @@ export default function FazaaDrawer({
 
               {measOpen ? (
                 <div className="px-4 pb-4">
-                  {/* Unit switch */}
-                  <div className="mb-3 inline-flex w-full rounded-2xl border border-white/10 bg-black/20 p-1">
-                    <button
-                      type="button"
-                      onClick={() => setUnitAndPersist("cm")}
-                      className={[
-                        "w-1/2 rounded-xl py-2 text-xs font-extrabold transition",
-                        unit === "cm"
-                          ? "bg-[#d6b56a]/15 text-white border border-[#d6b56a]/35"
-                          : "text-neutral-300 hover:text-white",
-                      ].join(" ")}
-                    >
-                      سم
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setUnitAndPersist("in")}
-                      className={[
-                        "w-1/2 rounded-xl py-2 text-xs font-extrabold transition",
-                        unit === "in"
-                          ? "bg-[#d6b56a]/15 text-white border border-[#d6b56a]/35"
-                          : "text-neutral-300 hover:text-white",
-                      ].join(" ")}
-                    >
-                      إنش
-                    </button>
-                  </div>
-
+                  {/* ❌ لا شيك بوكس استخدام المقاسات المحفوظة */}
+                  {/* ❌ لا وحدة سم/إنش في الداور */}
                   <div className="grid grid-cols-2 gap-2">
-                    <Input label={`الطول (${unit === "in" ? "إنش" : "سم"})`} value={height} onChange={setHeight} />
-                    <Input label={`الصدر (${unit === "in" ? "إنش" : "سم"})`} value={bust} onChange={setBust} />
-                    <Input label={`الخصر (${unit === "in" ? "إنش" : "سم"})`} value={waist} onChange={setWaist} />
-                    <Input label={`الأرداف (${unit === "in" ? "إنش" : "سم"})`} value={hip} onChange={setHip} />
+                    <Input label="الطول" value={height} onChange={setHeight} />
+                    <Input label="الصدر" value={bust} onChange={setBust} />
+                    <Input label="الخصر" value={waist} onChange={setWaist} />
+                    <Input label="الأرداف" value={hip} onChange={setHip} />
                   </div>
 
                   <div className="mt-3 flex items-center justify-end gap-2">

@@ -200,6 +200,21 @@ function ThreeDotsButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+type SavedPayload = {
+  unit?: Unit;
+  heightCm?: string;
+  bust?: string;
+  waist?: string;
+  hip?: string;
+  bodyShape?: BodyShapeArabic | "";
+  lastUpdated?: number;
+};
+
+function hasAnySavedValue(p: SavedPayload | null) {
+  if (!p) return false;
+  return !!(p.heightCm || p.bust || p.waist || p.hip || p.bodyShape);
+}
+
 export default function MeasurementsClient({
   initialParams,
 }: {
@@ -216,7 +231,7 @@ export default function MeasurementsClient({
   // ✅ Drawer
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // ✅ Auth (من localStorage)
+  // ✅ Auth (لو عندك بعد supabase في الداور ما يهم، نخليه مثل ما كان عندك هنا)
   const user = useMemo(() => {
     try {
       if (typeof window === "undefined") return null;
@@ -231,68 +246,65 @@ export default function MeasurementsClient({
     user && typeof user.name === "string" && user.name.trim() ? user.name.trim() : null;
 
   const userEmail: string | null =
-    user && typeof user.email === "string" && user.email.trim() ? user.email.trim().toLowerCase() : null;
+    user && typeof user.email === "string" && user.email.trim()
+      ? user.email.trim().toLowerCase()
+      : null;
 
   const isLoggedIn = !!userEmail;
 
   const history: { id: string; title: string; subtitle: string }[] = [];
 
-  // ✅ وحدة قياسات المحيطات فقط (الطول ثابت سم)
+  // ✅ الوحدة للمحيطات فقط (الطول ثابت سم)
   const [unit, setUnit] = useState<Unit>("cm");
 
-  // ✅ Dropdown values
+  // ✅ Draft values (هذه اللي المستخدم يشتغل عليها)
   const [heightCm, setHeightCm] = useState<string>("");
   const [bust, setBust] = useState<string>("");
   const [waist, setWaist] = useState<string>("");
   const [hip, setHip] = useState<string>("");
-
   const [bodyShape, setBodyShape] = useState<BodyShapeArabic | "">("");
 
-  // ✅ حفظ نسخة من القياسات المحفوظة + تاريخها
-  const [hasSaved, setHasSaved] = useState(false);
+  // ✅ Saved snapshot (ما يتغير إلا لو ضغط حفظ/تحديث)
+  const [savedSnapshot, setSavedSnapshot] = useState<SavedPayload | null>(null);
   const [savedLastUpdated, setSavedLastUpdated] = useState<number | null>(null);
+
+  // ✅ checkbox state
   const [useSaved, setUseSaved] = useState(false);
 
-  // ✅ استرجاع القيم عند الرجوع للصفحة (للكل) + الشيك بكس (للمسجل فقط)
+  // ✅ هل المستخدم عدّل شيء “بعد ما فتح الصفحة/طبق المحفوظ”؟
+  const [isDirty, setIsDirty] = useState(false);
+
+  // ✅ تحميل المحفوظ عند فتح الصفحة
   useEffect(() => {
     const raw = safeLocalStorageGet(STORAGE_KEY);
     if (!raw) {
-      setHasSaved(false);
+      setSavedSnapshot(null);
       setSavedLastUpdated(null);
-      if (!isLoggedIn) setUseSaved(false);
+      setUseSaved(false);
       return;
     }
 
     try {
-      const saved = JSON.parse(raw) as {
-        unit?: Unit;
-        heightCm?: string;
-        bust?: string;
-        waist?: string;
-        hip?: string;
-        bodyShape?: BodyShapeArabic | "";
-        lastUpdated?: number;
-      };
-
-      const anyValue =
-        !!saved.heightCm || !!saved.bust || !!saved.waist || !!saved.hip || !!saved.bodyShape;
-
-      // ✅: القيم ننزلها للجميع (عشان غير المسجل يرجع يلاقيها)
-      if (saved.unit === "cm" || saved.unit === "in") setUnit(saved.unit);
-      if (typeof saved.heightCm === "string") setHeightCm(saved.heightCm);
-      if (typeof saved.bust === "string") setBust(saved.bust);
-      if (typeof saved.waist === "string") setWaist(saved.waist);
-      if (typeof saved.hip === "string") setHip(saved.hip);
-      if (saved.bodyShape) setBodyShape(saved.bodyShape);
+      const saved = JSON.parse(raw) as SavedPayload;
+      setSavedSnapshot(saved);
       setSavedLastUpdated(typeof saved.lastUpdated === "number" ? saved.lastUpdated : null);
 
-      // ✅: الشيك بكس يعتمد على تسجيل الدخول
-      setHasSaved(isLoggedIn && anyValue);
-      if (!isLoggedIn) setUseSaved(false);
+      // ملاحظة مهمة: ما نعبّي الحقول تلقائيًا هنا
+      // عشان لا يصير “لخبطه”، التطبيق يكون فقط إذا ضغط useSaved
+      if (!isLoggedIn) {
+        setUseSaved(false);
+      }
     } catch {
       // ignore
+      setSavedSnapshot(null);
+      setSavedLastUpdated(null);
+      setUseSaved(false);
     }
   }, [isLoggedIn]);
+
+  const hasSaved = useMemo(() => {
+    return isLoggedIn && hasAnySavedValue(savedSnapshot);
+  }, [isLoggedIn, savedSnapshot]);
 
   const isStale = useMemo(() => {
     if (!savedLastUpdated) return false;
@@ -333,18 +345,51 @@ export default function MeasurementsClient({
     );
   }, [fieldErrors]);
 
-  function persistNow(
-    next?: Partial<{
-      unit: Unit;
-      heightCm: string;
-      bust: string;
-      waist: string;
-      hip: string;
-      bodyShape: BodyShapeArabic | "";
-      lastUpdated: number;
-    }>
-  ) {
-    const payload = {
+  // ✅ زر الحفظ/التحديث: يظهر للمسجل فقط + إذا صار فيه تعديل
+  const canUpdate = useMemo(() => {
+    // ما نحفظ إلا إذا كامل البيانات صحيحة
+    return isLoggedIn && canSubmit;
+  }, [isLoggedIn, canSubmit]);
+
+  function markDirty() {
+    // أول ما المستخدم يلمس أي قيمة بيده:
+    if (useSaved) setUseSaved(false);
+    setIsDirty(true);
+  }
+
+  function onChangeUnit(u: Unit) {
+    if (u === unit) return;
+    // تغيير وحدة المحيطات يعتبر تعديل يدوي
+    markDirty();
+
+    setUnit(u);
+
+    // نفس سلوكك السابق: نفرّغ المحيطات وشكل الجسم عند تغيير الوحدة
+    setBust("");
+    setWaist("");
+    setHip("");
+    setBodyShape("");
+  }
+
+  function applySavedFromSnapshot() {
+    if (!savedSnapshot) return;
+
+    // تطبيق المحفوظ = ما يعتبر “dirty”
+    setUseSaved(true);
+    setIsDirty(false);
+
+    if (savedSnapshot.unit === "cm" || savedSnapshot.unit === "in") setUnit(savedSnapshot.unit);
+    if (typeof savedSnapshot.heightCm === "string") setHeightCm(savedSnapshot.heightCm);
+    if (typeof savedSnapshot.bust === "string") setBust(savedSnapshot.bust);
+    if (typeof savedSnapshot.waist === "string") setWaist(savedSnapshot.waist);
+    if (typeof savedSnapshot.hip === "string") setHip(savedSnapshot.hip);
+    if (savedSnapshot.bodyShape) setBodyShape(savedSnapshot.bodyShape);
+  }
+
+  function saveOrUpdateMeasurements() {
+    if (!canUpdate) return;
+
+    const payload: SavedPayload = {
       unit,
       heightCm,
       bust,
@@ -352,51 +397,18 @@ export default function MeasurementsClient({
       hip,
       bodyShape,
       lastUpdated: Date.now(),
-      ...(next || {}),
     };
+
     safeLocalStorageSet(STORAGE_KEY, JSON.stringify(payload));
-  }
 
-  function onChangeUnit(u: Unit) {
-    if (u === unit) return;
+    // تحديث snapshot عشان checkbox يصير منطقي
+    setSavedSnapshot(payload);
+    setSavedLastUpdated(payload.lastUpdated ?? null);
 
-    if (useSaved) setUseSaved(false);
-
-    setUnit(u);
-    setBust("");
-    setWaist("");
-    setHip("");
-    setBodyShape("");
-
-    persistNow({ unit: u, bust: "", waist: "", hip: "", bodyShape: "" });
-  }
-
-  function applySavedFromStorage() {
-    const raw = safeLocalStorageGet(STORAGE_KEY);
-    if (!raw) return;
-
-    try {
-      const saved = JSON.parse(raw) as {
-        unit?: Unit;
-        heightCm?: string;
-        bust?: string;
-        waist?: string;
-        hip?: string;
-        bodyShape?: BodyShapeArabic | "";
-        lastUpdated?: number;
-      };
-
-      if (saved.unit === "cm" || saved.unit === "in") setUnit(saved.unit);
-      if (typeof saved.heightCm === "string") setHeightCm(saved.heightCm);
-      if (typeof saved.bust === "string") setBust(saved.bust);
-      if (typeof saved.waist === "string") setWaist(saved.waist);
-      if (typeof saved.hip === "string") setHip(saved.hip);
-      if (saved.bodyShape) setBodyShape(saved.bodyShape);
-
-      setSavedLastUpdated(typeof saved.lastUpdated === "number" ? saved.lastUpdated : null);
-    } catch {
-      // ignore
-    }
+    // بعد الحفظ، ما عاد يعتبر dirty
+    setIsDirty(false);
+    // وممكن نخلي useSaved = true لأنه صار هذا هو المحفوظ فعليًا
+    setUseSaved(true);
   }
 
   function goResults() {
@@ -413,8 +425,6 @@ export default function MeasurementsClient({
     const b = toNum(bust);
     const w = toNum(waist);
     const hp = toNum(hip);
-
-    persistNow();
 
     const bustCm = unit === "cm" ? b : Math.round(inToCm(b) * 10) / 10;
     const waistCm = unit === "cm" ? w : Math.round(inToCm(w) * 10) / 10;
@@ -494,10 +504,8 @@ export default function MeasurementsClient({
               iconType="height"
               value={heightCm}
               onChange={(v) => {
-                if (useSaved) setUseSaved(false);
+                markDirty();
                 setHeightCm(v);
-                persistNow({ heightCm: v });
-                setSavedLastUpdated(Date.now());
               }}
               placeholder={heightPlaceholder}
               options={HEIGHT_OPTIONS}
@@ -508,10 +516,8 @@ export default function MeasurementsClient({
               iconType="bust"
               value={bust}
               onChange={(v) => {
-                if (useSaved) setUseSaved(false);
+                markDirty();
                 setBust(v);
-                persistNow({ bust: v });
-                setSavedLastUpdated(Date.now());
               }}
               placeholder={circumPlaceholder}
               options={bustOptions}
@@ -522,10 +528,8 @@ export default function MeasurementsClient({
               iconType="waist"
               value={waist}
               onChange={(v) => {
-                if (useSaved) setUseSaved(false);
+                markDirty();
                 setWaist(v);
-                persistNow({ waist: v });
-                setSavedLastUpdated(Date.now());
               }}
               placeholder={circumPlaceholder}
               options={waistOptions}
@@ -536,18 +540,16 @@ export default function MeasurementsClient({
               iconType="hip"
               value={hip}
               onChange={(v) => {
-                if (useSaved) setUseSaved(false);
+                markDirty();
                 setHip(v);
-                persistNow({ hip: v });
-                setSavedLastUpdated(Date.now());
               }}
               placeholder={circumPlaceholder}
               options={hipOptions}
             />
           </div>
 
-          {/* ✅ الشيك بكس: يسار تحت + فقط للمسجل وعنده محفوظات */}
-          {isLoggedIn && hasSaved ? (
+          {/* ✅ استخدام المحفوظة: فقط للمسجّل وعنده محفوظ */}
+          {hasSaved ? (
             <div className="mt-4 flex items-center justify-start">
               <label className="inline-flex items-center gap-2 text-xs text-neutral-300 select-none">
                 <input
@@ -556,7 +558,11 @@ export default function MeasurementsClient({
                   onChange={(e) => {
                     const v = e.target.checked;
                     setUseSaved(v);
-                    if (v) applySavedFromStorage();
+                    if (v) applySavedFromSnapshot();
+                    if (!v) {
+                      // لما يفك التشيك بنفسه: يعتبره تعديل (عشان يظهر زر التحديث لو عدّل)
+                      setIsDirty(true);
+                    }
                   }}
                   className="h-4 w-4 rounded border-white/20 bg-black/30 accent-[#d6b56a]"
                 />
@@ -571,6 +577,18 @@ export default function MeasurementsClient({
             </div>
           ) : null}
 
+          {/* ✅ زر حفظ/تحديث: يظهر فقط إذا صار تعديل (عشان ما يلخبط) */}
+          {isLoggedIn && isDirty ? (
+            <button
+              type="button"
+              onClick={saveOrUpdateMeasurements}
+              disabled={!canUpdate}
+              className="mt-4 w-full rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/15 py-3 text-sm font-extrabold text-white shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:border-[#d6b56a]/70 disabled:opacity-40 disabled:hover:border-[#d6b56a]/45"
+            >
+              {hasSaved ? "تحديث المقاسات" : "حفظ المقاسات"}
+            </button>
+          ) : null}
+
           <div className="mt-6">
             <p className="text-sm font-semibold text-white">شكل الجسم</p>
 
@@ -583,40 +601,32 @@ export default function MeasurementsClient({
                 label="ساعة رملية"
                 active={bodyShape === "ساعة رملية"}
                 onClick={() => {
-                  if (useSaved) setUseSaved(false);
+                  markDirty();
                   setBodyShape("ساعة رملية");
-                  persistNow({ bodyShape: "ساعة رملية" });
-                  setSavedLastUpdated(Date.now());
                 }}
               />
               <Chip
                 label="كمثري"
                 active={bodyShape === "كمثري"}
                 onClick={() => {
-                  if (useSaved) setUseSaved(false);
+                  markDirty();
                   setBodyShape("كمثري");
-                  persistNow({ bodyShape: "كمثري" });
-                  setSavedLastUpdated(Date.now());
                 }}
               />
               <Chip
                 label="مستقيم"
                 active={bodyShape === "مستقيم"}
                 onClick={() => {
-                  if (useSaved) setUseSaved(false);
+                  markDirty();
                   setBodyShape("مستقيم");
-                  persistNow({ bodyShape: "مستقيم" });
-                  setSavedLastUpdated(Date.now());
                 }}
               />
               <Chip
                 label="تفاحة"
                 active={bodyShape === "تفاحة"}
                 onClick={() => {
-                  if (useSaved) setUseSaved(false);
+                  markDirty();
                   setBodyShape("تفاحة");
-                  persistNow({ bodyShape: "تفاحة" });
-                  setSavedLastUpdated(Date.now());
                 }}
               />
             </div>
