@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import SiteFooter from "@/app/components/FazaaFooter";
 import FazaaDrawer from "@/app/components/fazaaDrawer";
+import { supabase } from "@/app/lib/supabaseClient";
 
 type InitialParams = {
   occasion?: string;
@@ -15,7 +16,10 @@ type InitialParams = {
 type BodyShapeArabic = "ساعة رملية" | "كمثري" | "مستقيم" | "تفاحة";
 type Unit = "cm" | "in";
 
-const STORAGE_KEY = "fazaa_measurements_v1";
+/** نفس مفاتيح الداور */
+const MEASUREMENTS_KEY = "fazaa_measurements_v1";
+const UNIT_KEY = "fazaa_unit_v1";
+
 const STALE_DAYS = 60;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -24,7 +28,7 @@ function toNum(v: string) {
   return Number.isFinite(n) ? n : NaN;
 }
 
-function safeLocalStorageGet(key: string) {
+function safeGet(key: string) {
   try {
     if (typeof window === "undefined") return null;
     return window.localStorage.getItem(key);
@@ -33,7 +37,7 @@ function safeLocalStorageGet(key: string) {
   }
 }
 
-function safeLocalStorageSet(key: string, val: string) {
+function safeSet(key: string, val: string) {
   try {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(key, val);
@@ -103,13 +107,7 @@ const BUST_IN_OPTIONS = range(24, 63, 0.5);
 const WAIST_IN_OPTIONS = range(18, 63, 0.5);
 const HIP_IN_OPTIONS = range(24, 71, 0.5);
 
-function UnitToggle({
-  value,
-  onChange,
-}: {
-  value: Unit;
-  onChange: (u: Unit) => void;
-}) {
+function UnitToggle({ value, onChange }: { value: Unit; onChange: (u: Unit) => void }) {
   return (
     <div className="inline-flex rounded-2xl border border-[#d6b56a]/45 bg-black/20 p-1">
       <button
@@ -200,26 +198,23 @@ function ThreeDotsButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-type SavedPayload = {
+/** نخليها متوافقة مع الداور + نضيف bodyShape اختيارياً (الداور بيتجاهله) */
+type SavedMeasurements = {
   unit?: Unit;
-  heightCm?: string;
+  height?: string;
   bust?: string;
   waist?: string;
   hip?: string;
   bodyShape?: BodyShapeArabic | "";
-  lastUpdated?: number;
+  updatedAt?: number;
 };
 
-function hasAnySavedValue(p: SavedPayload | null) {
+function hasAnySavedValue(p: SavedMeasurements | null) {
   if (!p) return false;
-  return !!(p.heightCm || p.bust || p.waist || p.hip || p.bodyShape);
+  return !!(p.height || p.bust || p.waist || p.hip || p.bodyShape);
 }
 
-export default function MeasurementsClient({
-  initialParams,
-}: {
-  initialParams: InitialParams;
-}) {
+export default function MeasurementsClient({ initialParams }: { initialParams: InitialParams }) {
   const router = useRouter();
   const sp = useSearchParams();
 
@@ -231,28 +226,34 @@ export default function MeasurementsClient({
   // ✅ Drawer
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // ✅ Auth (مثل ما كان عندك)
-  const user = useMemo(() => {
-    try {
-      if (typeof window === "undefined") return null;
-      const raw = window.localStorage.getItem("fazaa_user");
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
+  // ✅ Supabase session state
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  const isLoggedIn = useMemo(() => !!userId, [userId]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      const u = data.session?.user ?? null;
+      if (!mounted) return;
+      setUserId(u?.id ?? null);
+      setUserEmail(u?.email ?? null);
+    })();
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      const u = session?.user ?? null;
+      setUserId(u?.id ?? null);
+      setUserEmail(u?.email ?? null);
+    });
+
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
-
-  const userName: string | null =
-    user && typeof user.name === "string" && user.name.trim() ? user.name.trim() : null;
-
-  const userEmail: string | null =
-    user && typeof user.email === "string" && user.email.trim()
-      ? user.email.trim().toLowerCase()
-      : null;
-
-  const isLoggedIn = !!userEmail;
-
-  const history: { id: string; title: string; subtitle: string }[] = [];
 
   // ✅ الوحدة للمحيطات فقط (الطول ثابت سم)
   const [unit, setUnit] = useState<Unit>("cm");
@@ -265,8 +266,8 @@ export default function MeasurementsClient({
   const [bodyShape, setBodyShape] = useState<BodyShapeArabic | "">("");
 
   // ✅ Saved snapshot
-  const [savedSnapshot, setSavedSnapshot] = useState<SavedPayload | null>(null);
-  const [savedLastUpdated, setSavedLastUpdated] = useState<number | null>(null);
+  const [savedSnapshot, setSavedSnapshot] = useState<SavedMeasurements | null>(null);
+  const [savedUpdatedAt, setSavedUpdatedAt] = useState<number | null>(null);
 
   // ✅ checkbox state
   const [useSaved, setUseSaved] = useState(false);
@@ -274,42 +275,52 @@ export default function MeasurementsClient({
   // ✅ dirty
   const [isDirty, setIsDirty] = useState(false);
 
-  // ✅ فلاش نجاح بعد التحديث
-  const [saveFlash, setSaveFlash] = useState(false);
+  // ✅ feedback بعد الحفظ
+  const [savedFlash, setSavedFlash] = useState(false);
 
-  // ✅ تحميل المحفوظ عند فتح الصفحة
+  // ✅ تحميل المحفوظ: فقط إذا مسجّل دخول
   useEffect(() => {
-    const raw = safeLocalStorageGet(STORAGE_KEY);
+    if (!isLoggedIn) {
+      setSavedSnapshot(null);
+      setSavedUpdatedAt(null);
+      setUseSaved(false);
+      setIsDirty(false);
+      setSavedFlash(false);
+      return;
+    }
+
+    const rawUnit = safeGet(UNIT_KEY);
+    const nextUnit = rawUnit === "in" ? "in" : "cm";
+    setUnit(nextUnit);
+
+    const raw = safeGet(MEASUREMENTS_KEY);
     if (!raw) {
       setSavedSnapshot(null);
-      setSavedLastUpdated(null);
+      setSavedUpdatedAt(null);
       setUseSaved(false);
+      setSavedFlash(false);
       return;
     }
 
     try {
-      const saved = JSON.parse(raw) as SavedPayload;
-      setSavedSnapshot(saved);
-      setSavedLastUpdated(typeof saved.lastUpdated === "number" ? saved.lastUpdated : null);
-
-      if (!isLoggedIn) {
-        setUseSaved(false);
-      }
+      const m = JSON.parse(raw) as SavedMeasurements;
+      setSavedSnapshot(m);
+      setSavedUpdatedAt(typeof m.updatedAt === "number" ? m.updatedAt : null);
+      setSavedFlash(false);
     } catch {
       setSavedSnapshot(null);
-      setSavedLastUpdated(null);
+      setSavedUpdatedAt(null);
       setUseSaved(false);
+      setSavedFlash(false);
     }
   }, [isLoggedIn]);
 
-  const hasSaved = useMemo(() => {
-    return isLoggedIn && hasAnySavedValue(savedSnapshot);
-  }, [isLoggedIn, savedSnapshot]);
+  const hasSaved = useMemo(() => isLoggedIn && hasAnySavedValue(savedSnapshot), [isLoggedIn, savedSnapshot]);
 
   const isStale = useMemo(() => {
-    if (!savedLastUpdated) return false;
-    return Date.now() - savedLastUpdated >= STALE_DAYS * DAY_MS;
-  }, [savedLastUpdated]);
+    if (!savedUpdatedAt) return false;
+    return Date.now() - savedUpdatedAt >= STALE_DAYS * DAY_MS;
+  }, [savedUpdatedAt]);
 
   // ✅ خيارات حسب الوحدة
   const bustOptions = unit === "cm" ? BUST_CM_OPTIONS : BUST_IN_OPTIONS;
@@ -345,13 +356,12 @@ export default function MeasurementsClient({
     );
   }, [fieldErrors]);
 
-  const canUpdate = useMemo(() => {
-    return isLoggedIn && canSubmit;
-  }, [isLoggedIn, canSubmit]);
+  const canSaveOrUpdate = useMemo(() => isLoggedIn && canSubmit, [isLoggedIn, canSubmit]);
 
   function markDirty() {
     if (useSaved) setUseSaved(false);
     setIsDirty(true);
+    setSavedFlash(false);
   }
 
   function onChangeUnit(u: Unit) {
@@ -359,6 +369,8 @@ export default function MeasurementsClient({
     markDirty();
 
     setUnit(u);
+
+    // نفس سلوكك: تغيير وحدة المحيطات يفضّل يصفّرها
     setBust("");
     setWaist("");
     setHip("");
@@ -370,38 +382,43 @@ export default function MeasurementsClient({
 
     setUseSaved(true);
     setIsDirty(false);
+    setSavedFlash(false);
 
-    if (savedSnapshot.unit === "cm" || savedSnapshot.unit === "in") setUnit(savedSnapshot.unit);
-    if (typeof savedSnapshot.heightCm === "string") setHeightCm(savedSnapshot.heightCm);
-    if (typeof savedSnapshot.bust === "string") setBust(savedSnapshot.bust);
-    if (typeof savedSnapshot.waist === "string") setWaist(savedSnapshot.waist);
-    if (typeof savedSnapshot.hip === "string") setHip(savedSnapshot.hip);
-    if (savedSnapshot.bodyShape) setBodyShape(savedSnapshot.bodyShape);
+    const nextUnit = savedSnapshot.unit === "in" ? "in" : "cm";
+    setUnit(nextUnit);
+
+    setHeightCm(typeof savedSnapshot.height === "string" ? savedSnapshot.height : "");
+    setBust(typeof savedSnapshot.bust === "string" ? savedSnapshot.bust : "");
+    setWaist(typeof savedSnapshot.waist === "string" ? savedSnapshot.waist : "");
+    setHip(typeof savedSnapshot.hip === "string" ? savedSnapshot.hip : "");
+    setBodyShape((savedSnapshot.bodyShape as any) || "");
   }
 
   function saveOrUpdateMeasurements() {
-    if (!canUpdate) return;
+    if (!canSaveOrUpdate) return;
 
-    const payload: SavedPayload = {
+    const payload: SavedMeasurements = {
       unit,
-      heightCm,
+      height: heightCm,
       bust,
       waist,
       hip,
       bodyShape,
-      lastUpdated: Date.now(),
+      updatedAt: Date.now(),
     };
 
-    safeLocalStorageSet(STORAGE_KEY, JSON.stringify(payload));
+    safeSet(UNIT_KEY, unit);
+    safeSet(MEASUREMENTS_KEY, JSON.stringify(payload));
 
     setSavedSnapshot(payload);
-    setSavedLastUpdated(payload.lastUpdated ?? null);
+    setSavedUpdatedAt(payload.updatedAt ?? null);
 
-    setIsDirty(false);
     setUseSaved(true);
+    setIsDirty(false);
 
-    setSaveFlash(true);
-    setTimeout(() => setSaveFlash(false), 2000);
+    // ✅ feedback واضح للمستخدم
+    setSavedFlash(true);
+    window.setTimeout(() => setSavedFlash(false), 1400);
   }
 
   function goResults() {
@@ -436,42 +453,34 @@ export default function MeasurementsClient({
   const circumPlaceholder = unit === "cm" ? "سنتيمتر" : "إنش";
   const heightPlaceholder = "سنتيمتر";
 
+  // ✅ نفس “مكان” التشيك بوكس: يا تشيك بوكس يا زر تحديث/حفظ
+  const showCheckboxRow = isLoggedIn && hasSaved && !isDirty;
+  const showActionRow = isLoggedIn && (!hasSaved || isDirty);
+
   return (
-    <main
-      dir="rtl"
-      className="min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-900 to-black p-6"
-    >
+    <main dir="rtl" className="min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-900 to-black p-6">
       <ThreeDotsButton onClick={() => setMenuOpen(true)} />
 
       <FazaaDrawer
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
-        userName={userName}
-        history={history}
-        onLoginClick={() => {
-          setMenuOpen(false);
-        }}
-        onRegisterClick={() => {
-          setMenuOpen(false);
-        }}
-        onHistoryClick={(id) => {
-          console.log("history", id);
-          setMenuOpen(false);
-        }}
-        onLogoutClick={() => {
-          setMenuOpen(false);
-        }}
+        userName={null}
+        history={[]}
+        onLoginClick={() => setMenuOpen(false)}
+        onRegisterClick={() => setMenuOpen(false)}
+        onHistoryClick={() => setMenuOpen(false)}
+        onLogoutClick={() => setMenuOpen(false)}
       />
 
       <div className="mx-auto max-w-2xl">
         <header className="mb-6 text-center">
           <p className="text-sm text-neutral-400">الخطوة الأخيرة</p>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white">
-            خلّينا نضبط المقاس المثالي لك
-          </h1>
-          <p className="mt-3 text-sm text-neutral-400">
-            نطلع لك اقتراحات فخمة + مقاس محسوب عليك.
-          </p>
+          <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white">خلّينا نضبط المقاس المثالي لك</h1>
+          <p className="mt-3 text-sm text-neutral-400">نطلع لك اقتراحات فخمة + مقاس محسوب عليك.</p>
+
+          {isLoggedIn && userEmail ? (
+            <p className="mt-2 text-[11px] text-neutral-500">{userEmail}</p>
+          ) : null}
         </header>
 
         <div className="relative overflow-hidden rounded-3xl border border-[#d6b56a]/35 bg-white/5 p-6 shadow-[0_0_0_1px_rgba(214,181,106,0.12),0_20px_60px_rgba(0,0,0,0.55)] backdrop-blur">
@@ -482,9 +491,7 @@ export default function MeasurementsClient({
             <div className="flex items-center justify-between">
               <div />
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-neutral-300">
-                  وحدة المحيطات:
-                </span>
+                <span className="text-xs font-semibold text-neutral-300">وحدة المحيطات:</span>
                 <UnitToggle value={unit} onChange={onChangeUnit} />
               </div>
             </div>
@@ -540,67 +547,45 @@ export default function MeasurementsClient({
             />
           </div>
 
-          {/* ✅ المحفوظة + زر التحديث بنفس مكان التشِك */}
-          {hasSaved ? (
-            <div className="mt-4">
-              <div className="flex items-center justify-between gap-3">
-                <label className="inline-flex items-center gap-2 text-xs text-neutral-300 select-none">
-                  <input
-                    type="checkbox"
-                    checked={useSaved}
-                    onChange={(e) => {
-                      const v = e.target.checked;
+          {/* ✅ هنا نفس المكان: يا تشيك بوكس يا زر تحديث/حفظ */}
+          {showCheckboxRow ? (
+            <div className="mt-4 flex items-center justify-start">
+              <label className="inline-flex items-center gap-2 text-xs text-neutral-300 select-none">
+                <input
+                  type="checkbox"
+                  checked={useSaved}
+                  onChange={(e) => {
+                    const v = e.target.checked;
+                    setUseSaved(v);
+                    if (v) applySavedFromSnapshot();
+                  }}
+                  className="h-4 w-4 rounded border-white/20 bg-black/30 accent-[#d6b56a]"
+                />
+                <span>استخدام المقاسات المحفوظة</span>
 
-                      if (v) {
-                        applySavedFromSnapshot();
-                      } else {
-                        setUseSaved(false);
-                        // ✅ لا نخليها dirty بس لأنه فك التشِك
-                      }
-                    }}
-                    className="h-4 w-4 rounded border-white/20 bg-black/30 accent-[#d6b56a]"
-                  />
-                  <span>استخدام المقاسات المحفوظة</span>
-
-                  {useSaved && isStale ? (
-                    <span className="mr-2 rounded-full border border-[#d6b56a]/35 bg-black/20 px-2 py-0.5 text-[10px] text-[#f3e0b0]">
-                      مر {STALE_DAYS} يوم على آخر تحديث
-                    </span>
-                  ) : null}
-                </label>
-
-                {/* زر تحديث يطلع فقط إذا عدّل فعلاً */}
-                {isLoggedIn && isDirty ? (
-                  <button
-                    type="button"
-                    onClick={saveOrUpdateMeasurements}
-                    disabled={!canUpdate}
-                    className={[
-                      "shrink-0 rounded-xl border px-4 py-2 text-xs font-extrabold transition",
-                      "border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/20 via-white/5 to-[#d6b56a]/10 text-white",
-                      "hover:border-[#d6b56a]/70",
-                      !canUpdate ? "opacity-40 hover:border-[#d6b56a]/45" : "",
-                    ].join(" ")}
-                  >
-                    تحديث المقاسات
-                  </button>
+                {useSaved && isStale ? (
+                  <span className="mr-2 rounded-full border border-[#d6b56a]/35 bg-black/20 px-2 py-0.5 text-[10px] text-[#f3e0b0]">
+                    مر {STALE_DAYS} يوم على آخر تحديث للمقاسات
+                  </span>
                 ) : null}
-              </div>
-
-              {saveFlash ? (
-                <div className="mt-2 text-[11px] text-emerald-200">
-                  تم تحديث المقاسات ✅
-                </div>
-              ) : null}
+              </label>
             </div>
+          ) : null}
+
+          {showActionRow ? (
+            <button
+              type="button"
+              onClick={saveOrUpdateMeasurements}
+              disabled={!canSaveOrUpdate}
+              className="mt-4 w-full rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/15 py-3 text-sm font-extrabold text-white shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:border-[#d6b56a]/70 disabled:opacity-40 disabled:hover:border-[#d6b56a]/45"
+            >
+              {savedFlash ? "تم ✅" : hasSaved ? "تحديث المقاسات" : "حفظ المقاسات"}
+            </button>
           ) : null}
 
           <div className="mt-6">
             <p className="text-sm font-semibold text-white">شكل الجسم</p>
-
-            <p className="mt-2 text-xs text-neutral-400">
-              نستخدمه فقط لترتيب النتائج بدقة
-            </p>
+            <p className="mt-2 text-xs text-neutral-400">نستخدمه فقط لترتيب النتائج بدقة</p>
 
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
               <Chip
