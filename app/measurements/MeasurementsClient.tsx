@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import SiteFooter from "@/app/components/FazaaFooter";
 import FazaaDrawer from "@/app/components/fazaaDrawer";
-import { supabase } from "@/app/lib/supabaseClient";
 
 type InitialParams = {
   occasion?: string;
@@ -201,72 +200,15 @@ function ThreeDotsButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-/**
- * ملاحظة مهمة:
- * الداور سابقًا كان يحفظ بصيغة:
- * { unit, height, bust, waist, hip, updatedAt }
- * والصفحة هنا تحفظ بصيغة:
- * { unit, heightCm, bust, waist, hip, bodyShape, lastUpdated }
- *
- * فسوّينا Normalization عشان الاثنين يشتغلون.
- */
 type SavedPayload = {
   unit?: Unit;
-  // الجديد
   heightCm?: string;
-  lastUpdated?: number;
-  // القديم (من الداور)
-  height?: string;
-  updatedAt?: number;
-
   bust?: string;
   waist?: string;
   hip?: string;
   bodyShape?: BodyShapeArabic | "";
+  lastUpdated?: number;
 };
-
-function normalizeSaved(raw: any): SavedPayload | null {
-  if (!raw || typeof raw !== "object") return null;
-
-  const unit: Unit =
-    raw.unit === "in" || raw.unit === "cm" ? raw.unit : "cm";
-
-  const heightCm =
-    typeof raw.heightCm === "string"
-      ? raw.heightCm
-      : typeof raw.height === "string"
-        ? raw.height
-        : "";
-
-  const bust = typeof raw.bust === "string" ? raw.bust : "";
-  const waist = typeof raw.waist === "string" ? raw.waist : "";
-  const hip = typeof raw.hip === "string" ? raw.hip : "";
-
-  const bodyShape =
-    raw.bodyShape === "ساعة رملية" ||
-    raw.bodyShape === "كمثري" ||
-    raw.bodyShape === "مستقيم" ||
-    raw.bodyShape === "تفاحة"
-      ? raw.bodyShape
-      : "";
-
-  const lastUpdated =
-    typeof raw.lastUpdated === "number"
-      ? raw.lastUpdated
-      : typeof raw.updatedAt === "number"
-        ? raw.updatedAt
-        : undefined;
-
-  return {
-    unit,
-    heightCm,
-    bust,
-    waist,
-    hip,
-    bodyShape,
-    lastUpdated,
-  };
-}
 
 function hasAnySavedValue(p: SavedPayload | null) {
   if (!p) return false;
@@ -289,51 +231,26 @@ export default function MeasurementsClient({
   // ✅ Drawer
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // ✅ Auth (Supabase)
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userName, setUserName] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-
-    async function load() {
-      const { data } = await supabase.auth.getSession();
-      const u = data.session?.user ?? null;
-
-      if (!mounted) return;
-
-      setIsLoggedIn(!!u);
-
-      if (!u) {
-        setUserName(null);
-        return;
-      }
-
-      const { data: prof } = await supabase
-        .from("profiles")
-        .select("name")
-        .eq("id", u.id)
-        .single();
-
-      const metaName =
-        typeof (u as any)?.user_metadata?.name === "string"
-          ? String((u as any).user_metadata.name)
-          : null;
-
-      setUserName((prof as any)?.name ?? metaName ?? null);
+  // ✅ Auth (مثل ما كان عندك)
+  const user = useMemo(() => {
+    try {
+      if (typeof window === "undefined") return null;
+      const raw = window.localStorage.getItem("fazaa_user");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
     }
-
-    load();
-
-    const { data: sub } = supabase.auth.onAuthStateChange(() => {
-      load();
-    });
-
-    return () => {
-      mounted = false;
-      sub.subscription.unsubscribe();
-    };
   }, []);
+
+  const userName: string | null =
+    user && typeof user.name === "string" && user.name.trim() ? user.name.trim() : null;
+
+  const userEmail: string | null =
+    user && typeof user.email === "string" && user.email.trim()
+      ? user.email.trim().toLowerCase()
+      : null;
+
+  const isLoggedIn = !!userEmail;
 
   const history: { id: string; title: string; subtitle: string }[] = [];
 
@@ -354,18 +271,14 @@ export default function MeasurementsClient({
   // ✅ checkbox state
   const [useSaved, setUseSaved] = useState(false);
 
-  // ✅ dirty (يبان زر حفظ/تحديث فقط لما تعدّلين فعلاً)
+  // ✅ dirty
   const [isDirty, setIsDirty] = useState(false);
 
-  // ✅ تحميل المحفوظ (بس للمسجلين)
-  useEffect(() => {
-    if (!isLoggedIn) {
-      setSavedSnapshot(null);
-      setSavedLastUpdated(null);
-      setUseSaved(false);
-      return;
-    }
+  // ✅ فلاش نجاح بعد التحديث
+  const [saveFlash, setSaveFlash] = useState(false);
 
+  // ✅ تحميل المحفوظ عند فتح الصفحة
+  useEffect(() => {
     const raw = safeLocalStorageGet(STORAGE_KEY);
     if (!raw) {
       setSavedSnapshot(null);
@@ -375,16 +288,13 @@ export default function MeasurementsClient({
     }
 
     try {
-      const parsed = JSON.parse(raw);
-      const normalized = normalizeSaved(parsed);
+      const saved = JSON.parse(raw) as SavedPayload;
+      setSavedSnapshot(saved);
+      setSavedLastUpdated(typeof saved.lastUpdated === "number" ? saved.lastUpdated : null);
 
-      setSavedSnapshot(normalized);
-      setSavedLastUpdated(
-        typeof normalized?.lastUpdated === "number" ? normalized.lastUpdated : null
-      );
-
-      // لا نطبّق الحقول تلقائيًا — التطبيق فقط لو ضغط Use Saved
-      setUseSaved(false);
+      if (!isLoggedIn) {
+        setUseSaved(false);
+      }
     } catch {
       setSavedSnapshot(null);
       setSavedLastUpdated(null);
@@ -489,6 +399,9 @@ export default function MeasurementsClient({
 
     setIsDirty(false);
     setUseSaved(true);
+
+    setSaveFlash(true);
+    setTimeout(() => setSaveFlash(false), 2000);
   }
 
   function goResults() {
@@ -627,45 +540,59 @@ export default function MeasurementsClient({
             />
           </div>
 
-          {/* ✅ استخدام المحفوظة: فقط للمسجّل وعنده محفوظ */}
+          {/* ✅ المحفوظة + زر التحديث بنفس مكان التشِك */}
           {hasSaved ? (
-            <div className="mt-4 flex items-center justify-start">
-              <label className="inline-flex items-center gap-2 text-xs text-neutral-300 select-none">
-                <input
-                  type="checkbox"
-                  checked={useSaved}
-                  onChange={(e) => {
-                    const v = e.target.checked;
-                    if (v) {
-                      applySavedFromSnapshot();
-                    } else {
-                      setUseSaved(false);
-                      // لا نخليها dirty بس لأنه فك التشِك
-                    }
-                  }}
-                  className="h-4 w-4 rounded border-white/20 bg-black/30 accent-[#d6b56a]"
-                />
-                <span>استخدام المقاسات المحفوظة</span>
+            <div className="mt-4">
+              <div className="flex items-center justify-between gap-3">
+                <label className="inline-flex items-center gap-2 text-xs text-neutral-300 select-none">
+                  <input
+                    type="checkbox"
+                    checked={useSaved}
+                    onChange={(e) => {
+                      const v = e.target.checked;
 
-                {useSaved && isStale ? (
-                  <span className="mr-2 rounded-full border border-[#d6b56a]/35 bg-black/20 px-2 py-0.5 text-[10px] text-[#f3e0b0]">
-                    مر {STALE_DAYS} يوم على آخر تحديث للمقاسات
-                  </span>
+                      if (v) {
+                        applySavedFromSnapshot();
+                      } else {
+                        setUseSaved(false);
+                        // ✅ لا نخليها dirty بس لأنه فك التشِك
+                      }
+                    }}
+                    className="h-4 w-4 rounded border-white/20 bg-black/30 accent-[#d6b56a]"
+                  />
+                  <span>استخدام المقاسات المحفوظة</span>
+
+                  {useSaved && isStale ? (
+                    <span className="mr-2 rounded-full border border-[#d6b56a]/35 bg-black/20 px-2 py-0.5 text-[10px] text-[#f3e0b0]">
+                      مر {STALE_DAYS} يوم على آخر تحديث
+                    </span>
+                  ) : null}
+                </label>
+
+                {/* زر تحديث يطلع فقط إذا عدّل فعلاً */}
+                {isLoggedIn && isDirty ? (
+                  <button
+                    type="button"
+                    onClick={saveOrUpdateMeasurements}
+                    disabled={!canUpdate}
+                    className={[
+                      "shrink-0 rounded-xl border px-4 py-2 text-xs font-extrabold transition",
+                      "border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/20 via-white/5 to-[#d6b56a]/10 text-white",
+                      "hover:border-[#d6b56a]/70",
+                      !canUpdate ? "opacity-40 hover:border-[#d6b56a]/45" : "",
+                    ].join(" ")}
+                  >
+                    تحديث المقاسات
+                  </button>
                 ) : null}
-              </label>
-            </div>
-          ) : null}
+              </div>
 
-          {/* ✅ زر حفظ/تحديث: يظهر فقط إذا صار تعديل */}
-          {isLoggedIn && isDirty ? (
-            <button
-              type="button"
-              onClick={saveOrUpdateMeasurements}
-              disabled={!canUpdate}
-              className="mt-4 w-full rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/15 py-3 text-sm font-extrabold text-white shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:border-[#d6b56a]/70 disabled:opacity-40 disabled:hover:border-[#d6b56a]/45"
-            >
-              {hasSaved ? "تحديث المقاسات" : "حفظ المقاسات"}
-            </button>
+              {saveFlash ? (
+                <div className="mt-2 text-[11px] text-emerald-200">
+                  تم تحديث المقاسات ✅
+                </div>
+              ) : null}
+            </div>
           ) : null}
 
           <div className="mt-6">
