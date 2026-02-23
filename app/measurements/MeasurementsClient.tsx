@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import SiteFooter from "@/app/components/FazaaFooter";
 import FazaaDrawer from "@/app/components/fazaaDrawer";
+import { supabase } from "@/app/lib/supabaseClient";
 
 type InitialParams = {
   occasion?: string;
@@ -231,26 +232,27 @@ export default function MeasurementsClient({
   // ✅ Drawer
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // ✅ Auth (مثل ما كان عندك)
-  const user = useMemo(() => {
-    try {
-      if (typeof window === "undefined") return null;
-      const raw = window.localStorage.getItem("fazaa_user");
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
+  // ✅ Auth (Supabase ONLY)
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!mounted) return;
+      setIsLoggedIn(!!data.session?.user);
+    })();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_evt, session) => {
+      setIsLoggedIn(!!session?.user);
+    });
+
+    return () => {
+      mounted = false;
+      listener.subscription.unsubscribe();
+    };
   }, []);
-
-  const userName: string | null =
-    user && typeof user.name === "string" && user.name.trim() ? user.name.trim() : null;
-
-  const userEmail: string | null =
-    user && typeof user.email === "string" && user.email.trim()
-      ? user.email.trim().toLowerCase()
-      : null;
-
-  const isLoggedIn = !!userEmail;
 
   const history: { id: string; title: string; subtitle: string }[] = [];
 
@@ -271,15 +273,16 @@ export default function MeasurementsClient({
   // ✅ checkbox state
   const [useSaved, setUseSaved] = useState(false);
 
-  // ✅ dirty (إذا المستخدم عدّل بيده)
+  // ✅ dirty
   const [isDirty, setIsDirty] = useState(false);
 
-  // ✅ flash بعد الحفظ
-  const [savedFlash, setSavedFlash] = useState(false);
+  // ✅ feedback "تم ✅"
+  const [justSaved, setJustSaved] = useState(false);
 
-  // ✅ تحميل المحفوظ عند فتح الصفحة
+  // ✅ تحميل المحفوظ عند فتح الصفحة / تغير اللوقن
   useEffect(() => {
     const raw = safeLocalStorageGet(STORAGE_KEY);
+
     if (!raw) {
       setSavedSnapshot(null);
       setSavedLastUpdated(null);
@@ -292,9 +295,8 @@ export default function MeasurementsClient({
       setSavedSnapshot(saved);
       setSavedLastUpdated(typeof saved.lastUpdated === "number" ? saved.lastUpdated : null);
 
-      if (!isLoggedIn) {
-        setUseSaved(false);
-      }
+      // لو مو مسجّل: لا نعرض استخدام محفوظ
+      if (!isLoggedIn) setUseSaved(false);
     } catch {
       setSavedSnapshot(null);
       setSavedLastUpdated(null);
@@ -316,7 +318,6 @@ export default function MeasurementsClient({
   const waistOptions = unit === "cm" ? WAIST_CM_OPTIONS : WAIST_IN_OPTIONS;
   const hipOptions = unit === "cm" ? HIP_CM_OPTIONS : HIP_IN_OPTIONS;
 
-  // ✅ تحقق للنتائج (يشمل bodyShape)
   const fieldErrors = useMemo(() => {
     const h = toNum(heightCm);
     const b = toNum(bust);
@@ -346,34 +347,15 @@ export default function MeasurementsClient({
     );
   }, [fieldErrors]);
 
-  // ✅ تحقق للحفظ/التحديث (بدون bodyShape)
-  const canUpdateMeasurements = useMemo(() => {
-    if (!isLoggedIn) return false;
-
-    const h = toNum(heightCm);
-    const b = toNum(bust);
-    const w = toNum(waist);
-    const hp = toNum(hip);
-
-    if (!heightCm || !bust || !waist || !hip) return false;
-    if (!Number.isFinite(h) || h < 140 || h > 210) return false;
-
-    const bCm = unit === "cm" ? b : inToCm(b);
-    const wCm = unit === "cm" ? w : inToCm(w);
-    const hipCm = unit === "cm" ? hp : inToCm(hp);
-
-    if (!Number.isFinite(bCm) || bCm < 60 || bCm > 160) return false;
-    if (!Number.isFinite(wCm) || wCm < 45 || wCm > 160) return false;
-    if (!Number.isFinite(hipCm) || hipCm < 60 || hipCm > 180) return false;
-
-    return true;
-  }, [isLoggedIn, heightCm, bust, waist, hip, unit]);
+  // ✅ زر الحفظ/التحديث ينضغط فقط لو البيانات كاملة صح
+  const canUpdate = useMemo(() => {
+    return isLoggedIn && canSubmit;
+  }, [isLoggedIn, canSubmit]);
 
   function markDirty() {
-    // أول ما المستخدم يلمس أي قيمة بيده:
     if (useSaved) setUseSaved(false);
     setIsDirty(true);
-    setSavedFlash(false);
+    setJustSaved(false);
   }
 
   function onChangeUnit(u: Unit) {
@@ -381,8 +363,6 @@ export default function MeasurementsClient({
     markDirty();
 
     setUnit(u);
-
-    // نفس سلوكك السابق: نفرّغ المحيطات وشكل الجسم عند تغيير الوحدة
     setBust("");
     setWaist("");
     setHip("");
@@ -392,10 +372,9 @@ export default function MeasurementsClient({
   function applySavedFromSnapshot() {
     if (!savedSnapshot) return;
 
-    // تطبيق المحفوظ = مو dirty
     setUseSaved(true);
     setIsDirty(false);
-    setSavedFlash(false);
+    setJustSaved(false);
 
     if (savedSnapshot.unit === "cm" || savedSnapshot.unit === "in") setUnit(savedSnapshot.unit);
     if (typeof savedSnapshot.heightCm === "string") setHeightCm(savedSnapshot.heightCm);
@@ -406,7 +385,7 @@ export default function MeasurementsClient({
   }
 
   function saveOrUpdateMeasurements() {
-    if (!canUpdateMeasurements) return;
+    if (!canUpdate) return;
 
     const payload: SavedPayload = {
       unit,
@@ -414,22 +393,21 @@ export default function MeasurementsClient({
       bust,
       waist,
       hip,
-      bodyShape, // نخزنها لو موجودة (مو شرط للحفظ)
+      bodyShape,
       lastUpdated: Date.now(),
     };
 
     safeLocalStorageSet(STORAGE_KEY, JSON.stringify(payload));
 
-    // تحديث snapshot
     setSavedSnapshot(payload);
     setSavedLastUpdated(payload.lastUpdated ?? null);
 
-    // بعد الحفظ: مو dirty + اعرض فلاش "تم"
     setIsDirty(false);
     setUseSaved(true);
 
-    setSavedFlash(true);
-    window.setTimeout(() => setSavedFlash(false), 1200);
+    // ✅ Feedback واضح للمستخدم
+    setJustSaved(true);
+    window.setTimeout(() => setJustSaved(false), 1200);
   }
 
   function goResults() {
@@ -465,6 +443,10 @@ export default function MeasurementsClient({
   const circumPlaceholder = unit === "cm" ? "سنتيمتر" : "إنش";
   const heightPlaceholder = "سنتيمتر"; // ثابت
 
+  // ✅ هذا “مكان الشيك بكس”: يا شيك بكس يا زر حفظ/تحديث (نفس المكان)
+  const showUseSavedCheckbox = isLoggedIn && hasSaved && !isDirty;
+  const showInlineUpdateButton = isLoggedIn && isDirty;
+
   return (
     <main
       dir="rtl"
@@ -475,21 +457,12 @@ export default function MeasurementsClient({
       <FazaaDrawer
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
-        userName={userName}
+        userName={null}
         history={history}
-        onLoginClick={() => {
-          setMenuOpen(false);
-        }}
-        onRegisterClick={() => {
-          setMenuOpen(false);
-        }}
-        onHistoryClick={(id) => {
-          console.log("history", id);
-          setMenuOpen(false);
-        }}
-        onLogoutClick={() => {
-          setMenuOpen(false);
-        }}
+        onLoginClick={() => setMenuOpen(false)}
+        onRegisterClick={() => setMenuOpen(false)}
+        onHistoryClick={() => setMenuOpen(false)}
+        onLogoutClick={() => setMenuOpen(false)}
       />
 
       <div className="mx-auto max-w-2xl">
@@ -569,48 +542,71 @@ export default function MeasurementsClient({
             />
           </div>
 
-          {/* ✅ نفس مكان الشيك بوكس: يا شيك بوكس أو زر صغير */}
-          {isLoggedIn ? (
+          {/* ✅ نفس مكان الشيك بكس: يا شيك بكس يا زر */}
+          {showUseSavedCheckbox ? (
             <div className="mt-4 flex items-center justify-start">
-              {!isDirty && hasSaved ? (
-                // الحالة الطبيعية: شيك بوكس
-                <label className="inline-flex items-center gap-2 text-xs text-neutral-300 select-none">
-                  <input
-                    type="checkbox"
-                    checked={useSaved}
-                    onChange={(e) => {
-                      const v = e.target.checked;
-                      setUseSaved(v);
-                      if (v) applySavedFromSnapshot();
-                    }}
-                    className="h-4 w-4 rounded border-white/20 bg-black/30 accent-[#d6b56a]"
-                  />
-                  <span>استخدام المقاسات المحفوظة</span>
+              <label className="inline-flex items-center gap-2 text-xs text-neutral-300 select-none">
+                <input
+                  type="checkbox"
+                  checked={useSaved}
+                  onChange={(e) => {
+                    const v = e.target.checked;
+                    if (v) applySavedFromSnapshot();
+                    else setUseSaved(false);
+                  }}
+                  className="h-4 w-4 rounded border-white/20 bg-black/30 accent-[#d6b56a]"
+                />
+                <span>استخدام المقاسات المحفوظة</span>
 
-                  {useSaved && isStale ? (
-                    <span className="mr-2 rounded-full border border-[#d6b56a]/35 bg-black/20 px-2 py-0.5 text-[10px] text-[#f3e0b0]">
-                      مر {STALE_DAYS} يوم على آخر تحديث للمقاسات
-                    </span>
-                  ) : null}
-                </label>
-              ) : (
-                // إذا عدّل أو ما عنده محفوظ: زر صغير بنفس المكان
-                <button
-                  type="button"
-                  onClick={saveOrUpdateMeasurements}
-                  disabled={!canUpdateMeasurements}
+                {useSaved && isStale ? (
+                  <span className="mr-2 rounded-full border border-[#d6b56a]/35 bg-black/20 px-2 py-0.5 text-[10px] text-[#f3e0b0]">
+                    مر {STALE_DAYS} يوم على آخر تحديث للمقاسات
+                  </span>
+                ) : null}
+              </label>
+            </div>
+          ) : null}
+
+          {showInlineUpdateButton ? (
+            <div className="mt-4 flex items-center justify-start">
+              <button
+                type="button"
+                onClick={saveOrUpdateMeasurements}
+                disabled={!canUpdate}
+                className={[
+                  // ✅ نخليه “مثل الشيك بكس” كحجم ومكان وإحساس
+                  "inline-flex items-center gap-2",
+                  "rounded-xl border px-3 py-2",
+                  "text-xs font-extrabold transition",
+                  "border-[#d6b56a]/45 bg-black/20 text-white",
+                  "hover:border-[#d6b56a]/70",
+                  "disabled:opacity-40 disabled:hover:border-[#d6b56a]/45",
+                ].join(" ")}
+              >
+                <span
                   className={[
-                    "inline-flex items-center justify-center",
-                    "rounded-xl border px-3 py-2",
-                    "text-xs font-extrabold transition",
-                    "border-[#d6b56a]/45 bg-black/20 text-white",
-                    "hover:border-[#d6b56a]/70 hover:bg-black/30",
-                    !canUpdateMeasurements ? "opacity-40 hover:border-[#d6b56a]/45" : "",
+                    "h-4 w-4 rounded border border-white/20 bg-black/30",
+                    "flex items-center justify-center",
                   ].join(" ")}
                 >
-                  {savedFlash ? "تم ✅" : hasSaved ? "تحديث المقاسات" : "حفظ المقاسات"}
-                </button>
-              )}
+                  {/* علامة صغيرة داخل المربع عشان تكون نفس فكرة checkbox */}
+                  {justSaved ? (
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-3 w-3 text-[#d6b56a]"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M20 6 9 17l-5-5" />
+                    </svg>
+                  ) : null}
+                </span>
+
+                <span>
+                  {justSaved ? "تم ✅" : hasSaved ? "تحديث المقاسات" : "حفظ المقاسات"}
+                </span>
+              </button>
             </div>
           ) : null}
 
