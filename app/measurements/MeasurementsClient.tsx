@@ -165,7 +165,6 @@ function BackFab({ onClick }: { onClick: () => void }) {
   );
 }
 
-/* ===== زر الثلاث نقاط (أفقي) ===== */
 function ThreeDotsButton({ onClick }: { onClick: () => void }) {
   return (
     <button
@@ -219,11 +218,11 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
   const depth = initialParams.depth || sp.get("depth") || "";
   const undertone = initialParams.undertone || sp.get("undertone") || "";
 
-  // ✅ Drawer
+  // Drawer
   const [menuOpen, setMenuOpen] = useState(false);
   const history: { id: string; title: string; subtitle: string }[] = [];
 
-  // ✅ Auth (Supabase ONLY)
+  // Auth (Supabase ONLY)
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
@@ -245,35 +244,34 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
     };
   }, []);
 
-  // ✅ الوحدة للمحيطات فقط (الطول ثابت سم)
+  // Unit
   const [unit, setUnit] = useState<Unit>("cm");
 
-  // ✅ Draft values
+  // Draft values
   const [heightCm, setHeightCm] = useState<string>("");
   const [bust, setBust] = useState<string>("");
   const [waist, setWaist] = useState<string>("");
   const [hip, setHip] = useState<string>("");
   const [bodyShape, setBodyShape] = useState<BodyShapeArabic | "">("");
 
-  // ✅ Saved snapshot
+  // Saved snapshot
   const [savedSnapshot, setSavedSnapshot] = useState<SavedPayload | null>(null);
   const [savedLastUpdated, setSavedLastUpdated] = useState<number | null>(null);
 
-  // ✅ حالتين “تم …” تثبت لين المستخدم يغيّر
-  const [didSave, setDidSave] = useState(false);
-  const [didApplySaved, setDidApplySaved] = useState(false);
-
-  // ✅ dirty
+  // dirty
   const [isDirty, setIsDirty] = useState(false);
 
-  // ✅ تحميل المحفوظ عند فتح الصفحة / تغير اللوقن
+  // آخر إجراء ثبت للمستخدم (يثبت لين يتغير شيء)
+  const [lastAction, setLastAction] = useState<"saved" | "applied" | null>(null);
+
+  // Load saved (no auto-apply)
   useEffect(() => {
     const raw = safeLocalStorageGet(STORAGE_KEY);
 
     if (!raw) {
       setSavedSnapshot(null);
       setSavedLastUpdated(null);
-      setDidApplySaved(false);
+      setLastAction(null);
       return;
     }
 
@@ -281,13 +279,11 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
       const saved = JSON.parse(raw) as SavedPayload;
       setSavedSnapshot(saved);
       setSavedLastUpdated(typeof saved.lastUpdated === "number" ? saved.lastUpdated : null);
-
-      // لا نطبّق تلقائيًا — التطبيق يصير بزر “استخدام…”
-      setDidApplySaved(false);
+      setLastAction(null);
     } catch {
       setSavedSnapshot(null);
       setSavedLastUpdated(null);
-      setDidApplySaved(false);
+      setLastAction(null);
     }
   }, [isLoggedIn]);
 
@@ -300,12 +296,12 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
     return Date.now() - savedLastUpdated >= STALE_DAYS * DAY_MS;
   }, [savedLastUpdated]);
 
-  // ✅ خيارات حسب الوحدة
   const bustOptions = unit === "cm" ? BUST_CM_OPTIONS : BUST_IN_OPTIONS;
   const waistOptions = unit === "cm" ? WAIST_CM_OPTIONS : WAIST_IN_OPTIONS;
   const hipOptions = unit === "cm" ? HIP_CM_OPTIONS : HIP_IN_OPTIONS;
 
-  const fieldErrors = useMemo(() => {
+  // ✅ Validation للمقاسات فقط (بدون bodyShape) — للحفظ/التحديث
+  const measErrors = useMemo(() => {
     const h = toNum(heightCm);
     const b = toNum(bust);
     const w = toNum(waist);
@@ -320,29 +316,25 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
       bust: !bust || bCm < 60 || bCm > 160 ? "x" : "",
       waist: !waist || wCm < 45 || wCm > 160 ? "x" : "",
       hip: !hip || hipCm < 60 || hipCm > 180 ? "x" : "",
-      bodyShape: !bodyShape ? "x" : "",
     };
-  }, [heightCm, bust, waist, hip, bodyShape, unit]);
+  }, [heightCm, bust, waist, hip, unit]);
 
+  const canSaveMeasurements = useMemo(() => {
+    return !measErrors.height && !measErrors.bust && !measErrors.waist && !measErrors.hip;
+  }, [measErrors]);
+
+  // ✅ Validation لعرض النتائج (يشمل bodyShape)
   const canSubmit = useMemo(() => {
-    return (
-      !fieldErrors.height &&
-      !fieldErrors.bust &&
-      !fieldErrors.waist &&
-      !fieldErrors.hip &&
-      !fieldErrors.bodyShape
-    );
-  }, [fieldErrors]);
+    return canSaveMeasurements && !!bodyShape;
+  }, [canSaveMeasurements, bodyShape]);
 
-  // ✅ زر الحفظ/التحديث ينضغط فقط لو البيانات كاملة صح
   const canUpdate = useMemo(() => {
-    return isLoggedIn && canSubmit;
-  }, [isLoggedIn, canSubmit]);
+    return isLoggedIn && canSaveMeasurements;
+  }, [isLoggedIn, canSaveMeasurements]);
 
   function markDirty() {
     setIsDirty(true);
-    setDidSave(false);
-    setDidApplySaved(false);
+    setLastAction(null); // أي تعديل يلغي “تم…”
   }
 
   function onChangeUnit(u: Unit) {
@@ -353,6 +345,7 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
     setBust("");
     setWaist("");
     setHip("");
+    // body shape ما له علاقة بالحفظ، بس نخليه زي سلوكك السابق
     setBodyShape("");
   }
 
@@ -360,8 +353,7 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
     if (!savedSnapshot) return;
 
     setIsDirty(false);
-    setDidApplySaved(true);
-    setDidSave(false);
+    setLastAction("applied");
 
     if (savedSnapshot.unit === "cm" || savedSnapshot.unit === "in") setUnit(savedSnapshot.unit);
     if (typeof savedSnapshot.heightCm === "string") setHeightCm(savedSnapshot.heightCm);
@@ -380,7 +372,8 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
       bust,
       waist,
       hip,
-      bodyShape,
+      // نخزّن bodyShape إذا موجود (اختياري)، بس مو شرط للحفظ
+      bodyShape: bodyShape || "",
       lastUpdated: Date.now(),
     };
 
@@ -390,8 +383,7 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
     setSavedLastUpdated(payload.lastUpdated ?? null);
 
     setIsDirty(false);
-    setDidSave(true);
-    setDidApplySaved(false);
+    setLastAction("saved"); // ✅ تثبت “تم تحديث…” وما ترجع
   }
 
   function goResults() {
@@ -423,48 +415,48 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
     router.push(`/results?${params.toString()}`);
   }
 
-  // ✅ placeholder المطلوب
   const circumPlaceholder = unit === "cm" ? "سنتيمتر" : "إنش";
-  const heightPlaceholder = "سنتيمتر"; // ثابت
+  const heightPlaceholder = "سنتيمتر";
 
-  // ✅ زر واحد (بدون checkbox)
+  // ✅ زر واحد: يا استخدام / يا حفظ-تحديث / يا تم…
   const showActionButton = isLoggedIn;
 
-  const actionLabel = isDirty
-    ? hasSaved
-      ? didSave
-        ? "تم تحديث المقاسات"
-        : "تحديث المقاسات"
-      : didSave
-        ? "تم حفظ المقاسات"
-        : "حفظ المقاسات"
-    : hasSaved
-      ? didApplySaved
-        ? "تم استخدام المقاسات المحفوظة"
-        : "استخدام المقاسات المحفوظة"
-      : didSave
-        ? "تم حفظ المقاسات"
-        : "حفظ المقاسات";
+  const actionLabel = useMemo(() => {
+    // لو تم حفظ/تحديث: تثبت
+    if (lastAction === "saved") return hasSaved ? "تم تحديث المقاسات" : "تم حفظ المقاسات";
 
-  // إذا مو dirty وما عنده محفوظ: نخليه Disabled (لين يبدأ يختار ويصير dirty)
-  const actionDisabled = isDirty
-    ? didSave || !canUpdate
-    : hasSaved
-      ? didApplySaved
-      : true;
+    // لو تم تطبيق المحفوظ: تثبت
+    if (lastAction === "applied") return "تم استخدام المقاسات المحفوظة";
+
+    // غير كذا:
+    if (isDirty) return hasSaved ? "تحديث المقاسات" : "حفظ المقاسات";
+
+    // مو dirty
+    return hasSaved ? "استخدام المقاسات المحفوظة" : "حفظ المقاسات";
+  }, [lastAction, isDirty, hasSaved]);
+
+  const actionDisabled = useMemo(() => {
+    // إذا ثبتت “تم …” نخليه disabled لين المستخدم يعدّل شي
+    if (lastAction) return true;
+
+    if (isDirty) return !canUpdate;
+
+    // مو dirty:
+    if (hasSaved) return false; // استخدام المحفوظ متاح
+    return true; // ما عنده محفوظ وما عدّل شي -> ما في شيء يسويه
+  }, [lastAction, isDirty, canUpdate, hasSaved]);
 
   function onActionClick() {
     if (!isLoggedIn) return;
+    if (lastAction) return;
 
     if (isDirty) {
-      if (!didSave) saveOrUpdateMeasurements();
+      saveOrUpdateMeasurements();
       return;
     }
 
     // مو dirty
-    if (hasSaved) {
-      if (!didApplySaved) applySavedFromSnapshot();
-    }
+    if (hasSaved) applySavedFromSnapshot();
   }
 
   return (
@@ -562,7 +554,7 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
             />
           </div>
 
-          {/* ✅ زر واحد مكان “استخدام/تحديث/حفظ” */}
+          {/* ✅ زر واحد */}
           {showActionButton ? (
             <div className="mt-4 flex items-center justify-start">
               <button
@@ -575,12 +567,13 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
                   "text-xs font-extrabold transition",
                   "border-[#d6b56a]/45 bg-black/20 text-white hover:border-[#d6b56a]/70",
                   "disabled:opacity-60 disabled:hover:border-[#d6b56a]/45",
+                  // لمسة “تم …” بشكل احترافي بدون أيقونات
+                  lastAction ? "bg-[#d6b56a]/10 border-[#d6b56a]/60" : "",
                 ].join(" ")}
               >
                 <span>{actionLabel}</span>
 
-                {/* تنبيه الستيل إذا طبق المحفوظ وكان قديم */}
-                {!isDirty && didApplySaved && isStale ? (
+                {!isDirty && lastAction === "applied" && isStale ? (
                   <span className="mr-2 rounded-full border border-[#d6b56a]/35 bg-black/20 px-2 py-0.5 text-[10px] text-[#f3e0b0]">
                     مر {STALE_DAYS} يوم على آخر تحديث للمقاسات
                   </span>
@@ -591,10 +584,7 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
 
           <div className="mt-6">
             <p className="text-sm font-semibold text-white">شكل الجسم</p>
-
-            <p className="mt-2 text-xs text-neutral-400">
-              نستخدمه فقط لترتيب النتائج بدقة
-            </p>
+            <p className="mt-2 text-xs text-neutral-400">نستخدمه فقط لترتيب النتائج بدقة</p>
 
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
               <Chip
