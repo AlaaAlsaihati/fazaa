@@ -181,7 +181,12 @@ function ThreeDotsButton({ onClick }: { onClick: () => void }) {
         "active:scale-95 transition",
       ].join(" ")}
     >
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#d6b56a]" viewBox="0 0 24 24" fill="currentColor">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-5 w-5 text-[#d6b56a]"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+      >
         <circle cx="5" cy="12" r="1.4" />
         <circle cx="12" cy="12" r="1.4" />
         <circle cx="19" cy="12" r="1.4" />
@@ -216,6 +221,7 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
 
   // ✅ Drawer
   const [menuOpen, setMenuOpen] = useState(false);
+  const history: { id: string; title: string; subtitle: string }[] = [];
 
   // ✅ Auth (Supabase ONLY)
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -239,8 +245,6 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
     };
   }, []);
 
-  const history: { id: string; title: string; subtitle: string }[] = [];
-
   // ✅ الوحدة للمحيطات فقط (الطول ثابت سم)
   const [unit, setUnit] = useState<Unit>("cm");
 
@@ -255,21 +259,12 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
   const [savedSnapshot, setSavedSnapshot] = useState<SavedPayload | null>(null);
   const [savedLastUpdated, setSavedLastUpdated] = useState<number | null>(null);
 
+  // ✅ حالتين “تم …” تثبت لين المستخدم يغيّر
+  const [didSave, setDidSave] = useState(false);
+  const [didApplySaved, setDidApplySaved] = useState(false);
+
   // ✅ dirty
   const [isDirty, setIsDirty] = useState(false);
-
-  // ✅ feedback (بروفشنال: تغيير نص + سطر صغير)
-  const [feedbackText, setFeedbackText] = useState<string>("");
-  const [showFeedback, setShowFeedback] = useState(false);
-
-  function flashFeedback(msg: string) {
-    setFeedbackText(msg);
-    setShowFeedback(true);
-    window.setTimeout(() => {
-      setShowFeedback(false);
-      setFeedbackText("");
-    }, 1400);
-  }
 
   // ✅ تحميل المحفوظ عند فتح الصفحة / تغير اللوقن
   useEffect(() => {
@@ -278,6 +273,7 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
     if (!raw) {
       setSavedSnapshot(null);
       setSavedLastUpdated(null);
+      setDidApplySaved(false);
       return;
     }
 
@@ -285,9 +281,13 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
       const saved = JSON.parse(raw) as SavedPayload;
       setSavedSnapshot(saved);
       setSavedLastUpdated(typeof saved.lastUpdated === "number" ? saved.lastUpdated : null);
+
+      // لا نطبّق تلقائيًا — التطبيق يصير بزر “استخدام…”
+      setDidApplySaved(false);
     } catch {
       setSavedSnapshot(null);
       setSavedLastUpdated(null);
+      setDidApplySaved(false);
     }
   }, [isLoggedIn]);
 
@@ -334,15 +334,15 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
     );
   }, [fieldErrors]);
 
-  // ✅ ينضغط حفظ/تحديث فقط لو البيانات كاملة صح
+  // ✅ زر الحفظ/التحديث ينضغط فقط لو البيانات كاملة صح
   const canUpdate = useMemo(() => {
     return isLoggedIn && canSubmit;
   }, [isLoggedIn, canSubmit]);
 
   function markDirty() {
     setIsDirty(true);
-    setShowFeedback(false);
-    setFeedbackText("");
+    setDidSave(false);
+    setDidApplySaved(false);
   }
 
   function onChangeUnit(u: Unit) {
@@ -359,15 +359,16 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
   function applySavedFromSnapshot() {
     if (!savedSnapshot) return;
 
-    if (savedSnapshot.unit === "cm" || savedSnapshot.unit === "in") setUnit(savedSnapshot.unit);
-    setHeightCm(typeof savedSnapshot.heightCm === "string" ? savedSnapshot.heightCm : "");
-    setBust(typeof savedSnapshot.bust === "string" ? savedSnapshot.bust : "");
-    setWaist(typeof savedSnapshot.waist === "string" ? savedSnapshot.waist : "");
-    setHip(typeof savedSnapshot.hip === "string" ? savedSnapshot.hip : "");
-    setBodyShape((savedSnapshot.bodyShape as any) || "");
-
     setIsDirty(false);
-    flashFeedback("تم تطبيق المقاسات المحفوظة");
+    setDidApplySaved(true);
+    setDidSave(false);
+
+    if (savedSnapshot.unit === "cm" || savedSnapshot.unit === "in") setUnit(savedSnapshot.unit);
+    if (typeof savedSnapshot.heightCm === "string") setHeightCm(savedSnapshot.heightCm);
+    if (typeof savedSnapshot.bust === "string") setBust(savedSnapshot.bust);
+    if (typeof savedSnapshot.waist === "string") setWaist(savedSnapshot.waist);
+    if (typeof savedSnapshot.hip === "string") setHip(savedSnapshot.hip);
+    if (savedSnapshot.bodyShape) setBodyShape(savedSnapshot.bodyShape);
   }
 
   function saveOrUpdateMeasurements() {
@@ -389,7 +390,8 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
     setSavedLastUpdated(payload.lastUpdated ?? null);
 
     setIsDirty(false);
-    flashFeedback(hasSaved ? "تم تحديث المقاسات" : "تم حفظ المقاسات");
+    setDidSave(true);
+    setDidApplySaved(false);
   }
 
   function goResults() {
@@ -421,30 +423,48 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
     router.push(`/results?${params.toString()}`);
   }
 
-  // ✅ placeholders
+  // ✅ placeholder المطلوب
   const circumPlaceholder = unit === "cm" ? "سنتيمتر" : "إنش";
-  const heightPlaceholder = "سنتيمتر";
+  const heightPlaceholder = "سنتيمتر"; // ثابت
 
-  // ✅ زر واحد بدل الشيك بوكس:
-  // - إذا عنده محفوظ & ما عدّل: "استخدام المقاسات المحفوظة"
-  // - إذا عدّل: "حفظ" أو "تحديث"
-  const showSmartButton = isLoggedIn && (hasSaved || isDirty);
+  // ✅ زر واحد (بدون checkbox)
+  const showActionButton = isLoggedIn;
 
-  const smartButtonLabel = useMemo(() => {
-    if (showFeedback && feedbackText) return feedbackText; // نص مؤقت
-    if (isDirty) return hasSaved ? "تحديث المقاسات" : "حفظ المقاسات";
-    return "استخدام المقاسات المحفوظة";
-  }, [showFeedback, feedbackText, isDirty, hasSaved]);
+  const actionLabel = isDirty
+    ? hasSaved
+      ? didSave
+        ? "تم تحديث المقاسات"
+        : "تحديث المقاسات"
+      : didSave
+        ? "تم حفظ المقاسات"
+        : "حفظ المقاسات"
+    : hasSaved
+      ? didApplySaved
+        ? "تم استخدام المقاسات المحفوظة"
+        : "استخدام المقاسات المحفوظة"
+      : didSave
+        ? "تم حفظ المقاسات"
+        : "حفظ المقاسات";
 
-  const smartButtonDisabled = useMemo(() => {
-    if (!isLoggedIn) return true;
-    if (isDirty) return !canUpdate; // لازم البيانات صحيحة للحفظ/التحديث
-    return !hasSaved; // لازم فيه محفوظ للتطبيق
-  }, [isLoggedIn, isDirty, canUpdate, hasSaved]);
+  // إذا مو dirty وما عنده محفوظ: نخليه Disabled (لين يبدأ يختار ويصير dirty)
+  const actionDisabled = isDirty
+    ? didSave || !canUpdate
+    : hasSaved
+      ? didApplySaved
+      : true;
 
-  function onSmartButtonClick() {
-    if (isDirty) saveOrUpdateMeasurements();
-    else applySavedFromSnapshot();
+  function onActionClick() {
+    if (!isLoggedIn) return;
+
+    if (isDirty) {
+      if (!didSave) saveOrUpdateMeasurements();
+      return;
+    }
+
+    // مو dirty
+    if (hasSaved) {
+      if (!didApplySaved) applySavedFromSnapshot();
+    }
   }
 
   return (
@@ -484,7 +504,9 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
             <div className="flex items-center justify-between">
               <div />
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-neutral-300">وحدة المحيطات:</span>
+                <span className="text-xs font-semibold text-neutral-300">
+                  وحدة المحيطات:
+                </span>
                 <UnitToggle value={unit} onChange={onChangeUnit} />
               </div>
             </div>
@@ -540,40 +562,39 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
             />
           </div>
 
-          {/* ✅ زر واحد بدل الشيك بوكس (نفس المكان) */}
-          {showSmartButton ? (
-            <div className="mt-4 flex flex-col items-start">
+          {/* ✅ زر واحد مكان “استخدام/تحديث/حفظ” */}
+          {showActionButton ? (
+            <div className="mt-4 flex items-center justify-start">
               <button
                 type="button"
-                onClick={onSmartButtonClick}
-                disabled={smartButtonDisabled}
+                onClick={onActionClick}
+                disabled={actionDisabled}
                 className={[
                   "inline-flex items-center gap-2",
                   "rounded-xl border px-3 py-2",
                   "text-xs font-extrabold transition",
-                  "border-[#d6b56a]/45 bg-black/20 text-white",
-                  "hover:border-[#d6b56a]/70",
-                  "disabled:opacity-40 disabled:hover:border-[#d6b56a]/45",
+                  "border-[#d6b56a]/45 bg-black/20 text-white hover:border-[#d6b56a]/70",
+                  "disabled:opacity-60 disabled:hover:border-[#d6b56a]/45",
                 ].join(" ")}
               >
-                {smartButtonLabel}
-              </button>
+                <span>{actionLabel}</span>
 
-              {/* سطر صغير بروفشنال */}
-              {showFeedback ? (
-                <p className="mt-2 text-[11px] text-neutral-400">تم تنفيذ العملية بنجاح</p>
-              ) : isLoggedIn && !isDirty && hasSaved && isStale ? (
-                <p className="mt-2 text-[11px] text-neutral-400">
-                  مر {STALE_DAYS} يوم على آخر تحديث — يفضّل تحديثها
-                </p>
-              ) : null}
+                {/* تنبيه الستيل إذا طبق المحفوظ وكان قديم */}
+                {!isDirty && didApplySaved && isStale ? (
+                  <span className="mr-2 rounded-full border border-[#d6b56a]/35 bg-black/20 px-2 py-0.5 text-[10px] text-[#f3e0b0]">
+                    مر {STALE_DAYS} يوم على آخر تحديث للمقاسات
+                  </span>
+                ) : null}
+              </button>
             </div>
           ) : null}
 
           <div className="mt-6">
             <p className="text-sm font-semibold text-white">شكل الجسم</p>
 
-            <p className="mt-2 text-xs text-neutral-400">نستخدمه فقط لترتيب النتائج بدقة</p>
+            <p className="mt-2 text-xs text-neutral-400">
+              نستخدمه فقط لترتيب النتائج بدقة
+            </p>
 
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
               <Chip
