@@ -104,13 +104,7 @@ const BUST_IN_OPTIONS = range(24, 63, 0.5);
 const WAIST_IN_OPTIONS = range(18, 63, 0.5);
 const HIP_IN_OPTIONS = range(24, 71, 0.5);
 
-function UnitToggle({
-  value,
-  onChange,
-}: {
-  value: Unit;
-  onChange: (u: Unit) => void;
-}) {
+function UnitToggle({ value, onChange }: { value: Unit; onChange: (u: Unit) => void }) {
   return (
     <div className="inline-flex rounded-2xl border border-[#d6b56a]/45 bg-black/20 p-1">
       <button
@@ -187,12 +181,7 @@ function ThreeDotsButton({ onClick }: { onClick: () => void }) {
         "active:scale-95 transition",
       ].join(" ")}
     >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="h-5 w-5 text-[#d6b56a]"
-        viewBox="0 0 24 24"
-        fill="currentColor"
-      >
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#d6b56a]" viewBox="0 0 24 24" fill="currentColor">
         <circle cx="5" cy="12" r="1.4" />
         <circle cx="12" cy="12" r="1.4" />
         <circle cx="19" cy="12" r="1.4" />
@@ -216,11 +205,7 @@ function hasAnySavedValue(p: SavedPayload | null) {
   return !!(p.heightCm || p.bust || p.waist || p.hip || p.bodyShape);
 }
 
-export default function MeasurementsClient({
-  initialParams,
-}: {
-  initialParams: InitialParams;
-}) {
+export default function MeasurementsClient({ initialParams }: { initialParams: InitialParams }) {
   const router = useRouter();
   const sp = useSearchParams();
 
@@ -273,18 +258,17 @@ export default function MeasurementsClient({
   // ✅ dirty
   const [isDirty, setIsDirty] = useState(false);
 
-  // ✅ feedback
-  const [justSaved, setJustSaved] = useState(false);
-  const [justApplied, setJustApplied] = useState(false);
+  // ✅ feedback (بروفشنال: تغيير نص + سطر صغير)
+  const [feedbackText, setFeedbackText] = useState<string>("");
+  const [showFeedback, setShowFeedback] = useState(false);
 
-  function flashSaved() {
-    setJustSaved(true);
-    window.setTimeout(() => setJustSaved(false), 1200);
-  }
-
-  function flashApplied() {
-    setJustApplied(true);
-    window.setTimeout(() => setJustApplied(false), 1200);
+  function flashFeedback(msg: string) {
+    setFeedbackText(msg);
+    setShowFeedback(true);
+    window.setTimeout(() => {
+      setShowFeedback(false);
+      setFeedbackText("");
+    }, 1400);
   }
 
   // ✅ تحميل المحفوظ عند فتح الصفحة / تغير اللوقن
@@ -350,15 +334,15 @@ export default function MeasurementsClient({
     );
   }, [fieldErrors]);
 
-  // ✅ زر الحفظ/التحديث ينضغط فقط لو البيانات كاملة صح
+  // ✅ ينضغط حفظ/تحديث فقط لو البيانات كاملة صح
   const canUpdate = useMemo(() => {
     return isLoggedIn && canSubmit;
   }, [isLoggedIn, canSubmit]);
 
   function markDirty() {
     setIsDirty(true);
-    setJustSaved(false);
-    setJustApplied(false);
+    setShowFeedback(false);
+    setFeedbackText("");
   }
 
   function onChangeUnit(u: Unit) {
@@ -375,16 +359,15 @@ export default function MeasurementsClient({
   function applySavedFromSnapshot() {
     if (!savedSnapshot) return;
 
-    setIsDirty(false);
-
     if (savedSnapshot.unit === "cm" || savedSnapshot.unit === "in") setUnit(savedSnapshot.unit);
-    if (typeof savedSnapshot.heightCm === "string") setHeightCm(savedSnapshot.heightCm);
-    if (typeof savedSnapshot.bust === "string") setBust(savedSnapshot.bust);
-    if (typeof savedSnapshot.waist === "string") setWaist(savedSnapshot.waist);
-    if (typeof savedSnapshot.hip === "string") setHip(savedSnapshot.hip);
-    if (savedSnapshot.bodyShape) setBodyShape(savedSnapshot.bodyShape);
+    setHeightCm(typeof savedSnapshot.heightCm === "string" ? savedSnapshot.heightCm : "");
+    setBust(typeof savedSnapshot.bust === "string" ? savedSnapshot.bust : "");
+    setWaist(typeof savedSnapshot.waist === "string" ? savedSnapshot.waist : "");
+    setHip(typeof savedSnapshot.hip === "string" ? savedSnapshot.hip : "");
+    setBodyShape((savedSnapshot.bodyShape as any) || "");
 
-    flashApplied();
+    setIsDirty(false);
+    flashFeedback("تم تطبيق المقاسات المحفوظة");
   }
 
   function saveOrUpdateMeasurements() {
@@ -406,7 +389,7 @@ export default function MeasurementsClient({
     setSavedLastUpdated(payload.lastUpdated ?? null);
 
     setIsDirty(false);
-    flashSaved();
+    flashFeedback(hasSaved ? "تم تحديث المقاسات" : "تم حفظ المقاسات");
   }
 
   function goResults() {
@@ -438,32 +421,30 @@ export default function MeasurementsClient({
     router.push(`/results?${params.toString()}`);
   }
 
-  // ✅ placeholder المطلوب
+  // ✅ placeholders
   const circumPlaceholder = unit === "cm" ? "سنتيمتر" : "إنش";
-  const heightPlaceholder = "سنتيمتر"; // ثابت
+  const heightPlaceholder = "سنتيمتر";
 
-  // ✅ زر واحد فقط (بدون شيك بوكس)
+  // ✅ زر واحد بدل الشيك بوكس:
+  // - إذا عنده محفوظ & ما عدّل: "استخدام المقاسات المحفوظة"
+  // - إذا عدّل: "حفظ" أو "تحديث"
   const showSmartButton = isLoggedIn && (hasSaved || isDirty);
-  const isShowingDone = justSaved || justApplied;
 
-  const smartLabel = isShowingDone
-    ? "تم ✅"
-    : isDirty
-    ? hasSaved
-      ? "تحديث المقاسات"
-      : "حفظ المقاسات"
-    : "استخدام المقاسات المحفوظة";
+  const smartButtonLabel = useMemo(() => {
+    if (showFeedback && feedbackText) return feedbackText; // نص مؤقت
+    if (isDirty) return hasSaved ? "تحديث المقاسات" : "حفظ المقاسات";
+    return "استخدام المقاسات المحفوظة";
+  }, [showFeedback, feedbackText, isDirty, hasSaved]);
 
-  const smartDisabled = isDirty ? !canUpdate : !hasSaved;
+  const smartButtonDisabled = useMemo(() => {
+    if (!isLoggedIn) return true;
+    if (isDirty) return !canUpdate; // لازم البيانات صحيحة للحفظ/التحديث
+    return !hasSaved; // لازم فيه محفوظ للتطبيق
+  }, [isLoggedIn, isDirty, canUpdate, hasSaved]);
 
-  function onSmartClick() {
-    if (isDirty) {
-      saveOrUpdateMeasurements();
-      return;
-    }
-    if (hasSaved) {
-      applySavedFromSnapshot();
-    }
+  function onSmartButtonClick() {
+    if (isDirty) saveOrUpdateMeasurements();
+    else applySavedFromSnapshot();
   }
 
   return (
@@ -503,9 +484,7 @@ export default function MeasurementsClient({
             <div className="flex items-center justify-between">
               <div />
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-neutral-300">
-                  وحدة المحيطات:
-                </span>
+                <span className="text-xs font-semibold text-neutral-300">وحدة المحيطات:</span>
                 <UnitToggle value={unit} onChange={onChangeUnit} />
               </div>
             </div>
@@ -561,54 +540,40 @@ export default function MeasurementsClient({
             />
           </div>
 
-          {/* ✅ زر واحد ذكي بنفس مكان الشيك بوكس */}
+          {/* ✅ زر واحد بدل الشيك بوكس (نفس المكان) */}
           {showSmartButton ? (
-            <div className="mt-4 flex items-center justify-start">
+            <div className="mt-4 flex flex-col items-start">
               <button
                 type="button"
-                onClick={onSmartClick}
-                disabled={smartDisabled}
+                onClick={onSmartButtonClick}
+                disabled={smartButtonDisabled}
                 className={[
                   "inline-flex items-center gap-2",
-                  "rounded-xl border px-3 py-2 text-xs font-extrabold transition select-none",
-                  isShowingDone
-                    ? "border-[#d6b56a]/80 bg-[#d6b56a]/15"
-                    : "border-[#d6b56a]/45 bg-black/20",
-                  "text-white hover:border-[#d6b56a]/70",
+                  "rounded-xl border px-3 py-2",
+                  "text-xs font-extrabold transition",
+                  "border-[#d6b56a]/45 bg-black/20 text-white",
+                  "hover:border-[#d6b56a]/70",
                   "disabled:opacity-40 disabled:hover:border-[#d6b56a]/45",
                 ].join(" ")}
               >
-                <span className="h-4 w-4 rounded border border-white/20 bg-black/30 flex items-center justify-center">
-                  {isShowingDone ? (
-                    <svg
-                      viewBox="0 0 24 24"
-                      className="h-3 w-3 text-[#d6b56a]"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M20 6 9 17l-5-5" />
-                    </svg>
-                  ) : null}
-                </span>
-
-                <span>{smartLabel}</span>
-
-                {!isDirty && hasSaved && isStale ? (
-                  <span className="mr-2 rounded-full border border-[#d6b56a]/35 bg-black/20 px-2 py-0.5 text-[10px] text-[#f3e0b0]">
-                    مر {STALE_DAYS} يوم
-                  </span>
-                ) : null}
+                {smartButtonLabel}
               </button>
+
+              {/* سطر صغير بروفشنال */}
+              {showFeedback ? (
+                <p className="mt-2 text-[11px] text-neutral-400">تم تنفيذ العملية بنجاح</p>
+              ) : isLoggedIn && !isDirty && hasSaved && isStale ? (
+                <p className="mt-2 text-[11px] text-neutral-400">
+                  مر {STALE_DAYS} يوم على آخر تحديث — يفضّل تحديثها
+                </p>
+              ) : null}
             </div>
           ) : null}
 
           <div className="mt-6">
             <p className="text-sm font-semibold text-white">شكل الجسم</p>
 
-            <p className="mt-2 text-xs text-neutral-400">
-              نستخدمه فقط لترتيب النتائج بدقة
-            </p>
+            <p className="mt-2 text-xs text-neutral-400">نستخدمه فقط لترتيب النتائج بدقة</p>
 
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
               <Chip
