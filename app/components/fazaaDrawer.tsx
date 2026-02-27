@@ -1,11 +1,23 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/supabaseClient";
 
 type Unit = "cm" | "in";
 
-const STORAGE_KEY_BASE = "fazaa_measurements_v1"; // للتوافق مع القديم
+/** =========================
+ *  SUPABASE HISTORY SETTINGS
+ *  =========================
+ *  عدّليها إذا أسماء جدولك/حقولك مختلفة
+ */
+const HISTORY_TABLE = "fazaa_history"; // 👈 اسم الجدول
+const HISTORY_COLS = "id,title,subtitle,query,created_at"; // 👈 الحقول اللي نجيبها
+
+/** =========================
+ *  LOCAL STORAGE (MEASUREMENTS)
+ *  ========================= */
+const STORAGE_KEY_BASE = "fazaa_measurements_v1"; // للتوافق + راح يصير scoped باليوزر
 const STALE_DAYS = 60;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -16,6 +28,20 @@ type SavedPayload = {
   waist?: string;
   hip?: string;
   lastUpdated?: number;
+};
+
+type SessionUser = {
+  id: string;
+  email: string | null;
+  name: string | null;
+};
+
+type HistoryRow = {
+  id: string | number;
+  title: string | null;
+  subtitle: string | null;
+  query: string | null;
+  created_at?: string | null;
 };
 
 function safeLocalStorageGet(key: string) {
@@ -38,7 +64,7 @@ function safeLocalStorageSet(key: string, val: string) {
 
 function range(min: number, max: number, step = 1) {
   const out: number[] = [];
-  for (let x = min; x <= max + 1e-9; x += step) out.push(x);
+  for (let x = min; x <= max + 1e-9; x += step) out.push(Math.round(x * 2) / 2);
   return out;
 }
 
@@ -58,6 +84,7 @@ function hasAnySavedValue(p: SavedPayload | null) {
 }
 
 const HEIGHT_OPTIONS = range(140, 210, 1);
+
 const BUST_CM_OPTIONS = range(60, 160, 1);
 const WAIST_CM_OPTIONS = range(45, 160, 1);
 const HIP_CM_OPTIONS = range(60, 180, 1);
@@ -167,14 +194,12 @@ export default function FazaaDrawer({
   open: boolean;
   onClose: () => void;
 }) {
+  const router = useRouter();
+
   const [tab, setTab] = useState<"login" | "register">("login");
 
   // --- auth state
-  const [sessionUser, setSessionUser] = useState<{
-    id: string;
-    email: string | null;
-    name: string | null;
-  } | null>(null);
+  const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
 
   // --- auth forms
   const [name, setName] = useState("");
@@ -199,14 +224,31 @@ export default function FazaaDrawer({
   const [savedSnapshot, setSavedSnapshot] = useState<SavedPayload | null>(null);
   const [savedLastUpdated, setSavedLastUpdated] = useState<number | null>(null);
 
-  const [measMode, setMeasMode] = useState<"idle" | "saved" | "updated">("idle");
+  /**
+   * measMode:
+   * - "idle": ما فيه شيء محفوظ
+   * - "saved": فيه محفوظ (والزر يكون "حفظ المقاسات" أو "تحديث المقاسات")
+   * - "saved_done": المستخدم ضغط حفظ لأول مرة → "تم حفظ المقاسات" وتثبت
+   * - "updated_done": المستخدم ضغط تحديث → "تم تحديث المقاسات" وتثبت
+   */
+  const [measMode, setMeasMode] = useState<"idle" | "saved" | "saved_done" | "updated_done">(
+    "idle"
+  );
+
   const [isDirty, setIsDirty] = useState(false);
+
+  // --- history (Supabase)
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [historyItems, setHistoryItems] = useState<HistoryRow[]>([]);
 
   // user-scoped key (عشان ما تختفي/تتلخبط بين حسابات)
   const storageKey = useMemo(() => {
     const uid = sessionUser?.id;
     return uid ? `${STORAGE_KEY_BASE}:${uid}` : STORAGE_KEY_BASE;
   }, [sessionUser?.id]);
+
+  const isLoggedIn = !!sessionUser;
 
   // read session
   useEffect(() => {
@@ -215,7 +257,8 @@ export default function FazaaDrawer({
     (async () => {
       const { data } = await supabase.auth.getSession();
       if (!mounted) return;
-      const u = data.session?.user;
+      const u = data.session?.user ?? null;
+
       setSessionUser(
         u
           ? {
@@ -228,7 +271,7 @@ export default function FazaaDrawer({
     })();
 
     const { data: listener } = supabase.auth.onAuthStateChange((_evt, session) => {
-      const u = session?.user;
+      const u = session?.user ?? null;
       setSessionUser(
         u
           ? {
@@ -250,11 +293,9 @@ export default function FazaaDrawer({
   useEffect(() => {
     if (!open) return;
 
-    // 1) جرّبي المفتاح الجديد أول
     const rawNew = safeLocalStorageGet(storageKey);
-
-    // 2) لو ما فيه، جرّبي القديم (backward compatibility)
-    const rawOld = storageKey !== STORAGE_KEY_BASE ? safeLocalStorageGet(STORAGE_KEY_BASE) : null;
+    const rawOld =
+      storageKey !== STORAGE_KEY_BASE ? safeLocalStorageGet(STORAGE_KEY_BASE) : null;
 
     const raw = rawNew || rawOld;
 
@@ -263,6 +304,7 @@ export default function FazaaDrawer({
       setSavedLastUpdated(null);
       setMeasMode("idle");
       setIsDirty(false);
+
       setHeightCm("");
       setBust("");
       setWaist("");
@@ -273,20 +315,20 @@ export default function FazaaDrawer({
 
     try {
       const saved = JSON.parse(raw) as SavedPayload;
+
       setSavedSnapshot(saved);
       setSavedLastUpdated(typeof saved.lastUpdated === "number" ? saved.lastUpdated : null);
 
-      // عبّي الحقول من المحفوظ
       if (saved.unit === "cm" || saved.unit === "in") setUnit(saved.unit);
-      if (typeof saved.heightCm === "string") setHeightCm(saved.heightCm);
-      if (typeof saved.bust === "string") setBust(saved.bust);
-      if (typeof saved.waist === "string") setWaist(saved.waist);
-      if (typeof saved.hip === "string") setHip(saved.hip);
+      setHeightCm(typeof saved.heightCm === "string" ? saved.heightCm : "");
+      setBust(typeof saved.bust === "string" ? saved.bust : "");
+      setWaist(typeof saved.waist === "string" ? saved.waist : "");
+      setHip(typeof saved.hip === "string" ? saved.hip : "");
 
-      setMeasMode("saved");
+      setMeasMode(hasAnySavedValue(saved) ? "saved" : "idle");
       setIsDirty(false);
 
-      // لو كان من المفتاح القديم وانتي الآن مسجّلة، انسخي للمفتاح الجديد مرة وحدة
+      // migrate old → new
       if (sessionUser?.id && rawOld && !rawNew) {
         safeLocalStorageSet(storageKey, rawOld);
       }
@@ -298,7 +340,63 @@ export default function FazaaDrawer({
     }
   }, [open, storageKey, sessionUser?.id]);
 
-  const isLoggedIn = !!sessionUser;
+  // fetch history from Supabase (when open + logged in)
+  useEffect(() => {
+    if (!open) return;
+
+    if (!sessionUser?.id) {
+      setHistoryItems([]);
+      setHistoryError(null);
+      setHistoryLoading(false);
+      return;
+    }
+
+    let alive = true;
+
+    (async () => {
+      setHistoryLoading(true);
+      setHistoryError(null);
+
+      try {
+        /**
+         * IMPORTANT:
+         * لازم يكون عندك جدول HISTORY_TABLE وفيه:
+         * - user_id (uuid) = نفس auth.users.id
+         * - title (text)
+         * - subtitle (text)
+         * - query (text)  مثال: "?occasion=...&height=..."
+         * - created_at (timestamp)
+         */
+        const { data, error } = await supabase
+          .from(HISTORY_TABLE)
+          .select(HISTORY_COLS)
+          .eq("user_id", sessionUser.id)
+          .order("created_at", { ascending: false })
+          .limit(20);
+
+        if (!alive) return;
+
+        if (error) {
+          setHistoryItems([]);
+          setHistoryError(error.message || "تعذر تحميل السجل");
+        } else {
+          setHistoryItems((data as any[]) as HistoryRow[]);
+          setHistoryError(null);
+        }
+      } catch (e: any) {
+        if (!alive) return;
+        setHistoryItems([]);
+        setHistoryError(e?.message || "تعذر تحميل السجل");
+      } finally {
+        if (!alive) return;
+        setHistoryLoading(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [open, sessionUser?.id]);
 
   const isStale = useMemo(() => {
     if (!savedLastUpdated) return false;
@@ -311,57 +409,70 @@ export default function FazaaDrawer({
 
   const canSave = useMemo(() => {
     if (!isLoggedIn) return false;
+
     const h = toNum(heightCm);
     const b = toNum(bust);
     const w = toNum(waist);
     const hp = toNum(hip);
 
-    if (!heightCm || h < 140 || h > 210) return false;
+    if (!heightCm || !Number.isFinite(h) || h < 140 || h > 210) return false;
 
     const bCm = unit === "cm" ? b : inToCm(b);
     const wCm = unit === "cm" ? w : inToCm(w);
     const hipCm = unit === "cm" ? hp : inToCm(hp);
 
-    if (!bust || bCm < 60 || bCm > 160) return false;
-    if (!waist || wCm < 45 || wCm > 160) return false;
-    if (!hip || hipCm < 60 || hipCm > 180) return false;
+    if (!bust || !Number.isFinite(bCm) || bCm < 60 || bCm > 160) return false;
+    if (!waist || !Number.isFinite(wCm) || wCm < 45 || wCm > 160) return false;
+    if (!hip || !Number.isFinite(hipCm) || hipCm < 60 || hipCm > 180) return false;
 
     return true;
   }, [isLoggedIn, heightCm, bust, waist, hip, unit]);
 
   function markDirty() {
     setIsDirty(true);
-    // إذا كان سابقاً "تم حفظ/تحديث" وبعد ما عدّل يرجع للوضع العادي
-    setMeasMode(savedSnapshot ? "saved" : "idle");
+    // إذا كان مثبت "تم ..." وبعد ما يعدّل يرجع للوضع المناسب
+    if (savedSnapshot && hasAnySavedValue(savedSnapshot)) setMeasMode("saved");
+    else setMeasMode("idle");
   }
 
   function onChangeUnit(u: Unit) {
     if (u === unit) return;
     markDirty();
-    setUnit(u);
 
-    // تحويل القيم بدل ما نفرّغها
+    // تحويل قيم المحيطات بدل ما تصير فاضية
     const b = toNum(bust);
     const w = toNum(waist);
     const hp = toNum(hip);
 
+    setUnit(u);
+
     if (Number.isFinite(b)) {
-      const next = u === "cm" ? Math.round(inToCm(b) * 10) / 10 : Math.round(cmToIn(b) * 10) / 10;
+      const next =
+        u === "cm"
+          ? Math.round(inToCm(b) * 10) / 10
+          : Math.round(cmToIn(b) * 10) / 10;
       setBust(String(next));
     }
     if (Number.isFinite(w)) {
-      const next = u === "cm" ? Math.round(inToCm(w) * 10) / 10 : Math.round(cmToIn(w) * 10) / 10;
+      const next =
+        u === "cm"
+          ? Math.round(inToCm(w) * 10) / 10
+          : Math.round(cmToIn(w) * 10) / 10;
       setWaist(String(next));
     }
     if (Number.isFinite(hp)) {
       const next =
-        u === "cm" ? Math.round(inToCm(hp) * 10) / 10 : Math.round(cmToIn(hp) * 10) / 10;
+        u === "cm"
+          ? Math.round(inToCm(hp) * 10) / 10
+          : Math.round(cmToIn(hp) * 10) / 10;
       setHip(String(next));
     }
   }
 
   function saveMeasurements() {
     if (!canSave) return;
+
+    const hadSavedBefore = !!(savedSnapshot && hasAnySavedValue(savedSnapshot));
 
     const payload: SavedPayload = {
       unit,
@@ -373,12 +484,12 @@ export default function FazaaDrawer({
     };
 
     safeLocalStorageSet(storageKey, JSON.stringify(payload));
+
     setSavedSnapshot(payload);
     setSavedLastUpdated(payload.lastUpdated ?? null);
 
     setIsDirty(false);
-    // تثبت وتوضح للمستخدم
-    setMeasMode(savedSnapshot ? "updated" : "saved");
+    setMeasMode(hadSavedBefore ? "updated_done" : "saved_done");
   }
 
   async function handleLogin() {
@@ -407,10 +518,9 @@ export default function FazaaDrawer({
       const { error } = await supabase.auth.signUp({
         email: cleanEmail,
         password,
-        options: {
-          data: { name: cleanName },
-        },
+        options: { data: { name: cleanName } },
       });
+
       if (error) throw error;
 
       setAuthMsg({
@@ -439,12 +549,10 @@ export default function FazaaDrawer({
     }
 
     try {
-      // مهم: هذا المسار لازم يكون موجود عندك ويكمل تغيير كلمة المرور
+      // لازم عندك صفحة reset (بنجهزها لك بعدها)
       const redirectTo = `${window.location.origin}/auth/reset`;
 
-      const { error } = await supabase.auth.resetPasswordForEmail(e, {
-        redirectTo,
-      });
+      const { error } = await supabase.auth.resetPasswordForEmail(e, { redirectTo });
       if (error) throw error;
 
       setAuthMsg({ type: "ok", text: "تم إرسال رابط إعادة كلمة المرور على إيميلك" });
@@ -460,14 +568,15 @@ export default function FazaaDrawer({
 
   return (
     <>
+      {/* Overlay */}
       <div
-        className={[
-          "fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition",
-          overlayClass,
-        ].join(" ")}
+        className={["fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition", overlayClass].join(
+          " "
+        )}
         onClick={onClose}
       />
 
+      {/* Drawer */}
       <aside
         className={[
           "fixed top-0 right-0 z-50 h-full w-[360px] max-w-[92vw]",
@@ -496,6 +605,7 @@ export default function FazaaDrawer({
           <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="text-sm font-extrabold text-white">الحساب</div>
+
               {!isLoggedIn ? (
                 <div className="inline-flex rounded-2xl border border-[#d6b56a]/25 bg-black/20 p-1">
                   <button
@@ -514,6 +624,7 @@ export default function FazaaDrawer({
                   >
                     تسجيل الدخول
                   </button>
+
                   <button
                     type="button"
                     onClick={() => {
@@ -570,6 +681,7 @@ export default function FazaaDrawer({
                       >
                         إرسال رابط
                       </button>
+
                       <button
                         type="button"
                         onClick={() => {
@@ -584,7 +696,6 @@ export default function FazaaDrawer({
                   </div>
                 ) : (
                   <>
-                    {/* Login/Register */}
                     {tab === "register" ? (
                       <div className="space-y-3">
                         <div>
@@ -595,6 +706,7 @@ export default function FazaaDrawer({
                             className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
                           />
                         </div>
+
                         <div>
                           <label className="text-xs font-semibold text-neutral-200">
                             البريد الإلكتروني
@@ -605,10 +717,9 @@ export default function FazaaDrawer({
                             className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
                           />
                         </div>
+
                         <div>
-                          <label className="text-xs font-semibold text-neutral-200">
-                            كلمة المرور
-                          </label>
+                          <label className="text-xs font-semibold text-neutral-200">كلمة المرور</label>
                           <input
                             type="password"
                             value={password}
@@ -639,9 +750,7 @@ export default function FazaaDrawer({
                         </div>
 
                         <div>
-                          <label className="text-xs font-semibold text-neutral-200">
-                            كلمة المرور
-                          </label>
+                          <label className="text-xs font-semibold text-neutral-200">كلمة المرور</label>
                           <input
                             type="password"
                             value={password}
@@ -650,7 +759,6 @@ export default function FazaaDrawer({
                           />
                         </div>
 
-                        {/* نسيت كلمة المرور داخل الداور */}
                         <div className="flex items-center justify-start">
                           <button
                             type="button"
@@ -678,13 +786,10 @@ export default function FazaaDrawer({
                 )}
               </>
             ) : (
-              <>
-                {/* logged in info */}
-                <div className="text-xs text-neutral-300 space-y-1">
-                  <div className="font-extrabold text-white">{sessionUser?.name || "مستخدم"}</div>
-                  <div className="text-neutral-400">{sessionUser?.email}</div>
-                </div>
-              </>
+              <div className="text-xs text-neutral-300 space-y-1">
+                <div className="font-extrabold text-white">{sessionUser?.name || "مستخدم"}</div>
+                <div className="text-neutral-400">{sessionUser?.email}</div>
+              </div>
             )}
           </div>
 
@@ -695,9 +800,7 @@ export default function FazaaDrawer({
                 <div className="text-sm font-extrabold text-white">المقاسات</div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-semibold text-neutral-300">
-                    وحدة المحيطات:
-                  </span>
+                  <span className="text-[11px] font-semibold text-neutral-300">وحدة المحيطات:</span>
                   <UnitToggle value={unit} onChange={onChangeUnit} />
                 </div>
               </div>
@@ -719,6 +822,7 @@ export default function FazaaDrawer({
                   placeholder="سنتيمتر"
                   options={HEIGHT_OPTIONS}
                 />
+
                 <SelectField
                   label={`محيط الصدر (${unit === "cm" ? "سم" : "إنش"})`}
                   value={bust}
@@ -729,6 +833,7 @@ export default function FazaaDrawer({
                   placeholder={unit === "cm" ? "سنتيمتر" : "إنش"}
                   options={bustOptions}
                 />
+
                 <SelectField
                   label={`محيط الخصر (${unit === "cm" ? "سم" : "إنش"})`}
                   value={waist}
@@ -739,6 +844,7 @@ export default function FazaaDrawer({
                   placeholder={unit === "cm" ? "سنتيمتر" : "إنش"}
                   options={waistOptions}
                 />
+
                 <SelectField
                   label={`محيط الأرداف (${unit === "cm" ? "سم" : "إنش"})`}
                   value={hip}
@@ -751,63 +857,75 @@ export default function FazaaDrawer({
                 />
               </div>
 
-              <div className="mt-4 flex items-center justify-between gap-2">
-                {/* زر حفظ/تحديث ثابت — يتغير شكله بعد التنفيذ ويثبت */}
+              <div className="mt-4">
                 <button
                   type="button"
                   onClick={saveMeasurements}
                   disabled={!canSave}
                   className={[
-                    "flex-1 rounded-2xl border py-2.5 text-xs font-extrabold transition",
+                    "w-full rounded-2xl border py-2.5 text-xs font-extrabold transition",
                     !canSave
                       ? "border-white/10 bg-black/20 text-neutral-500"
-                      : measMode === "updated"
+                      : measMode === "updated_done"
                       ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
-                      : measMode === "saved"
-                      ? "border-[#d6b56a]/45 bg-[#d6b56a]/15 text-white hover:border-[#d6b56a]/70"
+                      : measMode === "saved_done"
+                      ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
                       : "border-[#d6b56a]/45 bg-[#d6b56a]/15 text-white hover:border-[#d6b56a]/70",
                   ].join(" ")}
                 >
                   {savedSnapshot && hasAnySavedValue(savedSnapshot)
-                    ? measMode === "updated"
+                    ? measMode === "updated_done"
                       ? "تم تحديث المقاسات"
                       : "تحديث المقاسات"
-                    : measMode === "saved"
+                    : measMode === "saved_done"
                     ? "تم حفظ المقاسات"
                     : "حفظ المقاسات"}
                 </button>
-
-                {/* زر استخدام المحفوظ — ثابت ويثبت “تم استخدام…” */}
-                {savedSnapshot && hasAnySavedValue(savedSnapshot) ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!savedSnapshot) return;
-                      if (savedSnapshot.unit === "cm" || savedSnapshot.unit === "in")
-                        setUnit(savedSnapshot.unit);
-                      if (typeof savedSnapshot.heightCm === "string") setHeightCm(savedSnapshot.heightCm);
-                      if (typeof savedSnapshot.bust === "string") setBust(savedSnapshot.bust);
-                      if (typeof savedSnapshot.waist === "string") setWaist(savedSnapshot.waist);
-                      if (typeof savedSnapshot.hip === "string") setHip(savedSnapshot.hip);
-
-                      setIsDirty(false);
-                      setMeasMode("saved");
-                    }}
-                    className={[
-                      "flex-1 rounded-2xl border py-2.5 text-xs font-extrabold transition",
-                      "border-white/10 bg-black/20 text-white hover:bg-black/30",
-                    ].join(" ")}
-                  >
-                    {isDirty ? "استخدام المقاسات المحفوظة" : "تم استخدام المقاسات المحفوظة"}
-                  </button>
-                ) : (
-                  <div className="flex-1" />
-                )}
               </div>
 
               <div className="mt-2 text-[11px] text-neutral-400">
                 * الطول بالسنتيمتر دائمًا — ووحدة المحيطات حسب اختيارك.
               </div>
+            </div>
+          ) : null}
+
+          {/* History card (ONLY when logged in) */}
+          {isLoggedIn ? (
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+              <div className="text-sm font-extrabold text-white mb-3">السجل</div>
+
+              {historyLoading ? (
+                <div className="text-xs text-neutral-400">جاري تحميل السجل…</div>
+              ) : historyError ? (
+                <div className="text-xs text-rose-200">{historyError}</div>
+              ) : historyItems.length === 0 ? (
+                <div className="text-xs text-neutral-400">ما عندك نتائج سابقة</div>
+              ) : (
+                <div className="space-y-2">
+                  {historyItems.map((item) => (
+                    <button
+                      key={String(item.id)}
+                      type="button"
+                      onClick={() => {
+                        const q = item.query || "";
+                        onClose();
+                        router.push(`/results${q.startsWith("?") ? q : `?${q}`}`);
+                      }}
+                      className={[
+                        "w-full text-right rounded-2xl border border-white/10 bg-black/20 p-3",
+                        "hover:bg-black/30 hover:border-[#d6b56a]/30 transition",
+                      ].join(" ")}
+                    >
+                      <div className="text-sm font-semibold text-white">
+                        {item.title || "نتيجة"}
+                      </div>
+                      <div className="mt-1 text-xs text-neutral-400">
+                        {item.subtitle || ""}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           ) : null}
 
