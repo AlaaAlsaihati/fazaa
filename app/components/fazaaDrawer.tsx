@@ -182,6 +182,39 @@ function SelectField({
   );
 }
 
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className={[
+        "h-4 w-4 text-[#d6b56a] transition-transform",
+        open ? "rotate-180" : "rotate-0",
+      ].join(" ")}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.4}
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}
+
+function normalizeResultsTarget(query: string) {
+  // يدعم:
+  // 1) "/results?...."
+  // 2) "?...."
+  // 3) "occasion=...&..."
+  // 4) "/results" (نادر)
+  const q = (query || "").trim();
+  if (!q) return null;
+
+  if (q.startsWith("/results")) return q;
+  if (q.startsWith("?")) return `/results${q}`;
+  if (q.includes("=")) return `/results?${q}`;
+  return `/results`;
+}
+
 export default function FazaaDrawer({
   open,
   onClose,
@@ -209,7 +242,6 @@ export default function FazaaDrawer({
   const [showForgot, setShowForgot] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
 
-  // ❗بدون "تم تسجيل الدخول" — نخلي الرسائل للأخطاء/نجاح إرسال الريست فقط (غير مؤقتة)
   const [authMsg, setAuthMsg] = useState<{
     type: "ok" | "err";
     text: string;
@@ -226,7 +258,6 @@ export default function FazaaDrawer({
   const [savedLastUpdated, setSavedLastUpdated] = useState<number | null>(null);
 
   // ✅ زر واحد فقط + يثبت بعد التنفيذ
-  // idle = طبيعي، saved_done = تم حفظ، updated_done = تم تحديث
   const [saveStatus, setSaveStatus] = useState<
     "idle" | "saved_done" | "updated_done"
   >("idle");
@@ -238,7 +269,11 @@ export default function FazaaDrawer({
 
   const isLoggedIn = !!sessionUser;
 
-  // user-scoped key (عشان ما تختفي/تتلخبط بين حسابات)
+  // ✅ Accordion states
+  const [measOpen, setMeasOpen] = useState(true);
+  const [historyOpen, setHistoryOpen] = useState(true);
+
+  // user-scoped key
   const storageKey = useMemo(() => {
     const uid = sessionUser?.id;
     return uid ? `${STORAGE_KEY_BASE}:${uid}` : STORAGE_KEY_BASE;
@@ -367,7 +402,6 @@ export default function FazaaDrawer({
   }, [isLoggedIn, heightCm, bust, waist, hip, unit]);
 
   function markDirty() {
-    // ✅ يرجع طبيعي فقط إذا المستخدم غيّر رقم
     setSaveStatus("idle");
   }
 
@@ -412,7 +446,7 @@ export default function FazaaDrawer({
 
     const payload: SavedPayload = {
       unit,
-      heightCm, // ✅ يتخزن دائمًا
+      heightCm,
       bust,
       waist,
       hip,
@@ -435,7 +469,6 @@ export default function FazaaDrawer({
       });
       if (error) throw error;
 
-      // ✅ بدون رسالة "تم تسجيل الدخول"
       setShowForgot(false);
       setPassword("");
       setAuthMsg(null);
@@ -453,13 +486,10 @@ export default function FazaaDrawer({
       const { error } = await supabase.auth.signUp({
         email: cleanEmail,
         password,
-        options: {
-          data: { name: cleanName },
-        },
+        options: { data: { name: cleanName } },
       });
       if (error) throw error;
 
-      // بدون مبالغة: نخليها رسالة ثابتة (مو مؤقتة)
       setAuthMsg({
         type: "ok",
         text: "تم إنشاء الحساب. إذا عندك تفعيل بالبريد، راح توصلك رسالة.",
@@ -486,7 +516,6 @@ export default function FazaaDrawer({
     }
 
     try {
-      // لازم يكون عندك صفحة /auth/reset تكمل تغيير كلمة المرور
       const redirectTo = `${window.location.origin}/auth/reset`;
 
       const { error } = await supabase.auth.resetPasswordForEmail(e, {
@@ -494,7 +523,6 @@ export default function FazaaDrawer({
       });
       if (error) throw error;
 
-      // رسالة ثابتة (مو مؤقتة)
       setAuthMsg({
         type: "ok",
         text: "تم إرسال رابط إعادة كلمة المرور على إيميلك",
@@ -530,7 +558,6 @@ export default function FazaaDrawer({
           .limit(10);
 
         if (cancelled) return;
-
         if (error) throw error;
 
         setHistory((data || []) as HistoryItem[]);
@@ -605,12 +632,22 @@ export default function FazaaDrawer({
         </div>
 
         <div className="p-5 space-y-4 overflow-y-auto h-[calc(100%-64px)]">
-          {/* 1) ACCOUNT */}
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-sm font-extrabold text-white">الحساب</div>
+          {/* ✅ ACCOUNT: لو مسجل -> بدون كرت */}
+          {isLoggedIn ? (
+            <div className="px-1">
+              <div className="text-white font-extrabold text-sm">
+                {sessionUser?.name || "مستخدم"}
+              </div>
+              <div className="text-neutral-400 text-xs mt-1">
+                {sessionUser?.email}
+              </div>
+            </div>
+          ) : (
+            /* ❗ إذا مو مسجل: نخلي نفس كرت الحساب القديم (لأنه نموذج) */
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-sm font-extrabold text-white">الحساب</div>
 
-              {!isLoggedIn ? (
                 <div className="inline-flex rounded-2xl border border-[#d6b56a]/25 bg-black/20 p-1">
                   <button
                     type="button"
@@ -645,304 +682,299 @@ export default function FazaaDrawer({
                     إنشاء حساب
                   </button>
                 </div>
-              ) : null}
-            </div>
-
-            {/* رسائل ثابتة (بدون تم تسجيل الدخول) */}
-            {authMsg ? (
-              <div
-                className={[
-                  "mb-3 rounded-2xl px-3 py-2 text-xs font-semibold border",
-                  authMsg.type === "ok"
-                    ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
-                    : "border-rose-400/30 bg-rose-500/10 text-rose-100",
-                ].join(" ")}
-              >
-                {authMsg.text}
-              </div>
-            ) : null}
-
-            {!isLoggedIn ? (
-              <>
-                {showForgot ? (
-                  /* Forgot Password (inside drawer) */
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-xs font-semibold text-neutral-200">
-                        الإيميل
-                      </label>
-                      <input
-                        value={forgotEmail}
-                        onChange={(e) => setForgotEmail(e.target.value)}
-                        placeholder="example@email.com"
-                        className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
-                      />
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={handleSendReset}
-                        className="flex-1 rounded-2xl border border-[#d6b56a]/45 bg-[#d6b56a]/15 py-2.5 text-xs font-extrabold text-white hover:border-[#d6b56a]/70 transition"
-                      >
-                        إرسال رابط
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowForgot(false);
-                          setAuthMsg(null);
-                        }}
-                        className="flex-1 rounded-2xl border border-white/10 bg-black/20 py-2.5 text-xs font-extrabold text-white hover:bg-black/30 transition"
-                      >
-                        رجوع
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    {tab === "register" ? (
-                      <div className="space-y-3">
-                        <div>
-                          <label className="text-xs font-semibold text-neutral-200">
-                            الاسم
-                          </label>
-                          <input
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-xs font-semibold text-neutral-200">
-                            البريد الإلكتروني
-                          </label>
-                          <input
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-xs font-semibold text-neutral-200">
-                            كلمة المرور
-                          </label>
-                          <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
-                          />
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={handleRegister}
-                          className="w-full rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/15 py-2.5 text-xs font-extrabold text-white hover:border-[#d6b56a]/70 transition"
-                        >
-                          إنشاء
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <div>
-                          <label className="text-xs font-semibold text-neutral-200">
-                            البريد الإلكتروني
-                          </label>
-                          <input
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-xs font-semibold text-neutral-200">
-                            كلمة المرور
-                          </label>
-                          <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
-                          />
-                        </div>
-
-                        {/* نسيت كلمة المرور داخل الداور */}
-                        <div className="flex items-center justify-start">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setShowForgot(true);
-                              setForgotEmail(email.trim());
-                              setAuthMsg(null);
-                            }}
-                            className="text-xs font-bold text-[#d6b56a] hover:text-[#f3e0b0] transition"
-                          >
-                            نسيت كلمة المرور؟
-                          </button>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={handleLogin}
-                          className="w-full rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/15 py-2.5 text-xs font-extrabold text-white hover:border-[#d6b56a]/70 transition"
-                        >
-                          دخول
-                        </button>
-                      </div>
-                    )}
-                  </>
-                )}
-              </>
-            ) : (
-              // ✅ إذا مسجلة دخول: الاسم + الإيميل فقط (بدون تم تسجيل الدخول)
-              <div className="text-xs text-neutral-300 space-y-1">
-                <div className="font-extrabold text-white">
-                  {sessionUser?.name || "مستخدم"}
-                </div>
-                <div className="text-neutral-400">{sessionUser?.email}</div>
-              </div>
-            )}
-          </div>
-
-          {/* 2) MEASUREMENTS (only when logged in) */}
-          {isLoggedIn ? (
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-extrabold text-white">المقاسات</div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-semibold text-neutral-300">
-                    وحدة المحيطات:
-                  </span>
-                  <UnitToggle value={unit} onChange={onChangeUnit} />
-                </div>
               </div>
 
-              {/* تنبيه stale اختياري (أنـيق ومش مزعج) */}
-              {savedSnapshot && hasAnySavedValue(savedSnapshot) && isStale ? (
-                <div className="mt-3 rounded-2xl border border-[#d6b56a]/25 bg-black/20 px-3 py-2 text-[11px] text-[#f3e0b0]">
-                  مر {STALE_DAYS} يوم على آخر تحديث للمقاسات
-                </div>
-              ) : null}
-
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <SelectField
-                  label="الطول (سم)"
-                  value={heightCm}
-                  onChange={(v) => {
-                    markDirty();
-                    setHeightCm(v);
-                  }}
-                  placeholder="سنتيمتر"
-                  options={HEIGHT_OPTIONS}
-                />
-
-                <SelectField
-                  label={`محيط الصدر (${unit === "cm" ? "سم" : "إنش"})`}
-                  value={bust}
-                  onChange={(v) => {
-                    markDirty();
-                    setBust(v);
-                  }}
-                  placeholder={unit === "cm" ? "سنتيمتر" : "إنش"}
-                  options={bustOptions}
-                />
-
-                <SelectField
-                  label={`محيط الخصر (${unit === "cm" ? "سم" : "إنش"})`}
-                  value={waist}
-                  onChange={(v) => {
-                    markDirty();
-                    setWaist(v);
-                  }}
-                  placeholder={unit === "cm" ? "سنتيمتر" : "إنش"}
-                  options={waistOptions}
-                />
-
-                <SelectField
-                  label={`محيط الأرداف (${unit === "cm" ? "سم" : "إنش"})`}
-                  value={hip}
-                  onChange={(v) => {
-                    markDirty();
-                    setHip(v);
-                  }}
-                  placeholder={unit === "cm" ? "سنتيمتر" : "إنش"}
-                  options={hipOptions}
-                />
-              </div>
-
-              {/* زر واحد فقط */}
-              <div className="mt-4">
-                <button
-                  type="button"
-                  onClick={saveMeasurements}
-                  disabled={!canSave}
-                  className={saveButtonClass}
+              {authMsg ? (
+                <div
+                  className={[
+                    "mb-3 rounded-2xl px-3 py-2 text-xs font-semibold border",
+                    authMsg.type === "ok"
+                      ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
+                      : "border-rose-400/30 bg-rose-500/10 text-rose-100",
+                  ].join(" ")}
                 >
-                  {saveButtonText}
-                </button>
-
-                <div className="mt-2 text-[11px] text-neutral-400">
-                  * الطول بالسنتيمتر دائمًا — ووحدة المحيطات حسب اختيارك.
+                  {authMsg.text}
                 </div>
-              </div>
-            </div>
-          ) : null}
+              ) : null}
 
-          {/* 3) HISTORY (only when logged in) */}
-          {isLoggedIn ? (
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-              <div className="text-sm font-extrabold text-white mb-3">
-                آخر النتائج
-              </div>
+              {showForgot ? (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-semibold text-neutral-200">
+                      الإيميل
+                    </label>
+                    <input
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      placeholder="example@email.com"
+                      className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
+                    />
+                  </div>
 
-              {historyLoading ? (
-                <div className="text-xs text-neutral-400">جاري التحميل…</div>
-              ) : historyErr ? (
-                <div className="text-xs text-rose-200/90">{historyErr}</div>
-              ) : history.length === 0 ? (
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-3 text-xs text-neutral-300">
-                  ما عندك نتائج سابقة
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {history.map((h) => (
+                  <div className="flex gap-2">
                     <button
-                      key={h.id}
+                      type="button"
+                      onClick={handleSendReset}
+                      className="flex-1 rounded-2xl border border-[#d6b56a]/45 bg-[#d6b56a]/15 py-2.5 text-xs font-extrabold text-white hover:border-[#d6b56a]/70 transition"
+                    >
+                      إرسال رابط
+                    </button>
+                    <button
                       type="button"
                       onClick={() => {
-                        if (!h.query) return;
-
-                        const q = h.query.startsWith("?")
-                          ? h.query
-                          : `?${h.query}`;
-
-                        onClose();
-                        router.push(`/results${q}`);
+                        setShowForgot(false);
+                        setAuthMsg(null);
                       }}
-                      className={[
-                        "w-full text-right rounded-2xl border border-white/10 bg-black/20 px-3 py-3",
-                        "hover:bg-black/30 transition",
-                      ].join(" ")}
+                      className="flex-1 rounded-2xl border border-white/10 bg-black/20 py-2.5 text-xs font-extrabold text-white hover:bg-black/30 transition"
                     >
-                      <div className="text-xs font-extrabold text-white">
-                        {h.title}
-                      </div>
-                      <div className="mt-1 text-[11px] text-neutral-400">
-                        {h.subtitle}
-                      </div>
+                      رجوع
                     </button>
-                  ))}
+                  </div>
+                </div>
+              ) : tab === "register" ? (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-semibold text-neutral-200">
+                      الاسم
+                    </label>
+                    <input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-neutral-200">
+                      البريد الإلكتروني
+                    </label>
+                    <input
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-neutral-200">
+                      كلمة المرور
+                    </label>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleRegister}
+                    className="w-full rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/15 py-2.5 text-xs font-extrabold text-white hover:border-[#d6b56a]/70 transition"
+                  >
+                    إنشاء
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-semibold text-neutral-200">
+                      البريد الإلكتروني
+                    </label>
+                    <input
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-neutral-200">
+                      كلمة المرور
+                    </label>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-start">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowForgot(true);
+                        setForgotEmail(email.trim());
+                        setAuthMsg(null);
+                      }}
+                      className="text-xs font-bold text-[#d6b56a] hover:text-[#f3e0b0] transition"
+                    >
+                      نسيت كلمة المرور؟
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleLogin}
+                    className="w-full rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/15 py-2.5 text-xs font-extrabold text-white hover:border-[#d6b56a]/70 transition"
+                  >
+                    دخول
+                  </button>
                 </div>
               )}
             </div>
+          )}
+
+          {/* ✅ MEASUREMENTS Accordion */}
+          {isLoggedIn ? (
+            <div className="rounded-3xl border border-white/10 bg-white/5 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setMeasOpen((v) => !v)}
+                className="w-full px-4 py-4 flex items-center justify-between"
+              >
+                <div className="text-sm font-extrabold text-white">المقاسات</div>
+                <Chevron open={measOpen} />
+              </button>
+
+              {measOpen ? (
+                <div className="px-4 pb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="text-[11px] font-semibold text-neutral-300">
+                      وحدة المحيطات:
+                    </div>
+                    <UnitToggle value={unit} onChange={onChangeUnit} />
+                  </div>
+
+                  {savedSnapshot && hasAnySavedValue(savedSnapshot) && isStale ? (
+                    <div className="mt-3 rounded-2xl border border-[#d6b56a]/25 bg-black/20 px-3 py-2 text-[11px] text-[#f3e0b0]">
+                      مر {STALE_DAYS} يوم على آخر تحديث للمقاسات
+                    </div>
+                  ) : null}
+
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <SelectField
+                      label="الطول (سم)"
+                      value={heightCm}
+                      onChange={(v) => {
+                        markDirty();
+                        setHeightCm(v);
+                      }}
+                      placeholder="سنتيمتر"
+                      options={HEIGHT_OPTIONS}
+                    />
+
+                    <SelectField
+                      label={`محيط الصدر (${unit === "cm" ? "سم" : "إنش"})`}
+                      value={bust}
+                      onChange={(v) => {
+                        markDirty();
+                        setBust(v);
+                      }}
+                      placeholder={unit === "cm" ? "سنتيمتر" : "إنش"}
+                      options={bustOptions}
+                    />
+
+                    <SelectField
+                      label={`محيط الخصر (${unit === "cm" ? "سم" : "إنش"})`}
+                      value={waist}
+                      onChange={(v) => {
+                        markDirty();
+                        setWaist(v);
+                      }}
+                      placeholder={unit === "cm" ? "سنتيمتر" : "إنش"}
+                      options={waistOptions}
+                    />
+
+                    <SelectField
+                      label={`محيط الأرداف (${unit === "cm" ? "سم" : "إنش"})`}
+                      value={hip}
+                      onChange={(v) => {
+                        markDirty();
+                        setHip(v);
+                      }}
+                      placeholder={unit === "cm" ? "سنتيمتر" : "إنش"}
+                      options={hipOptions}
+                    />
+                  </div>
+
+                  <div className="mt-4">
+                    <button
+                      type="button"
+                      onClick={saveMeasurements}
+                      disabled={!canSave}
+                      className={saveButtonClass}
+                    >
+                      {saveButtonText}
+                    </button>
+
+                    <div className="mt-2 text-[11px] text-neutral-400">
+                      * الطول بالسنتيمتر دائمًا — ووحدة المحيطات حسب اختيارك.
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           ) : null}
 
-          {/* 4) LOGOUT (آخر شي + لحاله) */}
+          {/* ✅ HISTORY Accordion */}
+          {isLoggedIn ? (
+            <div className="rounded-3xl border border-white/10 bg-white/5 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setHistoryOpen((v) => !v)}
+                className="w-full px-4 py-4 flex items-center justify-between"
+              >
+                <div className="text-sm font-extrabold text-white">
+                  النتائج المحفوظة
+                </div>
+                <Chevron open={historyOpen} />
+              </button>
+
+              {historyOpen ? (
+                <div className="px-4 pb-4">
+                  {historyLoading ? (
+                    <div className="text-xs text-neutral-400">جاري التحميل…</div>
+                  ) : historyErr ? (
+                    <div className="text-xs text-rose-200/90">{historyErr}</div>
+                  ) : history.length === 0 ? (
+                    <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-3 text-xs text-neutral-300">
+                      ما عندك نتائج محفوظة للحين
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {history.map((h) => (
+                        <button
+                          key={h.id}
+                          type="button"
+                          onClick={() => {
+                            const target = normalizeResultsTarget(h.query);
+                            if (!target) return;
+                            onClose();
+                            router.push(target);
+                          }}
+                          className={[
+                            "w-full text-right rounded-2xl border border-white/10 bg-black/20 px-3 py-3",
+                            "hover:bg-black/30 transition",
+                          ].join(" ")}
+                        >
+                          <div className="text-xs font-extrabold text-white">
+                            {h.title}
+                          </div>
+                          <div className="mt-1 text-[11px] text-neutral-400">
+                            {h.subtitle}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {/* 4) LOGOUT */}
           {isLoggedIn ? (
             <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
               <button
