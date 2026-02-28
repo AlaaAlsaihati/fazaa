@@ -23,7 +23,7 @@ type HistoryItem = {
   id: string;
   title: string;
   subtitle: string;
-  url: string;
+  query: string; // ✅ query
   created_at?: string;
 };
 
@@ -151,7 +151,11 @@ function SelectField({
           </option>
 
           {options.map((n) => (
-            <option key={n} value={String(n)} className="bg-neutral-950 text-white">
+            <option
+              key={n}
+              value={String(n)}
+              className="bg-neutral-950 text-white"
+            >
               {n}
             </option>
           ))}
@@ -166,7 +170,11 @@ function SelectField({
             stroke="currentColor"
             strokeWidth={2}
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M19 9l-7 7-7-7"
+            />
           </svg>
         </div>
       </div>
@@ -202,9 +210,10 @@ export default function FazaaDrawer({
   const [forgotEmail, setForgotEmail] = useState("");
 
   // ❗بدون "تم تسجيل الدخول" — نخلي الرسائل للأخطاء/نجاح إرسال الريست فقط (غير مؤقتة)
-  const [authMsg, setAuthMsg] = useState<{ type: "ok" | "err"; text: string } | null>(
-    null
-  );
+  const [authMsg, setAuthMsg] = useState<{
+    type: "ok" | "err";
+    text: string;
+  } | null>(null);
 
   // --- measurements in drawer (only logged in)
   const [unit, setUnit] = useState<Unit>("cm"); // وحدة المحيطات
@@ -218,9 +227,9 @@ export default function FazaaDrawer({
 
   // ✅ زر واحد فقط + يثبت بعد التنفيذ
   // idle = طبيعي، saved_done = تم حفظ، updated_done = تم تحديث
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saved_done" | "updated_done">(
-    "idle"
-  );
+  const [saveStatus, setSaveStatus] = useState<
+    "idle" | "saved_done" | "updated_done"
+  >("idle");
 
   // تاريخ النتائج
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -254,18 +263,20 @@ export default function FazaaDrawer({
       );
     })();
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_evt, session) => {
-      const u = session?.user;
-      setSessionUser(
-        u
-          ? {
-              id: u.id,
-              email: u.email ?? null,
-              name: (u.user_metadata?.name as string) ?? null,
-            }
-          : null
-      );
-    });
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_evt, session) => {
+        const u = session?.user;
+        setSessionUser(
+          u
+            ? {
+                id: u.id,
+                email: u.email ?? null,
+                name: (u.user_metadata?.name as string) ?? null,
+              }
+            : null
+        );
+      }
+    );
 
     return () => {
       mounted = false;
@@ -278,7 +289,10 @@ export default function FazaaDrawer({
     if (!open) return;
 
     const rawNew = safeLocalStorageGet(storageKey);
-    const rawOld = storageKey !== STORAGE_KEY_BASE ? safeLocalStorageGet(STORAGE_KEY_BASE) : null;
+    const rawOld =
+      storageKey !== STORAGE_KEY_BASE
+        ? safeLocalStorageGet(STORAGE_KEY_BASE)
+        : null;
     const raw = rawNew || rawOld;
 
     if (!raw) {
@@ -297,7 +311,9 @@ export default function FazaaDrawer({
     try {
       const saved = JSON.parse(raw) as SavedPayload;
       setSavedSnapshot(saved);
-      setSavedLastUpdated(typeof saved.lastUpdated === "number" ? saved.lastUpdated : null);
+      setSavedLastUpdated(
+        typeof saved.lastUpdated === "number" ? saved.lastUpdated : null
+      );
 
       if (saved.unit === "cm" || saved.unit === "in") setUnit(saved.unit);
       if (typeof saved.heightCm === "string") setHeightCm(saved.heightCm);
@@ -473,11 +489,16 @@ export default function FazaaDrawer({
       // لازم يكون عندك صفحة /auth/reset تكمل تغيير كلمة المرور
       const redirectTo = `${window.location.origin}/auth/reset`;
 
-      const { error } = await supabase.auth.resetPasswordForEmail(e, { redirectTo });
+      const { error } = await supabase.auth.resetPasswordForEmail(e, {
+        redirectTo,
+      });
       if (error) throw error;
 
       // رسالة ثابتة (مو مؤقتة)
-      setAuthMsg({ type: "ok", text: "تم إرسال رابط إعادة كلمة المرور على إيميلك" });
+      setAuthMsg({
+        type: "ok",
+        text: "تم إرسال رابط إعادة كلمة المرور على إيميلك",
+      });
       setShowForgot(false);
     } catch (err: any) {
       setAuthMsg({ type: "err", text: err?.message || "تعذر إرسال الرابط" });
@@ -501,14 +522,9 @@ export default function FazaaDrawer({
       setHistoryErr(null);
 
       try {
-        /**
-         * ✳️ غيّري اسم الجدول/الأعمدة إذا مختلفة عندك:
-         * table: fazaa_history
-         * columns: id, user_id, title, subtitle, url, created_at
-         */
         const { data, error } = await supabase
           .from("fazaa_history")
-          .select("id,title,subtitle,url,created_at")
+          .select("id,title,subtitle,query,created_at")
           .eq("user_id", sessionUser.id)
           .order("created_at", { ascending: false })
           .limit(10);
@@ -652,7 +668,9 @@ export default function FazaaDrawer({
                   /* Forgot Password (inside drawer) */
                   <div className="space-y-3">
                     <div>
-                      <label className="text-xs font-semibold text-neutral-200">الإيميل</label>
+                      <label className="text-xs font-semibold text-neutral-200">
+                        الإيميل
+                      </label>
                       <input
                         value={forgotEmail}
                         onChange={(e) => setForgotEmail(e.target.value)}
@@ -686,7 +704,9 @@ export default function FazaaDrawer({
                     {tab === "register" ? (
                       <div className="space-y-3">
                         <div>
-                          <label className="text-xs font-semibold text-neutral-200">الاسم</label>
+                          <label className="text-xs font-semibold text-neutral-200">
+                            الاسم
+                          </label>
                           <input
                             value={name}
                             onChange={(e) => setName(e.target.value)}
@@ -780,7 +800,9 @@ export default function FazaaDrawer({
             ) : (
               // ✅ إذا مسجلة دخول: الاسم + الإيميل فقط (بدون تم تسجيل الدخول)
               <div className="text-xs text-neutral-300 space-y-1">
-                <div className="font-extrabold text-white">{sessionUser?.name || "مستخدم"}</div>
+                <div className="font-extrabold text-white">
+                  {sessionUser?.name || "مستخدم"}
+                </div>
                 <div className="text-neutral-400">{sessionUser?.email}</div>
               </div>
             )}
@@ -793,7 +815,9 @@ export default function FazaaDrawer({
                 <div className="text-sm font-extrabold text-white">المقاسات</div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-semibold text-neutral-300">وحدة المحيطات:</span>
+                  <span className="text-[11px] font-semibold text-neutral-300">
+                    وحدة المحيطات:
+                  </span>
                   <UnitToggle value={unit} onChange={onChangeUnit} />
                 </div>
               </div>
@@ -872,7 +896,9 @@ export default function FazaaDrawer({
           {/* 3) HISTORY (only when logged in) */}
           {isLoggedIn ? (
             <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-              <div className="text-sm font-extrabold text-white mb-3">آخر النتائج</div>
+              <div className="text-sm font-extrabold text-white mb-3">
+                آخر النتائج
+              </div>
 
               {historyLoading ? (
                 <div className="text-xs text-neutral-400">جاري التحميل…</div>
@@ -889,17 +915,26 @@ export default function FazaaDrawer({
                       key={h.id}
                       type="button"
                       onClick={() => {
-                        if (!h.url) return;
+                        if (!h.query) return;
+
+                        const q = h.query.startsWith("?")
+                          ? h.query
+                          : `?${h.query}`;
+
                         onClose();
-                        router.push(h.url);
+                        router.push(`/results${q}`);
                       }}
                       className={[
                         "w-full text-right rounded-2xl border border-white/10 bg-black/20 px-3 py-3",
                         "hover:bg-black/30 transition",
                       ].join(" ")}
                     >
-                      <div className="text-xs font-extrabold text-white">{h.title}</div>
-                      <div className="mt-1 text-[11px] text-neutral-400">{h.subtitle}</div>
+                      <div className="text-xs font-extrabold text-white">
+                        {h.title}
+                      </div>
+                      <div className="mt-1 text-[11px] text-neutral-400">
+                        {h.subtitle}
+                      </div>
                     </button>
                   ))}
                 </div>

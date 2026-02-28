@@ -137,9 +137,6 @@ export default function SkinClient() {
   // ✅ Drawer state
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // ✅ حالياً نخليه "غير مسجل"
-  const userName: string | null = null;
-
   function next() {
     if (!depth || !undertone) return;
 
@@ -260,32 +257,11 @@ export default function SkinClient() {
         </div>
       </div>
 
-      {/* ✅ ثلاث نقاط (نفس باقي الصفحات) */}
+      {/* ✅ ثلاث نقاط */}
       <ThreeDotsButton onClick={() => setDrawerOpen(true)} />
 
-      {/* ✅ Drawer */}
-      <FazaaDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        userName={userName}
-        history={[]}
-        onLoginClick={() => {
-          setDrawerOpen(false);
-          alert("صفحة الدخول/التسجيل بنضيفها بعدين ✨");
-        }}
-        onMeasurementsClick={() => {
-          setDrawerOpen(false);
-          alert("صفحة/مودال المقاسات داخل الدروار بنسويها الخطوة الجاية ✨");
-        }}
-        onHistoryClick={() => {
-          setDrawerOpen(false);
-          alert("الهستوري بيشتغل لما نربطه بالحساب ✨");
-        }}
-        onLogoutClick={() => {
-          setDrawerOpen(false);
-          alert("تسجيل الخروج بيشتغل لما نربطه بالحساب ✨");
-        }}
-      />
+      {/* ✅ Drawer (الاستدعاء الجديد الصحيح) */}
+      <FazaaDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
 
       {/* زر الرجوع */}
       <BackFab onClick={() => router.back()} />

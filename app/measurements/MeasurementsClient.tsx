@@ -16,7 +16,7 @@ type InitialParams = {
 type BodyShapeArabic = "ساعة رملية" | "كمثري" | "مستقيم" | "تفاحة";
 type Unit = "cm" | "in";
 
-const STORAGE_KEY = "fazaa_measurements_v1";
+const STORAGE_KEY = "fazaa_measurements_v1"; // ✅ صار Base
 const STALE_DAYS = 60;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -224,6 +224,7 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
 
   // Auth (Supabase ONLY)
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null); // ✅
 
   useEffect(() => {
     let mounted = true;
@@ -231,11 +232,15 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
     (async () => {
       const { data } = await supabase.auth.getSession();
       if (!mounted) return;
-      setIsLoggedIn(!!data.session?.user);
+      const u = data.session?.user ?? null;
+      setIsLoggedIn(!!u);
+      setUserId(u?.id ?? null);
     })();
 
     const { data: listener } = supabase.auth.onAuthStateChange((_evt, session) => {
-      setIsLoggedIn(!!session?.user);
+      const u = session?.user ?? null;
+      setIsLoggedIn(!!u);
+      setUserId(u?.id ?? null);
     });
 
     return () => {
@@ -243,6 +248,11 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
       listener.subscription.unsubscribe();
     };
   }, []);
+
+  // ✅ user-scoped key (مثل الداور)
+  const storageKey = useMemo(() => {
+    return userId ? `${STORAGE_KEY}:${userId}` : STORAGE_KEY;
+  }, [userId]);
 
   // Unit
   const [unit, setUnit] = useState<Unit>("cm");
@@ -264,9 +274,11 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
   // آخر إجراء ثبت للمستخدم (يثبت لين يتغير شيء)
   const [lastAction, setLastAction] = useState<"saved" | "applied" | null>(null);
 
-  // Load saved (no auto-apply)
+  // ✅ Load saved (no auto-apply) + migrate old->new مرة وحدة
   useEffect(() => {
-    const raw = safeLocalStorageGet(STORAGE_KEY);
+    const rawNew = safeLocalStorageGet(storageKey);
+    const rawOld = storageKey !== STORAGE_KEY ? safeLocalStorageGet(STORAGE_KEY) : null;
+    const raw = rawNew || rawOld;
 
     if (!raw) {
       setSavedSnapshot(null);
@@ -280,12 +292,17 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
       setSavedSnapshot(saved);
       setSavedLastUpdated(typeof saved.lastUpdated === "number" ? saved.lastUpdated : null);
       setLastAction(null);
+
+      // migrate once
+      if (userId && rawOld && !rawNew) {
+        safeLocalStorageSet(storageKey, rawOld);
+      }
     } catch {
       setSavedSnapshot(null);
       setSavedLastUpdated(null);
       setLastAction(null);
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, storageKey, userId]);
 
   const hasSaved = useMemo(() => {
     return isLoggedIn && hasAnySavedValue(savedSnapshot);
@@ -377,7 +394,8 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
       lastUpdated: Date.now(),
     };
 
-    safeLocalStorageSet(STORAGE_KEY, JSON.stringify(payload));
+    // ✅ write user-scoped
+    safeLocalStorageSet(storageKey, JSON.stringify(payload));
 
     setSavedSnapshot(payload);
     setSavedLastUpdated(payload.lastUpdated ?? null);
@@ -466,16 +484,7 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
     >
       <ThreeDotsButton onClick={() => setMenuOpen(true)} />
 
-      <FazaaDrawer
-        open={menuOpen}
-        onClose={() => setMenuOpen(false)}
-        userName={null}
-        history={history}
-        onLoginClick={() => setMenuOpen(false)}
-        onRegisterClick={() => setMenuOpen(false)}
-        onHistoryClick={() => setMenuOpen(false)}
-        onLogoutClick={() => setMenuOpen(false)}
-      />
+      <FazaaDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div className="mx-auto max-w-2xl">
         <header className="mb-6 text-center">
@@ -567,7 +576,6 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
                   "text-xs font-extrabold transition",
                   "border-[#d6b56a]/45 bg-black/20 text-white hover:border-[#d6b56a]/70",
                   "disabled:opacity-60 disabled:hover:border-[#d6b56a]/45",
-                  // لمسة “تم …” بشكل احترافي بدون أيقونات
                   lastAction ? "bg-[#d6b56a]/10 border-[#d6b56a]/60" : "",
                 ].join(" ")}
               >

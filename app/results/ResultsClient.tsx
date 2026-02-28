@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   products,
@@ -13,6 +13,7 @@ import { recommendSize } from "@/app/lib/recommendSize";
 import { STORE_MAP } from "@/app/data/stores";
 import SiteFooter from "@/app/components/FazaaFooter";
 import FazaaDrawer from "@/app/components/fazaaDrawer";
+import { supabase } from "@/app/lib/supabaseClient";
 
 type BodyShape = "" | BodyShapeArabic;
 
@@ -58,6 +59,32 @@ function ThreeDotsButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+/* ===== Labels (مطابقة لقيمك) ===== */
+function occasionLabel(o: string) {
+  if (o === "wedding") return "زواج";
+  if (o === "engagement") return "ملّكة / خطوبة";
+  if (o === "event") return "مناسبة";
+  if (o === "abaya") return "عباية";
+  if (o === "ramadan") return "رمضان";
+  if (o === "beach") return "بحر";
+  if (o === "chalets") return "شاليهات";
+  return "نتائج";
+}
+
+function subtitleFromParams(params: {
+  weddingStyle?: string;
+  depth?: string;
+  undertone?: string;
+  bodyShape?: string;
+}) {
+  const parts: string[] = [];
+  if (params.weddingStyle) parts.push(`ستايل: ${params.weddingStyle}`);
+  if (params.depth) parts.push(`العمق: ${params.depth}`);
+  if (params.undertone) parts.push(`الأندرتون: ${params.undertone}`);
+  if (params.bodyShape) parts.push(`شكل الجسم: ${params.bodyShape}`);
+  return parts.length ? parts.join(" • ") : "آخر تجربة محفوظة";
+}
+
 export default function ResultsClient({
   initialParams = {},
 }: {
@@ -69,13 +96,10 @@ export default function ResultsClient({
   // ✅ Drawer state
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // ✅ "حساب" لاحقاً — حالياً نخليه null (يعني غير مسجل)
-  const userName: string | null = null;
-  const history: { id: string; title: string; subtitle: string }[] = [];
-
   const occasion = ((initialParams.occasion ?? sp.get("occasion") ?? "") as
     | Occasion
     | "");
+
   const weddingStyle = ((initialParams.weddingStyle ??
     sp.get("weddingStyle") ??
     "") as WeddingStyle | "");
@@ -92,29 +116,114 @@ export default function ResultsClient({
     sp.get("bodyShape") ??
     "") as BodyShape);
 
+  const queryString = useMemo(() => sp.toString(), [sp]);
+
+  // ✅ يمنع الحفظ المكرر داخل نفس الصفحة
+  const savedOnceRef = useRef<string>("");
+
+  // ✅ حفظ الهستري في Supabase (إذا مسجل دخول) — بدون تكرار
+  useEffect(() => {
+    if (!occasion) return;
+
+    const query = `/results?${queryString}`;
+
+    // منع تكرار داخل نفس الرندر/التغييرات
+    if (savedOnceRef.current === query) return;
+    savedOnceRef.current = query;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const u = data.session?.user;
+        if (!u) return;
+
+        const title = occasionLabel(String(occasion));
+
+        const subtitle =
+          occasion === "abaya"
+            ? subtitleFromParams({
+                weddingStyle: "",
+                depth,
+                undertone,
+                bodyShape: bodyShape || "",
+              })
+            : subtitleFromParams({
+                weddingStyle: weddingStyle || "",
+                depth,
+                undertone,
+              });
+
+        // ✅ 1) شيّك إذا نفس query محفوظة قبل (عشان ما تتكرر)
+        const { data: exists, error: existsErr } = await supabase
+          .from("fazaa_history")
+          .select("id")
+          .eq("user_id", u.id)
+          .eq("query", query)
+          .limit(1);
+
+        if (cancelled) return;
+        if (existsErr) {
+          // silent
+        } else if (exists && exists.length > 0) {
+          return; // موجودة مسبقًا
+        }
+
+        // ✅ 2) insert مرّة وحدة
+        const { error } = await supabase.from("fazaa_history").insert({
+          user_id: u.id,
+          title,
+          subtitle,
+          query,
+        });
+
+        if (cancelled) return;
+        if (error) {
+          // silent
+        }
+      } catch {
+        // silent
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [occasion, weddingStyle, depth, undertone, bodyShape, queryString]);
+
   const top6 = useMemo(() => {
     if (!occasion) return [];
 
     return products
       .filter((p) => {
         if (p.occasion !== occasion) return false;
-        if (occasion === "wedding" && p.weddingStyle !== weddingStyle)
-          return false;
+
+        // زواج: لازم يطابق الستايل
+        if (occasion === "wedding" && p.weddingStyle !== weddingStyle) return false;
+
+        // عباية: بس abaya
         if (occasion === "abaya" && p.category !== "abaya") return false;
+
+        // غير العباية: لا تعرض abaya
         if (occasion !== "abaya" && p.category === "abaya") return false;
+
         return true;
       })
       .map((p) => {
         let score = 4;
+
         if (depth && p.bestFor?.depth?.includes(depth as any)) score += 3;
-        if (undertone && p.bestFor?.undertone?.includes(undertone as any))
-          score += 3;
+        if (undertone && p.bestFor?.undertone?.includes(undertone as any)) score += 3;
+
         if (
           occasion === "abaya" &&
           bodyShape &&
           p.abayaBestForShapes?.includes(bodyShape)
-        )
+        ) {
           score += 6;
+        }
+
         return { p, score };
       })
       .sort((a, b) => b.score - a.score)
@@ -130,30 +239,8 @@ export default function ResultsClient({
       {/* ✅ الثلاث نقاط */}
       <ThreeDotsButton onClick={() => setMenuOpen(true)} />
 
-      {/* ✅ Drawer */}
-      <FazaaDrawer
-        open={menuOpen}
-        onClose={() => setMenuOpen(false)}
-        userName={userName}
-        history={history}
-        onLoginClick={() => {
-          // لاحقاً: صفحة/مودال تسجيل
-          setMenuOpen(false);
-        }}
-        onMeasurementsClick={() => {
-          setMenuOpen(false);
-          router.push("/measurements");
-        }}
-        onHistoryClick={(id) => {
-          // لاحقاً: فتح تجربة قديمة
-          console.log("history", id);
-          setMenuOpen(false);
-        }}
-        onLogoutClick={() => {
-          // لاحقاً
-          setMenuOpen(false);
-        }}
-      />
+      {/* ✅ Drawer (المفروض توقيعه open/onClose فقط) */}
+      <FazaaDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div className="mx-auto max-w-6xl">
         <div className="text-center">
@@ -214,11 +301,7 @@ export default function ResultsClient({
           stroke="currentColor"
           strokeWidth={2.5}
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M10 7l5 5-5 5"
-          />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10 7l5 5-5 5" />
         </svg>
       </button>
     </main>

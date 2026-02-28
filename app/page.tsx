@@ -2,36 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import FazaaDrawer from "@/app/components/fazaaDrawer";
-
-const MEASUREMENTS_KEY = "fazaa_measurements_v1";
-const HISTORY_KEY = "fazaa_history_v1";
-
-function safeGet(key: string) {
-  try {
-    if (typeof window === "undefined") return null;
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-type RawHistoryItem = {
-  id?: string;
-  occasionLabel?: string; // مثال: زواج
-  date?: string; // مثال: 2026/02/10
-  heightCm?: number;
-  bustCm?: number;
-  waistCm?: number;
-  hipCm?: number;
-};
-
-type DrawerHistoryItem = {
-  id: string;
-  title: string; // "زواج • 2026/02/10"
-  subtitle: string; // "طول 165 • صدر 92 • خصر 70"
-};
 
 function ThreeDotsButton({ onClick }: { onClick: () => void }) {
   return (
@@ -64,37 +36,7 @@ function ThreeDotsButton({ onClick }: { onClick: () => void }) {
 
 export default function HomePage() {
   const router = useRouter();
-
   const [menuOpen, setMenuOpen] = useState(false);
-
-  // (حالياً بدون حساب)
-  const userName: string | null = null;
-
-  const [history, setHistory] = useState<DrawerHistoryItem[]>([]);
-
-  useEffect(() => {
-    // الهستري (لو موجود)
-    const rawH = safeGet(HISTORY_KEY);
-    if (rawH) {
-      try {
-        const arr = JSON.parse(rawH) as RawHistoryItem[];
-        if (Array.isArray(arr)) {
-          const mapped: DrawerHistoryItem[] = arr.map((it, idx) => {
-            const title = `${it.occasionLabel ?? "تجربة"} • ${it.date ?? ""}`.trim();
-            const subtitle =
-              `طول ${it.heightCm ?? "—"} • صدر ${it.bustCm ?? "—"} • خصر ${it.waistCm ?? "—"}`.trim();
-
-            return {
-              id: it.id ?? String(idx),
-              title,
-              subtitle,
-            };
-          });
-          setHistory(mapped);
-        }
-      } catch {}
-    }
-  }, []);
 
   return (
     <motion.main
@@ -107,17 +49,8 @@ export default function HomePage() {
       {/* ✅ زر الثلاث نقاط */}
       <ThreeDotsButton onClick={() => setMenuOpen(true)} />
 
-      {/* ✅ Drawer (نفس الملف الموحد) */}
-<FazaaDrawer
-  open={menuOpen}
-  onClose={() => setMenuOpen(false)}
-  history={history}
-  onHistoryClick={(id) => {
-    setMenuOpen(false);
-    // لاحقاً: افتحي النتائج المحفوظة حسب id
-    // router.push(`/results?saved=${id}`);
-  }}
-/>
+      {/* ✅ Drawer (الملف الموحد الجديد) */}
+      <FazaaDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div className="relative w-full max-w-6xl">
         {/* Hero Card */}

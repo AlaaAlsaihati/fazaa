@@ -1,46 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { ReactNode } from "react";
 import type { Occasion, WeddingStyle } from "@/app/data/products";
 import SiteFooter from "@/app/components/FazaaFooter";
 import FazaaDrawer from "@/app/components/fazaaDrawer";
-
-const MEASUREMENTS_KEY = "fazaa_measurements_v1";
-const HISTORY_KEY = "fazaa_history_v1";
-
-function safeGet(key: string) {
-  try {
-    if (typeof window === "undefined") return null;
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-type SavedMeasurements = {
-  heightCm?: string;
-  bust?: string;
-  waist?: string;
-  hip?: string;
-};
-
-type RawHistoryItem = {
-  id?: string;
-  occasionLabel?: string; // مثال: زواج
-  date?: string; // مثال: 2026/02/10
-  heightCm?: number;
-  bustCm?: number;
-  waistCm?: number;
-  hipCm?: number;
-};
-
-type DrawerHistoryItem = {
-  id: string;
-  title: string; // "زواج • 2026/02/10"
-  subtitle: string; // "طول 165 • صدر 92 • خصر 70"
-};
 
 type OccasionCard = {
   key: Occasion;
@@ -139,9 +104,9 @@ function ThreeDotsButton({ onClick }: { onClick: () => void }) {
         viewBox="0 0 24 24"
         fill="currentColor"
       >
-       <circle cx="5" cy="12" r="1.4" />
-<circle cx="12" cy="12" r="1.4" />
-<circle cx="19" cy="12" r="1.4" />
+        <circle cx="5" cy="12" r="1.4" />
+        <circle cx="12" cy="12" r="1.4" />
+        <circle cx="19" cy="12" r="1.4" />
       </svg>
     </button>
   );
@@ -184,48 +149,6 @@ export default function OccasionPage() {
   // ✅ Drawer state
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // (حالياً بدون حساب)
-  const userName: string | null = null;
-
-  const [savedMeas, setSavedMeas] = useState<SavedMeasurements | null>(null);
-  const [history, setHistory] = useState<DrawerHistoryItem[]>([]);
-
-  useEffect(() => {
-    const rawM = safeGet(MEASUREMENTS_KEY);
-    if (rawM) {
-      try {
-        const m = JSON.parse(rawM) as any;
-        setSavedMeas({
-          heightCm: typeof m.heightCm === "string" ? m.heightCm : "",
-          bust: typeof m.bust === "string" ? m.bust : "",
-          waist: typeof m.waist === "string" ? m.waist : "",
-          hip: typeof m.hip === "string" ? m.hip : "",
-        });
-      } catch {}
-    }
-
-    const rawH = safeGet(HISTORY_KEY);
-    if (rawH) {
-      try {
-        const arr = JSON.parse(rawH) as RawHistoryItem[];
-        if (Array.isArray(arr)) {
-          const mapped: DrawerHistoryItem[] = arr.map((it, idx) => {
-            const title = `${it.occasionLabel ?? "تجربة"} • ${it.date ?? ""}`.trim();
-            const subtitle =
-              `طول ${it.heightCm ?? "—"} • صدر ${it.bustCm ?? "—"} • خصر ${it.waistCm ?? "—"}`.trim();
-
-            return {
-              id: it.id ?? String(idx),
-              title,
-              subtitle,
-            };
-          });
-          setHistory(mapped);
-        }
-      } catch {}
-    }
-  }, []);
-
   const selectedCard = [...CARDS_TOP6, CHALET_CARD].find((c) => c.key === occasion);
 
   function next() {
@@ -255,30 +178,8 @@ export default function OccasionPage() {
       {/* ✅ الثلاث نقاط */}
       <ThreeDotsButton onClick={() => setMenuOpen(true)} />
 
-      {/* ✅ Drawer (نفس الملف اللي عندك) */}
-      <FazaaDrawer
-        open={menuOpen}
-        onClose={() => setMenuOpen(false)}
-        userName={userName}
-        history={history}
-        onLoginClick={() => {
-          setMenuOpen(false);
-          // لاحقاً: route لصفحة الدخول/التسجيل
-          // router.push("/auth");
-        }}
-        onMeasurementsClick={() => {
-          setMenuOpen(false);
-          router.push("/measurements");
-        }}
-        onHistoryClick={(id) => {
-          setMenuOpen(false);
-          // لاحقاً: افتحي النتائج المحفوظة حسب id
-          // router.push(`/results?saved=${id}`);
-        }}
-        onLogoutClick={() => {
-          // لاحقاً لما نفعل الحسابات
-        }}
-      />
+      {/* ✅ Drawer (الموحد) */}
+      <FazaaDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div className="mx-auto max-w-2xl">
         {/* Header */}
@@ -295,7 +196,7 @@ export default function OccasionPage() {
           <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-[#d6b56a]/18" />
           <div className="pointer-events-none absolute -top-16 left-1/2 h-28 w-[520px] -translate-x-1/2 rounded-full bg-[#d6b56a]/10 blur-3xl" />
 
-          {/* Top 6 (2×3) */}
+          {/* Top 6 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {CARDS_TOP6.map((o) => (
               <OccasionButton
@@ -311,7 +212,7 @@ export default function OccasionPage() {
             ))}
           </div>
 
-          {/* ✅ الشاليهات كرت لوحده تحت بالنص + نفس الحجم */}
+          {/* ✅ الشاليهات تحت بالنص */}
           <div className="mt-3 flex justify-center">
             <div className="w-full sm:w-[calc(50%-0.375rem)]">
               <OccasionButton
@@ -396,7 +297,7 @@ function OccasionButton({
         o.disabled ? "opacity-55 cursor-not-allowed" : "",
       ].join(" ")}
     >
-      {/* ✅ علامة الاختيار (داخل الكرت) */}
+      {/* ✅ علامة الاختيار */}
       {active && (
         <span className="absolute top-2 left-2 z-30 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black border border-[#d6b56a]/85 pointer-events-none">
           <svg
@@ -411,7 +312,7 @@ function OccasionButton({
         </span>
       )}
 
-      {/* ✅ الأيقونة يسار + كبيرة + مدموجة */}
+      {/* ✅ الأيقونة يسار */}
       <div className="absolute left-[-57px] top-1/2 -translate-y-1/2 pointer-events-none">
         <div className="absolute inset-0 -z-10 h-[110px] w-[110px] rounded-full bg-[#d6b56a]/10 blur-2xl" />
         {o.icon}
