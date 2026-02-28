@@ -12,7 +12,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 type SavedPayload = {
   unit?: Unit; // وحدة المحيطات فقط
-  heightCm?: string; // الطول دائمًا سم (مخزن لكن ما نعرضه داخل الداور حسب طلبك)
+  heightCm?: string; // الطول دائمًا سم
   bust?: string; // قيمة حسب unit
   waist?: string;
   hip?: string;
@@ -68,7 +68,7 @@ function hasAnySavedValue(p: SavedPayload | null) {
   return !!(p.heightCm || p.bust || p.waist || p.hip);
 }
 
-/* ===== Options ===== */
+/* ===== Options (نفس فكرة صفحة القياسات) ===== */
 const HEIGHT_OPTIONS = range(140, 210, 1);
 
 const BUST_CM_OPTIONS = range(60, 160, 1);
@@ -151,7 +151,11 @@ function SelectField({
           </option>
 
           {options.map((n) => (
-            <option key={n} value={String(n)} className="bg-neutral-950 text-white">
+            <option
+              key={n}
+              value={String(n)}
+              className="bg-neutral-950 text-white"
+            >
               {n}
             </option>
           ))}
@@ -166,7 +170,11 @@ function SelectField({
             stroke="currentColor"
             strokeWidth={2}
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M19 9l-7 7-7-7"
+            />
           </svg>
         </div>
       </div>
@@ -174,39 +182,28 @@ function SelectField({
   );
 }
 
-/* ===== Helpers: extract measurements (bust/waist/hip only) from history query ===== */
-function parseHistoryMetrics(query: string) {
+/* ✅ تفاصيل “آخر النتائج” من query (بدون الطول وبدون شكل الجسم) */
+function subtitleFromQuery(query: string) {
   try {
-    const q = (query || "").trim();
-    const raw = q.startsWith("?") ? q.slice(1) : q;
-    const sp = new URLSearchParams(raw);
+    const q = query.startsWith("?") ? query.slice(1) : query;
+    const p = new URLSearchParams(q);
 
-    const bust = sp.get("bust") || "";
-    const waist = sp.get("waist") || "";
-    const hip = sp.get("hip") || "";
+    const bust = p.get("bust");
+    const waist = p.get("waist");
+    const hip = p.get("hip");
+    const unit = p.get("unit"); // اختياري
 
-    return { bust, waist, hip };
+    const uTxt = unit === "in" ? "إنش" : "سم";
+
+    const parts: string[] = [];
+    if (bust) parts.push(`صدر ${bust} ${uTxt}`);
+    if (waist) parts.push(`خصر ${waist} ${uTxt}`);
+    if (hip) parts.push(`أرداف ${hip} ${uTxt}`);
+
+    return parts.length ? parts.join(" • ") : "";
   } catch {
-    return { bust: "", waist: "", hip: "" };
+    return "";
   }
-}
-
-function Chevron({ open }: { open?: boolean }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      className={[
-        "h-4 w-4 text-[#d6b56a] transition-transform",
-        open ? "rotate-180" : "",
-      ].join(" ")}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2.2}
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-    </svg>
-  );
 }
 
 export default function FazaaDrawer({
@@ -236,11 +233,15 @@ export default function FazaaDrawer({
   const [showForgot, setShowForgot] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
 
-  const [authMsg, setAuthMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  // ❗بدون "تم تسجيل الدخول" — نخلي الرسائل للأخطاء/نجاح إرسال الريست فقط (غير مؤقتة)
+  const [authMsg, setAuthMsg] = useState<{
+    type: "ok" | "err";
+    text: string;
+  } | null>(null);
 
   // --- measurements in drawer (only logged in)
   const [unit, setUnit] = useState<Unit>("cm"); // وحدة المحيطات
-  const [heightCm, setHeightCm] = useState(""); // مخزن لكن ما نعرضه داخل الداور (حسب طلبك)
+  const [heightCm, setHeightCm] = useState(""); // دائمًا سم
   const [bust, setBust] = useState("");
   const [waist, setWaist] = useState("");
   const [hip, setHip] = useState("");
@@ -249,20 +250,19 @@ export default function FazaaDrawer({
   const [savedLastUpdated, setSavedLastUpdated] = useState<number | null>(null);
 
   // ✅ زر واحد فقط + يثبت بعد التنفيذ
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saved_done" | "updated_done">("idle");
+  // idle = طبيعي، saved_done = تم حفظ، updated_done = تم تحديث
+  const [saveStatus, setSaveStatus] = useState<
+    "idle" | "saved_done" | "updated_done"
+  >("idle");
 
   // تاريخ النتائج
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyErr, setHistoryErr] = useState<string | null>(null);
 
-  // ✅ collapsible sections
-  const [measOpen, setMeasOpen] = useState(true);
-  const [historyOpen, setHistoryOpen] = useState(true);
-
   const isLoggedIn = !!sessionUser;
 
-  // user-scoped key
+  // user-scoped key (عشان ما تختفي/تتلخبط بين حسابات)
   const storageKey = useMemo(() => {
     const uid = sessionUser?.id;
     return uid ? `${STORAGE_KEY_BASE}:${uid}` : STORAGE_KEY_BASE;
@@ -278,19 +278,29 @@ export default function FazaaDrawer({
       const u = data.session?.user;
       setSessionUser(
         u
-          ? { id: u.id, email: u.email ?? null, name: (u.user_metadata?.name as string) ?? null }
+          ? {
+              id: u.id,
+              email: u.email ?? null,
+              name: (u.user_metadata?.name as string) ?? null,
+            }
           : null
       );
     })();
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_evt, session) => {
-      const u = session?.user;
-      setSessionUser(
-        u
-          ? { id: u.id, email: u.email ?? null, name: (u.user_metadata?.name as string) ?? null }
-          : null
-      );
-    });
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_evt, session) => {
+        const u = session?.user;
+        setSessionUser(
+          u
+            ? {
+                id: u.id,
+                email: u.email ?? null,
+                name: (u.user_metadata?.name as string) ?? null,
+              }
+            : null
+        );
+      }
+    );
 
     return () => {
       mounted = false;
@@ -303,7 +313,10 @@ export default function FazaaDrawer({
     if (!open) return;
 
     const rawNew = safeLocalStorageGet(storageKey);
-    const rawOld = storageKey !== STORAGE_KEY_BASE ? safeLocalStorageGet(STORAGE_KEY_BASE) : null;
+    const rawOld =
+      storageKey !== STORAGE_KEY_BASE
+        ? safeLocalStorageGet(STORAGE_KEY_BASE)
+        : null;
     const raw = rawNew || rawOld;
 
     if (!raw) {
@@ -322,7 +335,9 @@ export default function FazaaDrawer({
     try {
       const saved = JSON.parse(raw) as SavedPayload;
       setSavedSnapshot(saved);
-      setSavedLastUpdated(typeof saved.lastUpdated === "number" ? saved.lastUpdated : null);
+      setSavedLastUpdated(
+        typeof saved.lastUpdated === "number" ? saved.lastUpdated : null
+      );
 
       if (saved.unit === "cm" || saved.unit === "in") setUnit(saved.unit);
       if (typeof saved.heightCm === "string") setHeightCm(saved.heightCm);
@@ -333,7 +348,9 @@ export default function FazaaDrawer({
       setSaveStatus("idle");
 
       // migrate old -> new key once
-      if (sessionUser?.id && rawOld && !rawNew) safeLocalStorageSet(storageKey, rawOld);
+      if (sessionUser?.id && rawOld && !rawNew) {
+        safeLocalStorageSet(storageKey, rawOld);
+      }
     } catch {
       setSavedSnapshot(null);
       setSavedLastUpdated(null);
@@ -346,11 +363,12 @@ export default function FazaaDrawer({
     return Date.now() - savedLastUpdated >= STALE_DAYS * DAY_MS;
   }, [savedLastUpdated]);
 
+  // dropdown options for circumferences
   const bustOptions = unit === "cm" ? BUST_CM_OPTIONS : BUST_IN_OPTIONS;
   const waistOptions = unit === "cm" ? WAIST_CM_OPTIONS : WAIST_IN_OPTIONS;
   const hipOptions = unit === "cm" ? HIP_CM_OPTIONS : HIP_IN_OPTIONS;
 
-  // ✅ صلاحية الحفظ (نفس شروطك بس ما نعرض الطول داخل الداور)
+  // ✅ صلاحية الحفظ
   const canSave = useMemo(() => {
     if (!isLoggedIn) return false;
 
@@ -373,6 +391,7 @@ export default function FazaaDrawer({
   }, [isLoggedIn, heightCm, bust, waist, hip, unit]);
 
   function markDirty() {
+    // ✅ يرجع طبيعي فقط إذا المستخدم غيّر رقم
     setSaveStatus("idle");
   }
 
@@ -389,17 +408,23 @@ export default function FazaaDrawer({
 
     if (Number.isFinite(b)) {
       const conv =
-        next === "cm" ? Math.round(inToCm(b) * 10) / 10 : Math.round(cmToIn(b) * 10) / 10;
+        next === "cm"
+          ? Math.round(inToCm(b) * 10) / 10
+          : Math.round(cmToIn(b) * 10) / 10;
       setBust(String(conv));
     }
     if (Number.isFinite(w)) {
       const conv =
-        next === "cm" ? Math.round(inToCm(w) * 10) / 10 : Math.round(cmToIn(w) * 10) / 10;
+        next === "cm"
+          ? Math.round(inToCm(w) * 10) / 10
+          : Math.round(cmToIn(w) * 10) / 10;
       setWaist(String(conv));
     }
     if (Number.isFinite(hp)) {
       const conv =
-        next === "cm" ? Math.round(inToCm(hp) * 10) / 10 : Math.round(cmToIn(hp) * 10) / 10;
+        next === "cm"
+          ? Math.round(inToCm(hp) * 10) / 10
+          : Math.round(cmToIn(hp) * 10) / 10;
       setHip(String(conv));
     }
   }
@@ -411,7 +436,7 @@ export default function FazaaDrawer({
 
     const payload: SavedPayload = {
       unit,
-      heightCm, // ✅ مخزن فقط
+      heightCm, // ✅ يتخزن دائمًا
       bust,
       waist,
       hip,
@@ -434,6 +459,7 @@ export default function FazaaDrawer({
       });
       if (error) throw error;
 
+      // ✅ بدون رسالة "تم تسجيل الدخول"
       setShowForgot(false);
       setPassword("");
       setAuthMsg(null);
@@ -451,10 +477,13 @@ export default function FazaaDrawer({
       const { error } = await supabase.auth.signUp({
         email: cleanEmail,
         password,
-        options: { data: { name: cleanName } },
+        options: {
+          data: { name: cleanName },
+        },
       });
       if (error) throw error;
 
+      // بدون مبالغة: نخليها رسالة ثابتة (مو مؤقتة)
       setAuthMsg({
         type: "ok",
         text: "تم إنشاء الحساب. إذا عندك تفعيل بالبريد، راح توصلك رسالة.",
@@ -481,19 +510,26 @@ export default function FazaaDrawer({
     }
 
     try {
+      // لازم يكون عندك صفحة /auth/reset تكمل تغيير كلمة المرور
       const redirectTo = `${window.location.origin}/auth/reset`;
 
-      const { error } = await supabase.auth.resetPasswordForEmail(e, { redirectTo });
+      const { error } = await supabase.auth.resetPasswordForEmail(e, {
+        redirectTo,
+      });
       if (error) throw error;
 
-      setAuthMsg({ type: "ok", text: "تم إرسال رابط إعادة كلمة المرور على إيميلك" });
+      // رسالة ثابتة (مو مؤقتة)
+      setAuthMsg({
+        type: "ok",
+        text: "تم إرسال رابط إعادة كلمة المرور على إيميلك",
+      });
       setShowForgot(false);
     } catch (err: any) {
       setAuthMsg({ type: "err", text: err?.message || "تعذر إرسال الرابط" });
     }
   }
 
-  // ✅ تحميل الهستري من Supabase
+  // ✅ تحميل الهستري من Supabase (إذا مسجلة دخول + الداور مفتوح)
   useEffect(() => {
     if (!open) return;
     if (!sessionUser?.id) {
@@ -518,6 +554,7 @@ export default function FazaaDrawer({
           .limit(10);
 
         if (cancelled) return;
+
         if (error) throw error;
 
         setHistory((data || []) as HistoryItem[]);
@@ -535,8 +572,11 @@ export default function FazaaDrawer({
     };
   }, [open, sessionUser?.id]);
 
-  const overlayClass = open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none";
+  const overlayClass = open
+    ? "opacity-100 pointer-events-auto"
+    : "opacity-0 pointer-events-none";
 
+  // زر واحد فقط: حفظ/تحديث + يثبت بعد التنفيذ
   const hasSaved = !!(savedSnapshot && hasAnySavedValue(savedSnapshot));
   const saveButtonText = !hasSaved
     ? saveStatus === "saved_done"
@@ -558,7 +598,10 @@ export default function FazaaDrawer({
   return (
     <>
       <div
-        className={["fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition", overlayClass].join(" ")}
+        className={[
+          "fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition",
+          overlayClass,
+        ].join(" ")}
         onClick={onClose}
       />
 
@@ -572,7 +615,7 @@ export default function FazaaDrawer({
         ].join(" ")}
         dir="rtl"
       >
-        {/* Header */}
+        {/* ✅ Header (القائمة + الاسم/الايميل تحتها + خط ذهبي) */}
         <div className="px-5 py-4 border-b border-white/10">
           <div className="flex items-center justify-between">
             <div className="text-sm font-extrabold text-white">القائمة</div>
@@ -586,27 +629,28 @@ export default function FazaaDrawer({
             </button>
           </div>
 
-          {/* ✅ الاسم + الايميل هنا (فوق) */}
           {isLoggedIn ? (
             <div className="mt-3">
-              <div className="text-xs font-extrabold text-white">
+              <div className="text-sm font-extrabold text-white">
                 {sessionUser?.name || "مستخدم"}
               </div>
-              <div className="mt-1 text-[11px] text-neutral-400">{sessionUser?.email}</div>
+              <div className="mt-1 text-xs text-neutral-400">
+                {sessionUser?.email}
+              </div>
 
               {/* ✅ خط ذهبي */}
-              <div className="mt-3 h-px w-full bg-gradient-to-r from-transparent via-[#d6b56a]/55 to-transparent" />
+              <div className="mt-3 h-px w-full bg-[#d6b56a]/35" />
             </div>
           ) : null}
         </div>
 
         <div className="p-5 space-y-4 overflow-y-auto h-[calc(100%-64px)]">
-          {/* ✅ إذا مو مسجلة دخول: نخلي تسجيل/تسجيل جديد (بدون كرت حساب) */}
-          {!isLoggedIn ? (
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-sm font-extrabold text-white">الحساب</div>
+          {/* 1) ACCOUNT */}
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-sm font-extrabold text-white">الحساب</div>
 
+              {!isLoggedIn ? (
                 <div className="inline-flex rounded-2xl border border-[#d6b56a]/25 bg-black/20 p-1">
                   <button
                     type="button"
@@ -641,299 +685,299 @@ export default function FazaaDrawer({
                     إنشاء حساب
                   </button>
                 </div>
+              ) : null}
+            </div>
+
+            {/* رسائل ثابتة (بدون تم تسجيل الدخول) */}
+            {authMsg ? (
+              <div
+                className={[
+                  "mb-3 rounded-2xl px-3 py-2 text-xs font-semibold border",
+                  authMsg.type === "ok"
+                    ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
+                    : "border-rose-400/30 bg-rose-500/10 text-rose-100",
+                ].join(" ")}
+              >
+                {authMsg.text}
+              </div>
+            ) : null}
+
+            {!isLoggedIn ? (
+              <>
+                {showForgot ? (
+                  /* Forgot Password (inside drawer) */
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs font-semibold text-neutral-200">
+                        الإيميل
+                      </label>
+                      <input
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        placeholder="example@email.com"
+                        className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
+                      />
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSendReset}
+                        className="flex-1 rounded-2xl border border-[#d6b56a]/45 bg-[#d6b56a]/15 py-2.5 text-xs font-extrabold text-white hover:border-[#d6b56a]/70 transition"
+                      >
+                        إرسال رابط
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowForgot(false);
+                          setAuthMsg(null);
+                        }}
+                        className="flex-1 rounded-2xl border border-white/10 bg-black/20 py-2.5 text-xs font-extrabold text-white hover:bg-black/30 transition"
+                      >
+                        رجوع
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {tab === "register" ? (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-xs font-semibold text-neutral-200">
+                            الاسم
+                          </label>
+                          <input
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold text-neutral-200">
+                            البريد الإلكتروني
+                          </label>
+                          <input
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold text-neutral-200">
+                            كلمة المرور
+                          </label>
+                          <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleRegister}
+                          className="w-full rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/15 py-2.5 text-xs font-extrabold text-white hover:border-[#d6b56a]/70 transition"
+                        >
+                          إنشاء
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-xs font-semibold text-neutral-200">
+                            البريد الإلكتروني
+                          </label>
+                          <input
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold text-neutral-200">
+                            كلمة المرور
+                          </label>
+                          <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
+                          />
+                        </div>
+
+                        {/* نسيت كلمة المرور داخل الداور */}
+                        <div className="flex items-center justify-start">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowForgot(true);
+                              setForgotEmail(email.trim());
+                              setAuthMsg(null);
+                            }}
+                            className="text-xs font-bold text-[#d6b56a] hover:text-[#f3e0b0] transition"
+                          >
+                            نسيت كلمة المرور؟
+                          </button>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleLogin}
+                          className="w-full rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/15 py-2.5 text-xs font-extrabold text-white hover:border-[#d6b56a]/70 transition"
+                        >
+                          دخول
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            ) : null /* ✅ لا نكرر الاسم/الإيميل هنا */}
+          </div>
+
+          {/* 2) MEASUREMENTS (only when logged in) */}
+          {isLoggedIn ? (
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-extrabold text-white">المقاسات</div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-neutral-300">
+                    وحدة المحيطات:
+                  </span>
+                  <UnitToggle value={unit} onChange={onChangeUnit} />
+                </div>
               </div>
 
-              {authMsg ? (
-                <div
-                  className={[
-                    "mb-3 rounded-2xl px-3 py-2 text-xs font-semibold border",
-                    authMsg.type === "ok"
-                      ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
-                      : "border-rose-400/30 bg-rose-500/10 text-rose-100",
-                  ].join(" ")}
-                >
-                  {authMsg.text}
+              {/* تنبيه stale اختياري (أنـيق ومش مزعج) */}
+              {savedSnapshot && hasAnySavedValue(savedSnapshot) && isStale ? (
+                <div className="mt-3 rounded-2xl border border-[#d6b56a]/25 bg-black/20 px-3 py-2 text-[11px] text-[#f3e0b0]">
+                  مر {STALE_DAYS} يوم على آخر تحديث للمقاسات
                 </div>
               ) : null}
 
-              {showForgot ? (
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs font-semibold text-neutral-200">الإيميل</label>
-                    <input
-                      value={forgotEmail}
-                      onChange={(e) => setForgotEmail(e.target.value)}
-                      placeholder="example@email.com"
-                      className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
-                    />
-                  </div>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <SelectField
+                  label="الطول (سم)"
+                  value={heightCm}
+                  onChange={(v) => {
+                    markDirty();
+                    setHeightCm(v);
+                  }}
+                  placeholder="سنتيمتر"
+                  options={HEIGHT_OPTIONS}
+                />
 
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={handleSendReset}
-                      className="flex-1 rounded-2xl border border-[#d6b56a]/45 bg-[#d6b56a]/15 py-2.5 text-xs font-extrabold text-white hover:border-[#d6b56a]/70 transition"
-                    >
-                      إرسال رابط
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowForgot(false);
-                        setAuthMsg(null);
-                      }}
-                      className="flex-1 rounded-2xl border border-white/10 bg-black/20 py-2.5 text-xs font-extrabold text-white hover:bg-black/30 transition"
-                    >
-                      رجوع
-                    </button>
-                  </div>
+                <SelectField
+                  label={`محيط الصدر (${unit === "cm" ? "سم" : "إنش"})`}
+                  value={bust}
+                  onChange={(v) => {
+                    markDirty();
+                    setBust(v);
+                  }}
+                  placeholder={unit === "cm" ? "سنتيمتر" : "إنش"}
+                  options={bustOptions}
+                />
+
+                <SelectField
+                  label={`محيط الخصر (${unit === "cm" ? "سم" : "إنش"})`}
+                  value={waist}
+                  onChange={(v) => {
+                    markDirty();
+                    setWaist(v);
+                  }}
+                  placeholder={unit === "cm" ? "سنتيمتر" : "إنش"}
+                  options={waistOptions}
+                />
+
+                <SelectField
+                  label={`محيط الأرداف (${unit === "cm" ? "سم" : "إنش"})`}
+                  value={hip}
+                  onChange={(v) => {
+                    markDirty();
+                    setHip(v);
+                  }}
+                  placeholder={unit === "cm" ? "سنتيمتر" : "إنش"}
+                  options={hipOptions}
+                />
+              </div>
+
+              {/* زر واحد فقط */}
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={saveMeasurements}
+                  disabled={!canSave}
+                  className={saveButtonClass}
+                >
+                  {saveButtonText}
+                </button>
+
+                <div className="mt-2 text-[11px] text-neutral-400">
+                  * الطول بالسنتيمتر دائمًا — ووحدة المحيطات حسب اختيارك.
                 </div>
-              ) : tab === "register" ? (
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs font-semibold text-neutral-200">الاسم</label>
-                    <input
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
-                    />
-                  </div>
+              </div>
+            </div>
+          ) : null}
 
-                  <div>
-                    <label className="text-xs font-semibold text-neutral-200">البريد الإلكتروني</label>
-                    <input
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
-                    />
-                  </div>
+          {/* 3) HISTORY (only when logged in) */}
+          {isLoggedIn ? (
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+              <div className="text-sm font-extrabold text-white mb-3">
+                آخر النتائج
+              </div>
 
-                  <div>
-                    <label className="text-xs font-semibold text-neutral-200">كلمة المرور</label>
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleRegister}
-                    className="w-full rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/15 py-2.5 text-xs font-extrabold text-white hover:border-[#d6b56a]/70 transition"
-                  >
-                    إنشاء
-                  </button>
+              {historyLoading ? (
+                <div className="text-xs text-neutral-400">جاري التحميل…</div>
+              ) : historyErr ? (
+                <div className="text-xs text-rose-200/90">{historyErr}</div>
+              ) : history.length === 0 ? (
+                <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-3 text-xs text-neutral-300">
+                  ما عندك نتائج سابقة
                 </div>
               ) : (
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs font-semibold text-neutral-200">البريد الإلكتروني</label>
-                    <input
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-neutral-200">كلمة المرور</label>
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-start">
+                <div className="space-y-2">
+                  {history.map((h) => (
                     <button
+                      key={h.id}
                       type="button"
                       onClick={() => {
-                        setShowForgot(true);
-                        setForgotEmail(email.trim());
-                        setAuthMsg(null);
-                      }}
-                      className="text-xs font-bold text-[#d6b56a] hover:text-[#f3e0b0] transition"
-                    >
-                      نسيت كلمة المرور؟
-                    </button>
-                  </div>
+                        if (!h.query) return;
 
-                  <button
-                    type="button"
-                    onClick={handleLogin}
-                    className="w-full rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/15 py-2.5 text-xs font-extrabold text-white hover:border-[#d6b56a]/70 transition"
-                  >
-                    دخول
-                  </button>
+                        const q = h.query.startsWith("?")
+                          ? h.query
+                          : `?${h.query}`;
+
+                        onClose();
+                        router.push(`/results${q}`);
+                      }}
+                      className={[
+                        "w-full text-right rounded-2xl border border-white/10 bg-black/20 px-3 py-3",
+                        "hover:bg-black/30 transition",
+                      ].join(" ")}
+                    >
+                      {/* ✅ فوق زي ما هو: اسم المناسبة */}
+                      <div className="text-xs font-extrabold text-white">
+                        {h.title}
+                      </div>
+
+                      {/* ✅ القياسات فقط (صدر/خصر/أرداف) */}
+                      <div className="mt-1 text-[11px] text-neutral-400">
+                        {subtitleFromQuery(h.query) || h.subtitle}
+                      </div>
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
           ) : null}
 
-          {/* ✅ المقاسات: Collapsible + بدون عرض الطول */}
-          {isLoggedIn ? (
-            <div className="rounded-3xl border border-white/10 bg-white/5 overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setMeasOpen((v) => !v)}
-                className="w-full flex items-center justify-between px-4 py-3"
-              >
-                <div className="text-sm font-extrabold text-white">المقاسات</div>
-                <Chevron open={measOpen} />
-              </button>
-
-              {measOpen ? (
-                <div className="px-4 pb-4">
-                  <div className="flex items-center justify-between">
-                    <div className="text-[11px] font-semibold text-neutral-300">وحدة المحيطات:</div>
-                    <UnitToggle value={unit} onChange={onChangeUnit} />
-                  </div>
-
-                  {savedSnapshot && hasAnySavedValue(savedSnapshot) && isStale ? (
-                    <div className="mt-3 rounded-2xl border border-[#d6b56a]/25 bg-black/20 px-3 py-2 text-[11px] text-[#f3e0b0]">
-                      مر {STALE_DAYS} يوم على آخر تحديث للمقاسات
-                    </div>
-                  ) : null}
-
-                  {/* نخلي الطول مخفي لكن موجود بالحفظ */}
-                  <div className="mt-4 grid grid-cols-2 gap-3">
-                    <SelectField
-                      label={`محيط الصدر (${unit === "cm" ? "سم" : "إنش"})`}
-                      value={bust}
-                      onChange={(v) => {
-                        markDirty();
-                        setBust(v);
-                      }}
-                      placeholder={unit === "cm" ? "سنتيمتر" : "إنش"}
-                      options={bustOptions}
-                    />
-
-                    <SelectField
-                      label={`محيط الخصر (${unit === "cm" ? "سم" : "إنش"})`}
-                      value={waist}
-                      onChange={(v) => {
-                        markDirty();
-                        setWaist(v);
-                      }}
-                      placeholder={unit === "cm" ? "سنتيمتر" : "إنش"}
-                      options={waistOptions}
-                    />
-
-                    <SelectField
-                      label={`محيط الأرداف (${unit === "cm" ? "سم" : "إنش"})`}
-                      value={hip}
-                      onChange={(v) => {
-                        markDirty();
-                        setHip(v);
-                      }}
-                      placeholder={unit === "cm" ? "سنتيمتر" : "إنش"}
-                      options={hipOptions}
-                    />
-
-                    {/* نخلي الطول موجود للاستخدام خلف الكواليس لو تبينه بالحفظ */}
-                    <div className="hidden">
-                      <SelectField
-                        label="الطول (سم)"
-                        value={heightCm}
-                        onChange={(v) => {
-                          markDirty();
-                          setHeightCm(v);
-                        }}
-                        placeholder="سنتيمتر"
-                        options={HEIGHT_OPTIONS}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-4">
-                    <button
-                      type="button"
-                      onClick={saveMeasurements}
-                      disabled={!canSave}
-                      className={saveButtonClass}
-                    >
-                      {saveButtonText}
-                    </button>
-
-                    <div className="mt-2 text-[11px] text-neutral-400">
-                      * الطول محفوظ داخليًا — والظاهر هنا فقط قياسات المحيطات.
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-
-          {/* ✅ آخر النتائج: Collapsible + العنوان = المناسبة + التفاصيل = قياسات فقط */}
-          {isLoggedIn ? (
-            <div className="rounded-3xl border border-white/10 bg-white/5 overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setHistoryOpen((v) => !v)}
-                className="w-full flex items-center justify-between px-4 py-3"
-              >
-                <div className="text-sm font-extrabold text-white">آخر النتائج</div>
-                <Chevron open={historyOpen} />
-              </button>
-
-              {historyOpen ? (
-                <div className="px-4 pb-4">
-                  {historyLoading ? (
-                    <div className="text-xs text-neutral-400">جاري التحميل…</div>
-                  ) : historyErr ? (
-                    <div className="text-xs text-rose-200/90">{historyErr}</div>
-                  ) : history.length === 0 ? (
-                    <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-3 text-xs text-neutral-300">
-                      ما عندك نتائج سابقة
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {history.map((h) => {
-                        const m = parseHistoryMetrics(h.query);
-                        const subtitle = [
-                          m.bust ? `صدر ${m.bust}` : "",
-                          m.waist ? `خصر ${m.waist}` : "",
-                          m.hip ? `أرداف ${m.hip}` : "",
-                        ]
-                          .filter(Boolean)
-                          .join(" • ");
-
-                        return (
-                          <button
-                            key={h.id}
-                            type="button"
-                            onClick={() => {
-                              if (!h.query) return;
-                              const q = h.query.startsWith("?") ? h.query : `?${h.query}`;
-                              onClose();
-                              router.push(`/results${q}`);
-                            }}
-                            className={[
-                              "w-full text-right rounded-2xl border border-white/10 bg-black/20 px-3 py-3",
-                              "hover:bg-black/30 transition",
-                            ].join(" ")}
-                          >
-                            {/* ✅ العنوان: اسم المناسبة */}
-                            <div className="text-xs font-extrabold text-white">{h.title}</div>
-
-                            {/* ✅ التفاصيل: قياسات فقط */}
-                            <div className="mt-1 text-[11px] text-neutral-400">
-                              {subtitle || "—"}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-
-          {/* ✅ تسجيل الخروج (آخر شي) */}
+          {/* 4) LOGOUT (آخر شي + لحاله) */}
           {isLoggedIn ? (
             <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
               <button
