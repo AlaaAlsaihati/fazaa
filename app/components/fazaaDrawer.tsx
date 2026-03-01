@@ -182,67 +182,6 @@ function SelectField({
   );
 }
 
-/* ✅ تفاصيل “آخر النتائج” من query (بدون الطول وبدون شكل الجسم) */
-function subtitleFromQuery(query: string) {
-  try {
-    const q = query.startsWith("?") ? query.slice(1) : query;
-    const p = new URLSearchParams(q);
-
-    const bust = p.get("bust");
-    const waist = p.get("waist");
-    const hip = p.get("hip");
-    const unit = p.get("unit"); // اختياري
-
-    const uTxt = unit === "in" ? "إنش" : "سم";
-
-    const parts: string[] = [];
-    if (bust) parts.push(`صدر ${bust} ${uTxt}`);
-    if (waist) parts.push(`خصر ${waist} ${uTxt}`);
-    if (hip) parts.push(`أرداف ${hip} ${uTxt}`);
-
-    return parts.length ? parts.join(" • ") : "";
-  } catch {
-    return "";
-  }
-}
-
-/* ✅ كرت قابل للفتح/الإغلاق + سهم */
-function CollapsibleCard({
-  title,
-  defaultOpen = false,
-  children,
-}: {
-  title: string;
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <details
-      className="group rounded-3xl border border-white/10 bg-white/5"
-      open={defaultOpen}
-    >
-      <summary className="cursor-pointer list-none p-4 flex items-center justify-between">
-        <span className="text-sm font-extrabold text-white">{title}</span>
-
-        <span className="h-9 w-9 rounded-2xl border border-[#d6b56a]/30 bg-black/25 flex items-center justify-center">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4 text-[#d6b56a] transition-transform duration-200 group-open:rotate-180"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2.4}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
-        </span>
-      </summary>
-
-      <div className="px-4 pb-4 pt-0">{children}</div>
-    </details>
-  );
-}
-
 export default function FazaaDrawer({
   open,
   onClose,
@@ -287,6 +226,7 @@ export default function FazaaDrawer({
   const [savedLastUpdated, setSavedLastUpdated] = useState<number | null>(null);
 
   // ✅ زر واحد فقط + يثبت بعد التنفيذ
+  // idle = طبيعي، saved_done = تم حفظ، updated_done = تم تحديث
   const [saveStatus, setSaveStatus] = useState<
     "idle" | "saved_done" | "updated_done"
   >("idle");
@@ -427,6 +367,7 @@ export default function FazaaDrawer({
   }, [isLoggedIn, heightCm, bust, waist, hip, unit]);
 
   function markDirty() {
+    // ✅ يرجع طبيعي فقط إذا المستخدم غيّر رقم
     setSaveStatus("idle");
   }
 
@@ -436,6 +377,7 @@ export default function FazaaDrawer({
     markDirty();
     setUnit(next);
 
+    // تحويل القيم بدل ما نفرّغها
     const b = toNum(bust);
     const w = toNum(waist);
     const hp = toNum(hip);
@@ -470,7 +412,7 @@ export default function FazaaDrawer({
 
     const payload: SavedPayload = {
       unit,
-      heightCm,
+      heightCm, // ✅ يتخزن دائمًا
       bust,
       waist,
       hip,
@@ -493,6 +435,7 @@ export default function FazaaDrawer({
       });
       if (error) throw error;
 
+      // ✅ بدون رسالة "تم تسجيل الدخول"
       setShowForgot(false);
       setPassword("");
       setAuthMsg(null);
@@ -516,6 +459,7 @@ export default function FazaaDrawer({
       });
       if (error) throw error;
 
+      // بدون مبالغة: نخليها رسالة ثابتة (مو مؤقتة)
       setAuthMsg({
         type: "ok",
         text: "تم إنشاء الحساب. إذا عندك تفعيل بالبريد، راح توصلك رسالة.",
@@ -542,6 +486,7 @@ export default function FazaaDrawer({
     }
 
     try {
+      // لازم يكون عندك صفحة /auth/reset تكمل تغيير كلمة المرور
       const redirectTo = `${window.location.origin}/auth/reset`;
 
       const { error } = await supabase.auth.resetPasswordForEmail(e, {
@@ -549,6 +494,7 @@ export default function FazaaDrawer({
       });
       if (error) throw error;
 
+      // رسالة ثابتة (مو مؤقتة)
       setAuthMsg({
         type: "ok",
         text: "تم إرسال رابط إعادة كلمة المرور على إيميلك",
@@ -559,7 +505,7 @@ export default function FazaaDrawer({
     }
   }
 
-  // ✅ تحميل الهستري من Supabase
+  // ✅ تحميل الهستري من Supabase (إذا مسجلة دخول + الداور مفتوح)
   useEffect(() => {
     if (!open) return;
     if (!sessionUser?.id) {
@@ -584,6 +530,7 @@ export default function FazaaDrawer({
           .limit(10);
 
         if (cancelled) return;
+
         if (error) throw error;
 
         setHistory((data || []) as HistoryItem[]);
@@ -605,6 +552,7 @@ export default function FazaaDrawer({
     ? "opacity-100 pointer-events-auto"
     : "opacity-0 pointer-events-none";
 
+  // زر واحد فقط: حفظ/تحديث + يثبت بعد التنفيذ
   const hasSaved = !!(savedSnapshot && hasAnySavedValue(savedSnapshot));
   const saveButtonText = !hasSaved
     ? saveStatus === "saved_done"
@@ -639,48 +587,30 @@ export default function FazaaDrawer({
           "bg-neutral-950/95 border-l border-white/10",
           "shadow-[0_30px_80px_rgba(0,0,0,0.65)]",
           "transition-transform duration-300",
-          "flex flex-col",
           open ? "translate-x-0" : "translate-x-full",
         ].join(" ")}
         dir="rtl"
       >
-        {/* ✅ Header */}
-        <div className="px-5 py-4 border-b border-white/10">
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-extrabold text-white">القائمة</div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="h-10 w-10 rounded-2xl border border-[#d6b56a]/35 bg-black/30 text-[#d6b56a] hover:border-[#d6b56a]/60 transition"
-              aria-label="إغلاق"
-            >
-              ✕
-            </button>
-          </div>
-
-          {isLoggedIn ? (
-            <div className="mt-3">
-              <div className="text-sm font-extrabold text-white">
-                {sessionUser?.name || "مستخدم"}
-              </div>
-              <div className="mt-1 text-xs text-neutral-400">
-                {sessionUser?.email}
-              </div>
-
-              {/* ✅ خط ذهبي */}
-              <div className="mt-3 h-px w-full bg-[#d6b56a]/35" />
-            </div>
-          ) : null}
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+          <div className="text-sm font-extrabold text-white">القائمة</div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-10 w-10 rounded-2xl border border-[#d6b56a]/35 bg-black/30 text-[#d6b56a] hover:border-[#d6b56a]/60 transition"
+            aria-label="إغلاق"
+          >
+            ✕
+          </button>
         </div>
 
-        {/* Body */}
-        <div className="p-5 space-y-4 overflow-y-auto flex-1">
-          {/* ✅ كرت الحساب يظهر فقط لو مو مسجلة دخول */}
-          {!isLoggedIn ? (
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-sm font-extrabold text-white">الحساب</div>
+        <div className="p-5 space-y-4 overflow-y-auto h-[calc(100%-64px)]">
+          {/* 1) ACCOUNT */}
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-sm font-extrabold text-white">الحساب</div>
 
+              {!isLoggedIn ? (
                 <div className="inline-flex rounded-2xl border border-[#d6b56a]/25 bg-black/20 p-1">
                   <button
                     type="button"
@@ -715,160 +645,184 @@ export default function FazaaDrawer({
                     إنشاء حساب
                   </button>
                 </div>
-              </div>
-
-              {authMsg ? (
-                <div
-                  className={[
-                    "mb-3 rounded-2xl px-3 py-2 text-xs font-semibold border",
-                    authMsg.type === "ok"
-                      ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
-                      : "border-rose-400/30 bg-rose-500/10 text-rose-100",
-                  ].join(" ")}
-                >
-                  {authMsg.text}
-                </div>
               ) : null}
-
-              {showForgot ? (
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs font-semibold text-neutral-200">
-                      الإيميل
-                    </label>
-                    <input
-                      value={forgotEmail}
-                      onChange={(e) => setForgotEmail(e.target.value)}
-                      placeholder="example@email.com"
-                      className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
-                    />
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={handleSendReset}
-                      className="flex-1 rounded-2xl border border-[#d6b56a]/45 bg-[#d6b56a]/15 py-2.5 text-xs font-extrabold text-white hover:border-[#d6b56a]/70 transition"
-                    >
-                      إرسال رابط
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowForgot(false);
-                        setAuthMsg(null);
-                      }}
-                      className="flex-1 rounded-2xl border border-white/10 bg-black/20 py-2.5 text-xs font-extrabold text-white hover:bg-black/30 transition"
-                    >
-                      رجوع
-                    </button>
-                  </div>
-                </div>
-              ) : tab === "register" ? (
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs font-semibold text-neutral-200">
-                      الاسم
-                    </label>
-                    <input
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-neutral-200">
-                      البريد الإلكتروني
-                    </label>
-                    <input
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-neutral-200">
-                      كلمة المرور
-                    </label>
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleRegister}
-                    className="w-full rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/15 py-2.5 text-xs font-extrabold text-white hover:border-[#d6b56a]/70 transition"
-                  >
-                    إنشاء
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs font-semibold text-neutral-200">
-                      البريد الإلكتروني
-                    </label>
-                    <input
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-neutral-200">
-                      كلمة المرور
-                    </label>
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-start">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowForgot(true);
-                        setForgotEmail(email.trim());
-                        setAuthMsg(null);
-                      }}
-                      className="text-xs font-bold text-[#d6b56a] hover:text-[#f3e0b0] transition"
-                    >
-                      نسيت كلمة المرور؟
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleLogin}
-                    className="w-full rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/15 py-2.5 text-xs font-extrabold text-white hover:border-[#d6b56a]/70 transition"
-                  >
-                    دخول
-                  </button>
-                </div>
-              )}
             </div>
-          ) : null}
 
-          {/* 2) MEASUREMENTS (collapsible) */}
-          {isLoggedIn ? (
-            <CollapsibleCard title="المقاسات" defaultOpen={false}>
-              <div className="flex items-center justify-between">
-                <div className="text-[11px] font-semibold text-neutral-300">
-                  وحدة المحيطات:
+            {/* رسائل ثابتة (بدون تم تسجيل الدخول) */}
+            {authMsg ? (
+              <div
+                className={[
+                  "mb-3 rounded-2xl px-3 py-2 text-xs font-semibold border",
+                  authMsg.type === "ok"
+                    ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
+                    : "border-rose-400/30 bg-rose-500/10 text-rose-100",
+                ].join(" ")}
+              >
+                {authMsg.text}
+              </div>
+            ) : null}
+
+            {!isLoggedIn ? (
+              <>
+                {showForgot ? (
+                  /* Forgot Password (inside drawer) */
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs font-semibold text-neutral-200">
+                        الإيميل
+                      </label>
+                      <input
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        placeholder="example@email.com"
+                        className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
+                      />
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSendReset}
+                        className="flex-1 rounded-2xl border border-[#d6b56a]/45 bg-[#d6b56a]/15 py-2.5 text-xs font-extrabold text-white hover:border-[#d6b56a]/70 transition"
+                      >
+                        إرسال رابط
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowForgot(false);
+                          setAuthMsg(null);
+                        }}
+                        className="flex-1 rounded-2xl border border-white/10 bg-black/20 py-2.5 text-xs font-extrabold text-white hover:bg-black/30 transition"
+                      >
+                        رجوع
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {tab === "register" ? (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-xs font-semibold text-neutral-200">
+                            الاسم
+                          </label>
+                          <input
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold text-neutral-200">
+                            البريد الإلكتروني
+                          </label>
+                          <input
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold text-neutral-200">
+                            كلمة المرور
+                          </label>
+                          <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleRegister}
+                          className="w-full rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/15 py-2.5 text-xs font-extrabold text-white hover:border-[#d6b56a]/70 transition"
+                        >
+                          إنشاء
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-xs font-semibold text-neutral-200">
+                            البريد الإلكتروني
+                          </label>
+                          <input
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold text-neutral-200">
+                            كلمة المرور
+                          </label>
+                          <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
+                          />
+                        </div>
+
+                        {/* نسيت كلمة المرور داخل الداور */}
+                        <div className="flex items-center justify-start">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowForgot(true);
+                              setForgotEmail(email.trim());
+                              setAuthMsg(null);
+                            }}
+                            className="text-xs font-bold text-[#d6b56a] hover:text-[#f3e0b0] transition"
+                          >
+                            نسيت كلمة المرور؟
+                          </button>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleLogin}
+                          className="w-full rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/15 py-2.5 text-xs font-extrabold text-white hover:border-[#d6b56a]/70 transition"
+                        >
+                          دخول
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            ) : (
+              // ✅ إذا مسجلة دخول: الاسم + الإيميل فقط (بدون تم تسجيل الدخول)
+              <div className="text-xs text-neutral-300 space-y-1">
+                <div className="font-extrabold text-white">
+                  {sessionUser?.name || "مستخدم"}
                 </div>
-                <UnitToggle value={unit} onChange={onChangeUnit} />
+                <div className="text-neutral-400">{sessionUser?.email}</div>
+              </div>
+            )}
+          </div>
+
+          {/* 2) MEASUREMENTS (only when logged in) */}
+          {isLoggedIn ? (
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-extrabold text-white">المقاسات</div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-neutral-300">
+                    وحدة المحيطات:
+                  </span>
+                  <UnitToggle value={unit} onChange={onChangeUnit} />
+                </div>
               </div>
 
+              {/* تنبيه stale اختياري (أنـيق ومش مزعج) */}
               {savedSnapshot && hasAnySavedValue(savedSnapshot) && isStale ? (
                 <div className="mt-3 rounded-2xl border border-[#d6b56a]/25 bg-black/20 px-3 py-2 text-[11px] text-[#f3e0b0]">
                   مر {STALE_DAYS} يوم على آخر تحديث للمقاسات
@@ -921,6 +875,7 @@ export default function FazaaDrawer({
                 />
               </div>
 
+              {/* زر واحد فقط */}
               <div className="mt-4">
                 <button
                   type="button"
@@ -935,12 +890,16 @@ export default function FazaaDrawer({
                   * الطول بالسنتيمتر دائمًا — ووحدة المحيطات حسب اختيارك.
                 </div>
               </div>
-            </CollapsibleCard>
+            </div>
           ) : null}
 
-          {/* 3) HISTORY (collapsible) */}
+          {/* 3) HISTORY (only when logged in) */}
           {isLoggedIn ? (
-            <CollapsibleCard title="آخر النتائج" defaultOpen={false}>
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+              <div className="text-sm font-extrabold text-white mb-3">
+                آخر النتائج
+              </div>
+
               {historyLoading ? (
                 <div className="text-xs text-neutral-400">جاري التحميل…</div>
               ) : historyErr ? (
@@ -973,18 +932,17 @@ export default function FazaaDrawer({
                       <div className="text-xs font-extrabold text-white">
                         {h.title}
                       </div>
-
                       <div className="mt-1 text-[11px] text-neutral-400">
-                        {subtitleFromQuery(h.query) || h.subtitle}
+                        {h.subtitle}
                       </div>
                     </button>
                   ))}
                 </div>
               )}
-            </CollapsibleCard>
+            </div>
           ) : null}
 
-          {/* 4) LOGOUT */}
+          {/* 4) LOGOUT (آخر شي + لحاله) */}
           {isLoggedIn ? (
             <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
               <button
