@@ -24,3 +24,19 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* =========================================
+   إخفاء السهم الافتراضي لـ <details>
+   ========================================= */
+
+details > summary {
+  list-style: none !important;
+}
+
+details > summary::-webkit-details-marker {
+  display: none !important;
+}
+
+details > summary::marker {
+  display: none !important;
+}

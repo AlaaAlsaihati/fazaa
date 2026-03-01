@@ -90,7 +90,11 @@ function ThreeDotsButton({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       aria-label="القائمة"
       className={[
-        "fixed top-6 right-6 z-50",
+        // ✅ FIX: Safe Area (iPhone notch / Safari bars)
+        "fixed z-50",
+        "top-[calc(env(safe-area-inset-top)+1.5rem)]",
+        "right-[calc(env(safe-area-inset-right)+1.5rem)]",
+
         "h-12 w-12 rounded-2xl",
         "border border-[#d6b56a]/45 bg-black/35 backdrop-blur",
         "shadow-[0_10px_30px_rgba(0,0,0,0.45)]",
@@ -119,7 +123,11 @@ function BackFab({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       aria-label="رجوع"
       className={[
-        "fixed bottom-6 right-6 z-50",
+        // ✅ FIX: Safe Area (bottom toolbar)
+        "fixed z-50",
+        "bottom-[calc(env(safe-area-inset-bottom)+1.5rem)]",
+        "right-[calc(env(safe-area-inset-right)+1.5rem)]",
+
         "h-12 w-12 rounded-2xl",
         "border border-[#d6b56a]/55 bg-black/35 backdrop-blur",
         "shadow-[0_10px_30px_rgba(0,0,0,0.45)]",
@@ -149,7 +157,9 @@ export default function OccasionPage() {
   // ✅ Drawer state
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const selectedCard = [...CARDS_TOP6, CHALET_CARD].find((c) => c.key === occasion);
+  const selectedCard = [...CARDS_TOP6, CHALET_CARD].find(
+    (c) => c.key === occasion
+  );
 
   function next() {
     if (!occasion) return;
@@ -307,7 +317,11 @@ function OccasionButton({
             stroke="currentColor"
             strokeWidth="2.6"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M20 6 9 17l-5-5" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M20 6 9 17l-5-5"
+            />
           </svg>
         </span>
       )}
