@@ -182,6 +182,35 @@ function SelectField({
   );
 }
 
+/* ✅ تطبيع query عشان الضغط على النتائج يودّي /results?.... بشكل صحيح دائمًا */
+function normalizeResultsQuery(raw: string) {
+  try {
+    const s = String(raw || "").trim();
+    if (!s) return "";
+
+    // رابط كامل
+    if (s.startsWith("http://") || s.startsWith("https://")) {
+      const u = new URL(s);
+      return u.search ? u.search : "";
+    }
+
+    // مسار فيه /results?...
+    if (s.includes("?")) {
+      const idx = s.indexOf("?");
+      const after = s.slice(idx);
+      return after.startsWith("?") ? after : `?${after}`;
+    }
+
+    // فقط باراميترات
+    return s.startsWith("?") ? s : `?${s}`;
+  } catch {
+    const s = String(raw || "").trim();
+    if (!s) return "";
+    if (s.includes("?")) return s.slice(s.indexOf("?"));
+    return s.startsWith("?") ? s : `?${s}`;
+  }
+}
+
 /* ✅ تفاصيل “آخر النتائج” من query (بدون الطول وبدون شكل الجسم) */
 function subtitleFromQuery(query: string) {
   try {
@@ -949,9 +978,8 @@ export default function FazaaDrawer({
                       onClick={() => {
                         if (!h.query) return;
 
-                        const q = h.query.startsWith("?")
-                          ? h.query
-                          : `?${h.query}`;
+                        const q = normalizeResultsQuery(h.query);
+                        if (!q) return;
 
                         onClose();
                         router.push(`/results${q}`);
@@ -968,7 +996,8 @@ export default function FazaaDrawer({
 
                       {/* ✅ القياسات فقط (صدر/خصر/أرداف) */}
                       <div className="mt-1 text-[11px] text-neutral-400">
-                        {subtitleFromQuery(h.query) || h.subtitle}
+                        {subtitleFromQuery(normalizeResultsQuery(h.query)) ||
+                          h.subtitle}
                       </div>
                     </button>
                   ))}
