@@ -83,17 +83,19 @@ const CHALET_CARD: OccasionCard = {
   comingSoonText: "قريبًا — نجهزها بذوق فزعة",
 };
 
-/* ✅ زر الثلاث نقاط (نفس صفحة البشرة + safe-area) */
+/** ✅ ثلاث نقاط مع Safe Area */
 function ThreeDotsButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label="القائمة"
+      style={{
+        top: "calc(env(safe-area-inset-top, 0px) + 1.5rem)",
+        right: "calc(env(safe-area-inset-right, 0px) + 1.5rem)",
+      }}
       className={[
         "fixed z-50",
-        // ✅ safe-area top
-        "top-[calc(1.5rem+env(safe-area-inset-top))] right-6",
         "h-12 w-12 rounded-2xl",
         "border border-[#d6b56a]/45 bg-black/35 backdrop-blur",
         "shadow-[0_10px_30px_rgba(0,0,0,0.45)]",
@@ -115,22 +117,24 @@ function ThreeDotsButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-/* ✅ زر الرجوع (نفس صفحة البشرة + safe-area) */
+/** ✅ زر الرجوع مع Safe Area */
 function BackFab({ onClick }: { onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label="رجوع"
+      style={{
+        bottom: "calc(env(safe-area-inset-bottom, 0px) + 1.5rem)",
+        right: "calc(env(safe-area-inset-right, 0px) + 1.5rem)",
+      }}
       className={[
         "fixed z-50",
-        // ✅ safe-area bottom
-        "bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-6",
         "h-12 w-12 rounded-2xl",
         "border border-[#d6b56a]/55 bg-black/35 backdrop-blur",
         "shadow-[0_10px_30px_rgba(0,0,0,0.45)]",
         "flex items-center justify-center",
-        "transition active:scale-95",
+        "active:scale-95 transition",
       ].join(" ")}
     >
       <svg
