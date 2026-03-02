@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -84,6 +83,7 @@ const CHALET_CARD: OccasionCard = {
   comingSoonText: "قريبًا — نجهزها بذوق فزعة",
 };
 
+/* ✅ زر الثلاث نقاط (نفس صفحة البشرة + safe-area) */
 function ThreeDotsButton({ onClick }: { onClick: () => void }) {
   return (
     <button
@@ -91,7 +91,9 @@ function ThreeDotsButton({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       aria-label="القائمة"
       className={[
-        "fixed top-6 right-6 z-50",
+        "fixed z-50",
+        // ✅ safe-area top
+        "top-[calc(1.5rem+env(safe-area-inset-top))] right-6",
         "h-12 w-12 rounded-2xl",
         "border border-[#d6b56a]/45 bg-black/35 backdrop-blur",
         "shadow-[0_10px_30px_rgba(0,0,0,0.45)]",
@@ -113,6 +115,7 @@ function ThreeDotsButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+/* ✅ زر الرجوع (نفس صفحة البشرة + safe-area) */
 function BackFab({ onClick }: { onClick: () => void }) {
   return (
     <button
@@ -120,12 +123,14 @@ function BackFab({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       aria-label="رجوع"
       className={[
-        "fixed bottom-6 right-6 z-50",
+        "fixed z-50",
+        // ✅ safe-area bottom
+        "bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-6",
         "h-12 w-12 rounded-2xl",
         "border border-[#d6b56a]/55 bg-black/35 backdrop-blur",
         "shadow-[0_10px_30px_rgba(0,0,0,0.45)]",
         "flex items-center justify-center",
-        "active:scale-95 transition",
+        "transition active:scale-95",
       ].join(" ")}
     >
       <svg
@@ -150,7 +155,9 @@ export default function OccasionPage() {
   // ✅ Drawer state
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const selectedCard = [...CARDS_TOP6, CHALET_CARD].find((c) => c.key === occasion);
+  const selectedCard = [...CARDS_TOP6, CHALET_CARD].find(
+    (c) => c.key === occasion
+  );
 
   function next() {
     if (!occasion) return;
@@ -308,7 +315,11 @@ function OccasionButton({
             stroke="currentColor"
             strokeWidth="2.6"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M20 6 9 17l-5-5" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M20 6 9 17l-5-5"
+            />
           </svg>
         </span>
       )}
@@ -336,9 +347,7 @@ function OccasionButton({
         </div>
 
         <div className="mt-3 h-px bg-white/10" />
-        <p className="mt-2 text-[11px] text-neutral-400">
-          {o.disabled ? "قريبًا" : ""}
-        </p>
+        <p className="mt-2 text-[11px] text-neutral-400">{o.disabled ? "قريبًا" : ""}</p>
       </div>
     </button>
   );
