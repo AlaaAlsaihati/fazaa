@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -83,21 +84,20 @@ const CHALET_CARD: OccasionCard = {
   comingSoonText: "قريبًا — نجهزها بذوق فزعة",
 };
 
-/* ✅ زر الثلاث نقاط — نفس صفحة البشرة حرفيًا */
 function ThreeDotsButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label="القائمة"
-      className="
-        fixed top-6 right-6 z-50
-        h-12 w-12 rounded-2xl
-        border border-[#d6b56a]/45 bg-black/35 backdrop-blur
-        shadow-[0_10px_30px_rgba(0,0,0,0.45)]
-        flex items-center justify-center
-        transition active:scale-95
-      "
+      className={[
+        "fixed top-6 right-6 z-50",
+        "h-12 w-12 rounded-2xl",
+        "border border-[#d6b56a]/45 bg-black/35 backdrop-blur",
+        "shadow-[0_10px_30px_rgba(0,0,0,0.45)]",
+        "flex items-center justify-center",
+        "active:scale-95 transition",
+      ].join(" ")}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -113,21 +113,20 @@ function ThreeDotsButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-/* ✅ زر الرجوع — نفس صفحة البشرة حرفيًا */
 function BackFab({ onClick }: { onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label="رجوع"
-      className="
-        fixed bottom-6 right-6 z-50
-        h-12 w-12 rounded-2xl
-        border border-[#d6b56a]/55 bg-black/35 backdrop-blur
-        shadow-[0_10px_30px_rgba(0,0,0,0.45)]
-        flex items-center justify-center
-        transition active:scale-95
-      "
+      className={[
+        "fixed bottom-6 right-6 z-50",
+        "h-12 w-12 rounded-2xl",
+        "border border-[#d6b56a]/55 bg-black/35 backdrop-blur",
+        "shadow-[0_10px_30px_rgba(0,0,0,0.45)]",
+        "flex items-center justify-center",
+        "active:scale-95 transition",
+      ].join(" ")}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -151,9 +150,7 @@ export default function OccasionPage() {
   // ✅ Drawer state
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const selectedCard = [...CARDS_TOP6, CHALET_CARD].find(
-    (c) => c.key === occasion
-  );
+  const selectedCard = [...CARDS_TOP6, CHALET_CARD].find((c) => c.key === occasion);
 
   function next() {
     if (!occasion) return;
