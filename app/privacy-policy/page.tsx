@@ -14,117 +14,157 @@ export default function PrivacyPolicyPage() {
 
         <div className="rounded-3xl border border-[#d6b56a]/35 bg-white/5 p-8 backdrop-blur text-sm leading-relaxed">
           <div className="grid grid-cols-2 gap-10 text-neutral-300">
+
             {/* Arabic */}
             <div>
-              <b className="text-[#f3e0b0]">1) عدم جمع بيانات شخصية</b><br />
-              فزعة لا تتطلب تسجيل دخول ولا تجمع بيانات تعريف شخصية مثل الاسم، رقم الهوية، أو البيانات البنكية.
+              <b className="text-[#f3e0b0]">1) أنواع البيانات التي نقوم بجمعها</b><br />
+              عند إنشاء حساب في فزعة، نقوم بمعالجة البيانات التالية:
+              <ul className="list-disc pr-5 mt-2 space-y-1">
+                <li>البريد الإلكتروني</li>
+                <li>معرف المستخدم (User ID)</li>
+                <li>المقاسات التي تدخلينها داخل التطبيق</li>
+                <li>سجل النتائج المرتبط بحسابك</li>
+                <li>بيانات استخدام تقنية مجهولة (Usage Data)</li>
+              </ul>
 
-              <br /><br />
-
-              <b className="text-[#f3e0b0]">2) التحليلات المجهولة</b><br />
-              قد نستخدم تحليلات مجهولة (Anonymous Analytics) لفهم الاستخدام وتحسين التجربة (مثل عدد الزيارات، الصفحات الأكثر استخدامًا) دون ربطها بهوية مستخدم محدد.
-
-              <br /><br />
-
-              <b className="text-[#f3e0b0]">3) عدم بيع البيانات</b><br />
-              لا نقوم ببيع أو تأجير أو مشاركة بياناتك لأطراف ثالثة لأغراض تسويقية.
-
-              <br /><br />
-
-              <b className="text-[#f3e0b0]">4) ملفات تعريف الارتباط / التخزين المحلي</b><br />
-              قد نستخدم Cookies أو Local Storage لحفظ اختياراتك مؤقتًا (مثل تفضيلاتك) وتحسين الأداء. يمكنك مسحها من إعدادات المتصفح في أي وقت.
-
-              <br /><br />
-
-              <b className="text-[#f3e0b0]">5) أدوات الطرف الثالث</b><br />
-              إذا تم تفعيل أدوات مثل Google Analytics أو خدمات مشابهة، فقد تقوم هذه الجهات بمعالجة بيانات استخدام مجهولة وفق سياساتها. فزعة لا تتحكم بسياسات الجهات الخارجية.
               <br />
-              وقد تقوم بعض الروابط (مثل روابط المتاجر/الإحالة) باستخدام معرفات تقنية لتتبع مصدر الزيارة أو الطلب — دون أن يعني ذلك بيع بياناتك أو مشاركتها للتسويق المباشر.
+
+              <b className="text-[#f3e0b0]">2) الغرض من المعالجة</b><br />
+              نستخدم البيانات فقط لتشغيل التطبيق، حفظ تفضيلاتك، تحسين دقة الاقتراحات، وتحسين الأداء العام للخدمة.
 
               <br /><br />
 
-              <b className="text-[#f3e0b0]">6) إخلاء مسؤولية الأمان</b><br />
-              نتخذ إجراءات تقنية معقولة لحماية البيانات، ومع ذلك لا يمكن ضمان أمان الإنترنت بنسبة 100% ولا نتحمل مسؤولية أي اختراق خارج عن السيطرة المعقولة.
+              <b className="text-[#f3e0b0]">3) مزود الخدمة ومعالجة البيانات</b><br />
+              يتم تشغيل نظام المصادقة وقاعدة البيانات عبر مزود خدمة سحابي (Supabase). قد تتم معالجة البيانات وفق سياساتهم الأمنية ومعاييرهم المعتمدة.
 
               <br /><br />
 
-              <b className="text-[#f3e0b0]">7) التعديلات على السياسة</b><br />
-              قد نقوم بتحديث سياسة الخصوصية من وقت لآخر، ويُعد استمرار استخدامك للخدمة بعد التحديث موافقة عليها.
+              <b className="text-[#f3e0b0]">4) الاحتفاظ بالبيانات (Data Retention)</b><br />
+              نحتفظ ببيانات الحساب والمقاسات طالما أن الحساب نشط. يمكنك طلب حذف الحساب والبيانات في أي وقت.
 
               <br /><br />
 
-              <b className="text-[#f3e0b0]">8) التواصل</b><br />
-              لأي استفسار بخصوص الخصوصية:{" "}
+              <b className="text-[#f3e0b0]">5) حقوق المستخدم</b><br />
+              يحق لك:
+              <ul className="list-disc pr-5 mt-2 space-y-1">
+                <li>طلب الوصول إلى بياناتك</li>
+                <li>طلب تصحيحها</li>
+                <li>طلب حذفها بالكامل</li>
+              </ul>
+
+              <br />
+
+              <b className="text-[#f3e0b0]">6) الروابط الخارجية والمتاجر</b><br />
+              يحتوي التطبيق على روابط لمتاجر خارجية. عند الانتقال إليها، تخضعين لسياساتهم الخاصة. قد تتضمن بعض الروابط نظام إحالة (Affiliate Tracking) لقياس الأداء دون بيع بياناتك.
+
+              <br /><br />
+
+              <b className="text-[#f3e0b0]">7) الأمان</b><br />
+              نطبق تدابير تقنية وتنظيمية معقولة لحماية البيانات، بما في ذلك التشفير أثناء النقل (HTTPS). ومع ذلك، لا يمكن ضمان أمان الإنترنت بنسبة 100%.
+
+              <br /><br />
+
+              <b className="text-[#f3e0b0]">8) الفئة العمرية</b><br />
+              التطبيق غير موجه للأطفال دون سن 13 عامًا.
+
+              <br /><br />
+
+              <b className="text-[#f3e0b0]">9) نقل البيانات دوليًا</b><br />
+              قد تتم معالجة البيانات عبر خوادم خارج بلد المستخدم وفقًا لمزودي الخدمة السحابية المعتمدين.
+
+              <br /><br />
+
+              <b className="text-[#f3e0b0]">10) التعديلات على السياسة</b><br />
+              قد نقوم بتحديث هذه السياسة من وقت لآخر. استمرار استخدامك بعد التحديث يعني الموافقة على النسخة المعدلة.
+
+              <br /><br />
+
+              <b className="text-[#f3e0b0]">11) التواصل وحذف الحساب</b><br />
+              لطلب حذف الحساب أو لأي استفسار:
+              <br />
               <a
-  href="mailto:contact@fazaa-app.com"
-  className="text-[#f3e0b0] break-words"
-  style={{
-    overflowWrap: "anywhere",
-    display: "-webkit-box",
-    WebkitLineClamp: 2,
-    WebkitBoxOrient: "vertical",
-    overflow: "hidden",
-  }}
->
-  contact@fazaa-app.com
-</a>
+                href="mailto:contact@fazaa-app.com"
+                className="text-[#f3e0b0] break-words"
+              >
+                contact@fazaa-app.com
+              </a>
             </div>
 
             {/* English */}
             <div dir="ltr" className="text-left">
-              <b className="text-[#f3e0b0]">1) No Personal Data Collection</b><br />
-              Fazaa does not require login and does not collect personally identifying information such as name, national ID, or banking details.
+              <b className="text-[#f3e0b0]">1) Data We Collect</b><br />
+              When creating an account, we may process:
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>Email address</li>
+                <li>User ID</li>
+                <li>Entered measurements</li>
+                <li>Saved result history</li>
+                <li>Anonymous usage data</li>
+              </ul>
 
-              <br /><br />
-
-              <b className="text-[#f3e0b0]">2) Anonymous Analytics Only</b><br />
-              We may use anonymous analytics to understand usage and improve the experience (e.g., visits and feature usage) without linking data to an identifiable person.
-
-              <br /><br />
-
-              <b className="text-[#f3e0b0]">3) No Selling of Data</b><br />
-              We do not sell, rent, or share your data for marketing purposes.
-
-              <br /><br />
-
-              <b className="text-[#f3e0b0]">4) Cookies / Local Storage</b><br />
-              We may use cookies or local storage to remember selections and improve performance. You can clear them via your browser settings anytime.
-
-              <br /><br />
-
-              <b className="text-[#f3e0b0]">5) Third-Party Tools</b><br />
-              If tools like Google Analytics are enabled, such providers may process anonymous usage data under their own policies. Fazaa does not control third-party policies.
               <br />
-              Some links (e.g., store/affiliate links) may use technical identifiers to attribute visits or purchases—this does not mean we sell your data or share it for direct marketing.
+
+              <b className="text-[#f3e0b0]">2) Purpose of Processing</b><br />
+              Data is used solely to operate the service, store preferences, improve recommendation accuracy, and enhance performance.
 
               <br /><br />
 
-              <b className="text-[#f3e0b0]">6) Security Disclaimer</b><br />
-              We use reasonable safeguards, but no online system is 100% secure. We are not liable for breaches beyond reasonable control.
+              <b className="text-[#f3e0b0]">3) Service Providers</b><br />
+              Authentication and database services are powered by Supabase. Data may be processed according to their security standards.
 
               <br /><br />
 
-              <b className="text-[#f3e0b0]">7) Changes to Policy</b><br />
-              We may update this policy from time to time. Continued use after updates constitutes acceptance.
+              <b className="text-[#f3e0b0]">4) Data Retention</b><br />
+              Data is retained while the account remains active. Users may request deletion at any time.
 
               <br /><br />
 
-              <b className="text-[#f3e0b0]">8) Contact</b><br />
-              Privacy inquiries:{" "}
-            <a
-  href="mailto:contact@fazaa-app.com"
-  className="text-[#f3e0b0] break-words"
-  style={{
-    overflowWrap: "anywhere",
-    display: "-webkit-box",
-    WebkitLineClamp: 2,
-    WebkitBoxOrient: "vertical",
-    overflow: "hidden",
-  }}
->
-  contact@fazaa-app.com
-</a>
+              <b className="text-[#f3e0b0]">5) User Rights</b><br />
+              Users may request:
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>Access to their data</li>
+                <li>Correction</li>
+                <li>Deletion</li>
+              </ul>
+
+              <br />
+
+              <b className="text-[#f3e0b0]">6) External Store Links</b><br />
+              The app includes links to third-party stores. Affiliate tracking may be used for performance measurement without selling user data.
+
+              <br /><br />
+
+              <b className="text-[#f3e0b0]">7) Security</b><br />
+              We apply reasonable safeguards including encrypted connections (HTTPS). No system is 100% secure.
+
+              <br /><br />
+
+              <b className="text-[#f3e0b0]">8) Age Restriction</b><br />
+              The app is not intended for children under 13.
+
+              <br /><br />
+
+              <b className="text-[#f3e0b0]">9) International Data Transfers</b><br />
+              Data may be processed on cloud servers outside the user's country.
+
+              <br /><br />
+
+              <b className="text-[#f3e0b0]">10) Changes to Policy</b><br />
+              Continued use after updates constitutes acceptance.
+
+              <br /><br />
+
+              <b className="text-[#f3e0b0]">11) Contact & Account Deletion</b><br />
+              For deletion requests:
+              <br />
+              <a
+                href="mailto:contact@fazaa-app.com"
+                className="text-[#f3e0b0] break-words"
+              >
+                contact@fazaa-app.com
+              </a>
             </div>
+
           </div>
         </div>
 
