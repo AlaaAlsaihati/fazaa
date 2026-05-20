@@ -550,7 +550,7 @@ export default function FazaaDrawer({
 
       setAuthMsg({
         type: "ok",
-        text: "تم إنشاء الحساب. إذا عندك تفعيل بالبريد، راح توصلك رسالة.",
+        text: "تم إرسال رابط التفعيل إلى بريدك الإلكتروني",
       });
       setPassword("");
     } catch (e: any) {
