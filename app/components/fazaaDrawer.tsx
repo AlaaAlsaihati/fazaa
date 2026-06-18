@@ -663,15 +663,20 @@ export default function FazaaDrawer({
       />
 
       <aside
-        className={[
-          "fixed top-0 right-0 z-50 h-full w-[360px] max-w-[92vw]",
-          "bg-neutral-950/95 border-l border-white/10",
-          "shadow-[0_30px_80px_rgba(0,0,0,0.65)]",
-          "transition-transform duration-300",
-          open ? "translate-x-0" : "translate-x-full",
-        ].join(" ")}
-        dir="rtl"
-      >
+  className={[
+    "fixed right-0 z-50 w-[360px] max-w-[92vw] flex flex-col",
+    "bg-neutral-950/95 border-l border-white/10",
+    "shadow-[0_30px_80px_rgba(0,0,0,0.65)]",
+    "transition-transform duration-300",
+    open ? "translate-x-0" : "translate-x-full",
+  ].join(" ")}
+  style={{
+    top: "env(safe-area-inset-top)",
+    height:
+      "calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom))",
+  }}
+  dir="rtl"
+>
         {/* ✅ Header (القائمة + الاسم/الايميل تحتها + خط ذهبي) */}
         <div className="px-5 py-4 border-b border-white/10">
           <div className="flex items-center justify-between">
@@ -700,7 +705,7 @@ export default function FazaaDrawer({
           ) : null}
         </div>
 
-        <div className="p-5 space-y-4 overflow-y-auto h-[calc(100%-64px)]">
+        <div className="p-5 space-y-4 overflow-y-auto flex-1 min-h-0">
           {/* ✅ إذا مو مسجلة دخول: يظهر قسم تسجيل الدخول/إنشاء الحساب (مو Accordion لأنك ما طلبتيه) */}
           {!isLoggedIn ? (
             <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
