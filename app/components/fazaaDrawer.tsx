@@ -654,22 +654,26 @@ export default function FazaaDrawer({
 
   return (
     <>
-      <div
+      div
         className={[
           "fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition",
           overlayClass,
         ].join(" ")}
         onClick={onClose}
-      />
-
+      /
       <aside
         className={[
-          "fixed top-0 right-0 z-50 h-full w-[360px] max-w-[92vw]",
+          "fixed right-0 z-50 w-[360px] max-w-[92vw] flex flex-col",
           "bg-neutral-950/95 border-l border-white/10",
           "shadow-[0_30px_80px_rgba(0,0,0,0.65)]",
           "transition-transform duration-300",
           open ? "translate-x-0" : "translate-x-full",
         ].join(" ")}
+        style={{
+          top: "env(safe-area-inset-top)",
+          height:
+            "calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom))",
+        }}
         dir="rtl"
       >
         {/* ✅ Header (القائمة + الاسم/الايميل تحتها + خط ذهبي) */}
@@ -694,10 +698,12 @@ export default function FazaaDrawer({
               <div className="mt-1 text-xs text-neutral-400">
                 {sessionUser?.email}
               </div>
-
               <div className="mt-3 h-px w-full bg-[#d6b56a]/35" />
             </div>
           ) : null}
+        </div>
+        <div className="p-5 space-y-4 overflow-y-auto flex-1 min-h-0">
+          
         </div>
 
         <div className="p-5 space-y-4 overflow-y-auto h-[calc(100%-64px)]">
