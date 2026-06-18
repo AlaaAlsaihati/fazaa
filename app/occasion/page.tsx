@@ -95,7 +95,7 @@ function ThreeDotsButton({ onClick }: { onClick: () => void }) {
         right: "calc(env(safe-area-inset-right, 0px) + 1.5rem)",
       }}
       className={[
-        "fixed z-50",
+        "fixed z-30",
         "h-12 w-12 rounded-2xl",
         "border border-[#d6b56a]/45 bg-black/35 backdrop-blur",
         "shadow-[0_10px_30px_rgba(0,0,0,0.45)]",

@@ -165,14 +165,19 @@ function BackFab({ onClick }: { onClick: () => void }) {
   );
 }
 
+/** ✅ ثلاث نقاط مع Safe Area */
 function ThreeDotsButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label="القائمة"
+      style={{
+        top: "calc(env(safe-area-inset-top, 0px) + 1.5rem)",
+        right: "calc(env(safe-area-inset-right, 0px) + 1.5rem)",
+      }}
       className={[
-        "fixed top-6 right-6 z-50",
+        "fixed z-30",
         "h-12 w-12 rounded-2xl",
         "border border-[#d6b56a]/45 bg-black/35 backdrop-blur",
         "shadow-[0_10px_30px_rgba(0,0,0,0.45)]",
