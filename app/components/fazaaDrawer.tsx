@@ -6,14 +6,14 @@ import { supabase } from "@/app/lib/supabaseClient";
 
 type Unit = "cm" | "in";
 
-const STORAGE_KEY_BASE = "fazaa_measurements_v1"; // للتوافق مع القديم
+const STORAGE_KEY_BASE = "fazaa_measurements_v1";
 const STALE_DAYS = 60;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 type SavedPayload = {
-  unit?: Unit; // وحدة المحيطات فقط
-  heightCm?: string; // الطول دائمًا سم
-  bust?: string; // قيمة حسب unit
+  unit?: Unit;
+  heightCm?: string;
+  bust?: string;
   waist?: string;
   hip?: string;
   lastUpdated?: number;
@@ -23,7 +23,7 @@ type HistoryItem = {
   id: string;
   title: string;
   subtitle: string;
-  query: string; // ✅ query
+  query: string;
   created_at?: string;
 };
 
@@ -40,9 +40,7 @@ function safeLocalStorageSet(key: string, val: string) {
   try {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(key, val);
-  } catch {
-    // ignore
-  }
+  } catch {}
 }
 
 function range(min: number, max: number, step = 1) {
@@ -59,6 +57,7 @@ function toNum(v: string) {
 function inToCm(vIn: number) {
   return vIn * 2.54;
 }
+
 function cmToIn(vCm: number) {
   return vCm / 2.54;
 }
@@ -68,18 +67,14 @@ function hasAnySavedValue(p: SavedPayload | null) {
   return !!(p.heightCm || p.bust || p.waist || p.hip);
 }
 
-/* ===== Options (نفس فكرة صفحة القياسات) ===== */
 const HEIGHT_OPTIONS = range(140, 210, 1);
-
 const BUST_CM_OPTIONS = range(60, 160, 1);
 const WAIST_CM_OPTIONS = range(45, 160, 1);
 const HIP_CM_OPTIONS = range(60, 180, 1);
-
 const BUST_IN_OPTIONS = range(24, 63, 0.5);
 const WAIST_IN_OPTIONS = range(18, 63, 0.5);
 const HIP_IN_OPTIONS = range(24, 71, 0.5);
 
-/* ===== UI bits ===== */
 function UnitToggle({
   value,
   onChange,
@@ -182,26 +177,22 @@ function SelectField({
   );
 }
 
-/* ✅ تطبيع query عشان الضغط على النتائج يودّي /results?.... بشكل صحيح دائمًا */
 function normalizeResultsQuery(raw: string) {
   try {
     const s = String(raw || "").trim();
     if (!s) return "";
 
-    // رابط كامل
     if (s.startsWith("http://") || s.startsWith("https://")) {
       const u = new URL(s);
       return u.search ? u.search : "";
     }
 
-    // مسار فيه /results?...
     if (s.includes("?")) {
       const idx = s.indexOf("?");
       const after = s.slice(idx);
       return after.startsWith("?") ? after : `?${after}`;
     }
 
-    // فقط باراميترات
     return s.startsWith("?") ? s : `?${s}`;
   } catch {
     const s = String(raw || "").trim();
@@ -211,7 +202,6 @@ function normalizeResultsQuery(raw: string) {
   }
 }
 
-/* ✅ تفاصيل “آخر النتائج” من query (بدون الطول وبدون شكل الجسم) */
 function subtitleFromQuery(query: string) {
   try {
     const q = query.startsWith("?") ? query.slice(1) : query;
@@ -220,7 +210,7 @@ function subtitleFromQuery(query: string) {
     const bust = p.get("bust");
     const waist = p.get("waist");
     const hip = p.get("hip");
-    const unit = p.get("unit"); // اختياري
+    const unit = p.get("unit");
 
     const uTxt = unit === "in" ? "إنش" : "سم";
 
@@ -258,7 +248,6 @@ function SectionDetails({
       >
         <span>{title}</span>
 
-        {/* سهم واحد فقط */}
         <svg
           xmlns="http://www.w3.org/2000/svg"
           className="h-4 w-4 text-[#d6b56a] transition group-open:rotate-180"
@@ -287,31 +276,26 @@ export default function FazaaDrawer({
 
   const [tab, setTab] = useState<"login" | "register">("login");
 
-  // --- auth state
   const [sessionUser, setSessionUser] = useState<{
     id: string;
     email: string | null;
     name: string | null;
   } | null>(null);
 
-  // --- auth forms
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  // --- forgot password (inside drawer)
   const [showForgot, setShowForgot] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
 
-  // ❗بدون "تم تسجيل الدخول" — نخلي الرسائل للأخطاء/نجاح إرسال الريست فقط (غير مؤقتة)
   const [authMsg, setAuthMsg] = useState<{
     type: "ok" | "err";
     text: string;
   } | null>(null);
 
-  // --- measurements in drawer (only logged in)
-  const [unit, setUnit] = useState<Unit>("cm"); // وحدة المحيطات
-  const [heightCm, setHeightCm] = useState(""); // دائمًا سم
+  const [unit, setUnit] = useState<Unit>("cm");
+  const [heightCm, setHeightCm] = useState("");
   const [bust, setBust] = useState("");
   const [waist, setWaist] = useState("");
   const [hip, setHip] = useState("");
@@ -319,26 +303,21 @@ export default function FazaaDrawer({
   const [savedSnapshot, setSavedSnapshot] = useState<SavedPayload | null>(null);
   const [savedLastUpdated, setSavedLastUpdated] = useState<number | null>(null);
 
-  // ✅ زر واحد فقط + يثبت بعد التنفيذ
-  // idle = طبيعي، saved_done = تم حفظ، updated_done = تم تحديث
   const [saveStatus, setSaveStatus] = useState<
     "idle" | "saved_done" | "updated_done"
   >("idle");
 
-  // تاريخ النتائج
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyErr, setHistoryErr] = useState<string | null>(null);
 
   const isLoggedIn = !!sessionUser;
 
-  // user-scoped key (عشان ما تختفي/تتلخبط بين حسابات)
   const storageKey = useMemo(() => {
     const uid = sessionUser?.id;
     return uid ? `${STORAGE_KEY_BASE}:${uid}` : STORAGE_KEY_BASE;
   }, [sessionUser?.id]);
 
-  // read session
   useEffect(() => {
     let mounted = true;
 
@@ -378,7 +357,6 @@ export default function FazaaDrawer({
     };
   }, []);
 
-  // ✅ تحميل تلقائي للمحفوظ (عند فتح الداور + عند تغير اليوزر)
   useEffect(() => {
     if (!open) return;
 
@@ -417,7 +395,6 @@ export default function FazaaDrawer({
 
       setSaveStatus("idle");
 
-      // migrate old -> new key once
       if (sessionUser?.id && rawOld && !rawNew) {
         safeLocalStorageSet(storageKey, rawOld);
       }
@@ -433,12 +410,10 @@ export default function FazaaDrawer({
     return Date.now() - savedLastUpdated >= STALE_DAYS * DAY_MS;
   }, [savedLastUpdated]);
 
-  // dropdown options for circumferences
   const bustOptions = unit === "cm" ? BUST_CM_OPTIONS : BUST_IN_OPTIONS;
   const waistOptions = unit === "cm" ? WAIST_CM_OPTIONS : WAIST_IN_OPTIONS;
   const hipOptions = unit === "cm" ? HIP_CM_OPTIONS : HIP_IN_OPTIONS;
 
-  // ✅ صلاحية الحفظ
   const canSave = useMemo(() => {
     if (!isLoggedIn) return false;
 
@@ -588,7 +563,6 @@ export default function FazaaDrawer({
     }
   }
 
-  // ✅ تحميل الهستري من Supabase (إذا مسجلة دخول + الداور مفتوح)
   useEffect(() => {
     if (!open) return;
     if (!sessionUser?.id) {
@@ -654,13 +628,14 @@ export default function FazaaDrawer({
 
   return (
     <>
-      div
+      <div
         className={[
           "fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition",
           overlayClass,
         ].join(" ")}
         onClick={onClose}
-      /
+      />
+
       <aside
         className={[
           "fixed right-0 z-50 w-[360px] max-w-[92vw] flex flex-col",
@@ -676,7 +651,6 @@ export default function FazaaDrawer({
         }}
         dir="rtl"
       >
-        {/* ✅ Header (القائمة + الاسم/الايميل تحتها + خط ذهبي) */}
         <div className="px-5 py-4 border-b border-white/10">
           <div className="flex items-center justify-between">
             <div className="text-sm font-extrabold text-white">القائمة</div>
@@ -698,16 +672,13 @@ export default function FazaaDrawer({
               <div className="mt-1 text-xs text-neutral-400">
                 {sessionUser?.email}
               </div>
+
               <div className="mt-3 h-px w-full bg-[#d6b56a]/35" />
             </div>
           ) : null}
         </div>
-        <div className="p-5 space-y-4 overflow-y-auto flex-1 min-h-0">
-          
-        </div>
 
-        <div className="p-5 space-y-4 overflow-y-auto h-[calc(100%-64px)]">
-          {/* ✅ إذا مو مسجلة دخول: يظهر قسم تسجيل الدخول/إنشاء الحساب (مو Accordion لأنك ما طلبتيه) */}
+        <div className="p-5 space-y-4 overflow-y-auto flex-1 min-h-0">
           {!isLoggedIn ? (
             <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
               <div className="flex items-center justify-between mb-3">
@@ -891,7 +862,6 @@ export default function FazaaDrawer({
             </div>
           ) : null}
 
-          {/* ✅ المقاسات: Accordion (مقفول افتراضيًا) */}
           {isLoggedIn ? (
             <SectionDetails title="المقاسات" defaultOpen={false}>
               <div className="flex items-center justify-between">
@@ -970,7 +940,6 @@ export default function FazaaDrawer({
             </SectionDetails>
           ) : null}
 
-          {/* ✅ آخر النتائج: Accordion (مقفول افتراضيًا) */}
           {isLoggedIn ? (
             <SectionDetails title="آخر النتائج" defaultOpen={false}>
               {historyLoading ? (
@@ -1016,7 +985,6 @@ export default function FazaaDrawer({
             </SectionDetails>
           ) : null}
 
-          {/* تسجيل الخروج */}
           {isLoggedIn ? (
             <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
               <button
