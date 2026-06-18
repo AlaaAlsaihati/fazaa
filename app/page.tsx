@@ -12,7 +12,7 @@ function ThreeDotsButton({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       aria-label="القائمة"
       className={[
-        "fixed top-[calc(env(safe-area-inset-top)+14px)] right-4 z-50",
+        "fixed top-6 right-6 z-50",
         "h-12 w-12 rounded-2xl",
         "border border-[#d6b56a]/45 bg-black/35 backdrop-blur",
         "shadow-[0_10px_30px_rgba(0,0,0,0.45)]",
@@ -44,7 +44,7 @@ export default function HomePage() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.8, ease: "easeOut" }}
       dir="rtl"
-      className="relative min-h-[100dvh] bg-gradient-to-b from-neutral-950 via-neutral-900 to-black text-white flex items-start justify-center px-4 pt-[calc(env(safe-area-inset-top)+24px)] pb-[calc(env(safe-area-inset-bottom)+24px)] overflow-y-auto"
+      className="relative min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-900 to-black text-white flex items-center justify-center p-6 overflow-hidden"
     >
       {/* ✅ زر الثلاث نقاط */}
       <ThreeDotsButton onClick={() => setMenuOpen(true)} />
