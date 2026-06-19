@@ -82,7 +82,7 @@ main {
   width: 100%;
   max-width: 100%;
   min-height: 100dvh;
-  padding-top: max(5.5rem, calc(env(safe-area-inset-top, 0px) + 4.75rem)) !important;
+  padding-top: max(5.5rem, calc(env(safe-area-inset-top, 0px) + 2.5rem)) !important;
   padding-bottom: max(1.5rem, calc(env(safe-area-inset-bottom, 0px) + 1.5rem)) !important;
 }
 
