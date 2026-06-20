@@ -13,6 +13,12 @@ type AnalyzeTarget = "depth" | "undertone";
 const DEPTH_VALUES = ["فاتح جدًا", "فاتح", "حنطي", "حنطي غامق", "أسمر", "داكن"];
 const UNDERTONE_VALUES = ["بارد", "دافئ", "محايد", "زيتوني"];
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
 function cleanResult(value: string, allowed: string[]) {
   const cleaned = String(value || "")
     .replace(/["'`{}[\]]/g, "")
@@ -27,12 +33,19 @@ function cleanResult(value: string, allowed: string[]) {
   return exact;
 }
 
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: corsHeaders,
+  });
+}
+
 export async function POST(req: Request) {
   try {
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
         { error: "OPENAI_API_KEY is missing" },
-        { status: 500 }
+        { status: 500, headers: corsHeaders }
       );
     }
 
@@ -41,11 +54,17 @@ export async function POST(req: Request) {
     const image = formData.get("image");
 
     if (!target || (target !== "depth" && target !== "undertone")) {
-      return NextResponse.json({ error: "Invalid target" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid target" },
+        { status: 400, headers: corsHeaders }
+      );
     }
 
     if (!(image instanceof File)) {
-      return NextResponse.json({ error: "Image is missing" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Image is missing" },
+        { status: 400, headers: corsHeaders }
+      );
     }
 
     const bytes = await image.arrayBuffer();
@@ -96,17 +115,21 @@ export async function POST(req: Request) {
     });
 
     const text = response.output_text || "";
+    console.log("AI RAW RESPONSE:", text);
 
     const suggestion =
       target === "depth"
         ? cleanResult(text, DEPTH_VALUES)
         : cleanResult(text, UNDERTONE_VALUES);
-console.log("AI RAW RESPONSE:", text);
-    return NextResponse.json({ suggestion });
+
+    return NextResponse.json(
+      { suggestion },
+      { status: 200, headers: corsHeaders }
+    );
   } catch (error: any) {
     return NextResponse.json(
       { error: error?.message || "Analysis failed" },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
