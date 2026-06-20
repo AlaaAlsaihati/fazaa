@@ -184,15 +184,37 @@ export default function SkinClient() {
 
     setInstructionTarget(null);
   }
+async function handleImagePicked(
+  target: "depth" | "undertone",
+  file?: File | null
+) {
+  if (!file) return;
 
-  function handleImagePicked(target: "depth" | "undertone") {
-    if (target === "depth") {
-      setSuggestionText("اللون المقترح: حنطي");
-    } else {
-      setSuggestionText("الأندرتون المقترح: دافئ");
+  try {
+    const formData = new FormData();
+    formData.append("target", target);
+    formData.append("image", file);
+
+    const res = await fetch("/api/analyze-skin", {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data?.error || "تعذر تحليل الصورة");
     }
-  }
 
+    if (target === "depth") {
+      setSuggestionText(`اللون المقترح: ${data.suggestion}`);
+    } else {
+      setSuggestionText(`الأندرتون المقترح: ${data.suggestion}`);
+    }
+  } catch {
+    setSuggestionText("تعذر تحليل الصورة، حاولي مرة أخرى");
+  }
+}
   function next() {
     if (!depth || !undertone) return;
 
@@ -214,7 +236,7 @@ export default function SkinClient() {
         accept="image/*"
         capture="user"
         className="hidden"
-        onChange={() => handleImagePicked("depth")}
+        onChange={(e) => handleImagePicked("depth", e.target.files?.[0])}
       />
 
       <input
@@ -223,7 +245,7 @@ export default function SkinClient() {
         accept="image/*"
         capture="environment"
         className="hidden"
-        onChange={() => handleImagePicked("undertone")}
+        onChange={(e) => handleImagePicked("undertone", e.target.files?.[0])}
       />
 
       <div className="mx-auto w-full max-w-xl">
