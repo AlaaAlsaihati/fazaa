@@ -211,9 +211,9 @@ async function handleImagePicked(
     } else {
       setSuggestionText(`الأندرتون المقترح: ${data.suggestion}`);
     }
-  } catch {
-    setSuggestionText("تعذر تحليل الصورة، حاولي مرة أخرى");
-  }
+ } catch (err: any) {
+  setSuggestionText(`تعذر تحليل الصورة: ${err?.message || "خطأ غير معروف"}`);
+}
 }
   function next() {
     if (!depth || !undertone) return;
