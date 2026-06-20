@@ -82,8 +82,8 @@ main {
   width: 100%;
   max-width: 100%;
   min-height: 100dvh;
-  padding-top: max(5.5rem, calc(env(safe-area-inset-top, 0px) + 1rem)) !important;
-  padding-bottom: max(1.5rem, calc(env(safe-area-inset-bottom, 0px) + 1rem)) !important;
+  padding-top: max(5.5rem, calc(env(safe-area-inset-top, 0px) + 0.5rem)) !important;
+  padding-bottom: max(1.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.5rem)) !important;
 }
 
 /* الجوال: نخلي الإحساس العام أنعم وأصغر شوي */

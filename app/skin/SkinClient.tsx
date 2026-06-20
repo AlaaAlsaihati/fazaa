@@ -195,7 +195,7 @@ async function handleImagePicked(
     formData.append("target", target);
     formData.append("image", file);
 
-    const res = await fetch("/api/analyze-skin", {
+    const res = await fetch("https://fazaa-app.com/api/analyze-skin", {
       method: "POST",
       body: formData,
     });

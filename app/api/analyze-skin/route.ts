@@ -101,7 +101,7 @@ export async function POST(req: Request) {
       target === "depth"
         ? cleanResult(text, DEPTH_VALUES)
         : cleanResult(text, UNDERTONE_VALUES);
-
+console.log("AI RAW RESPONSE:", text);
     return NextResponse.json({ suggestion });
   } catch (error: any) {
     return NextResponse.json(

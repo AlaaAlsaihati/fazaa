@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
+const isCapacitorBuild = process.env.CAPACITOR_BUILD === "true";
+
 const nextConfig: NextConfig = {
-  output: "export",
+  ...(isCapacitorBuild ? { output: "export" } : {}),
 
   images: {
     unoptimized: true,
@@ -15,7 +17,6 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "dlona.sa" },
       { protocol: "https", hostname: "afradreses.com" },
       { protocol: "https", hostname: "vanusfashion.com" },
-      { protocol: "https", hostname: "asom-dresses.com" },
     ],
   },
 };
