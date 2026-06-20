@@ -18,8 +18,13 @@ function cleanResult(value: string, allowed: string[]) {
     .replace(/["'`{}[\]]/g, "")
     .trim();
 
-  const exact = allowed.find((x) => cleaned.includes(x));
-  return exact || allowed[0];
+  const exact = allowed.find((x) => cleaned === x || cleaned.includes(x));
+
+  if (!exact) {
+    throw new Error(`Invalid AI result: ${cleaned}`);
+  }
+
+  return exact;
 }
 
 export async function POST(req: Request) {
@@ -74,7 +79,7 @@ export async function POST(req: Request) {
 `;
 
     const response = await openai.responses.create({
-      model: "gpt-4.1-mini",
+      model: "gpt-40-mini",
       input: [
         {
           role: "user",
