@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import SiteFooter from "@/app/components/FazaaFooter";
 import FazaaDrawer from "@/app/components/fazaaDrawer";
 
@@ -32,6 +32,7 @@ const UNDERTONE_ICON_SRC: Record<Exclude<Undertone, "">, string> = {
   زيتوني: "/icons/undertone/olive-v2.png",
 };
 
+/* ===== علامة التحديد ===== */
 function SelectedBadge() {
   return (
     <span className="absolute top-0 left-0 -translate-x-1 -translate-y-1 z-30 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black border border-[#d6b56a] pointer-events-none">
@@ -48,33 +49,7 @@ function SelectedBadge() {
   );
 }
 
-function CameraIconButton({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label="كاميرا"
-      className="absolute top-3 left-3 z-20 text-[#d6b56a]/85 hover:text-[#f3e0b0] transition active:scale-95"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="h-5 w-5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.8}
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M4 8.5h3.2L8.8 6.5h6.4l1.6 2H20v9.5H4V8.5Z"
-        />
-        <circle cx="12" cy="13.2" r="3.1" />
-      </svg>
-    </button>
-  );
-}
-
+/* ===== أيقونة الأندرتون ===== */
 function UndertoneIcon({ src, alt }: { src: string; alt: string }) {
   return (
     <img
@@ -92,6 +67,7 @@ function UndertoneIcon({ src, alt }: { src: string; alt: string }) {
   );
 }
 
+/* ===== زر الرجوع ===== */
 function BackFab({ onClick }: { onClick: () => void }) {
   return (
     <button
@@ -121,6 +97,7 @@ function BackFab({ onClick }: { onClick: () => void }) {
   );
 }
 
+/** ✅ ثلاث نقاط مع Safe Area */
 function ThreeDotsButton({ onClick }: { onClick: () => void }) {
   return (
     <button
@@ -161,60 +138,9 @@ export default function SkinClient() {
   const [depth, setDepth] = useState<Depth>("");
   const [undertone, setUndertone] = useState<Undertone>("");
 
+  // ✅ Drawer state
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const [instructionTarget, setInstructionTarget] = useState<"depth" | "undertone" | null>(null);
-  const [suggestionText, setSuggestionText] = useState("");
-
-  const depthInputRef = useRef<HTMLInputElement | null>(null);
-  const undertoneInputRef = useRef<HTMLInputElement | null>(null);
-
-  function openCameraInstructions(target: "depth" | "undertone") {
-    setInstructionTarget(target);
-  }
-
-  function openCamera() {
-    if (instructionTarget === "depth") {
-      depthInputRef.current?.click();
-    }
-
-    if (instructionTarget === "undertone") {
-      undertoneInputRef.current?.click();
-    }
-
-    setInstructionTarget(null);
-  }
-async function handleImagePicked(
-  target: "depth" | "undertone",
-  file?: File | null
-) {
-  if (!file) return;
-
-  try {
-    const formData = new FormData();
-    formData.append("target", target);
-    formData.append("image", file);
-
-const res = await fetch("https://www.fazaa-app.com/api/analyze-skin", {
-        method: "POST",
-      body: formData,
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(data?.error || "تعذر تحليل الصورة");
-    }
-
-    if (target === "depth") {
-      setSuggestionText(`اللون المقترح: ${data.suggestion}`);
-    } else {
-      setSuggestionText(`الأندرتون المقترح: ${data.suggestion}`);
-    }
- } catch (err: any) {
-  setSuggestionText(`تعذر تحليل الصورة: ${err?.message || "خطأ غير معروف"}`);
-}
-}
   function next() {
     if (!depth || !undertone) return;
 
@@ -230,25 +156,8 @@ const res = await fetch("https://www.fazaa-app.com/api/analyze-skin", {
       dir="rtl"
       className="min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-900 to-black px-4 py-4"
     >
-      <input
-        ref={depthInputRef}
-        type="file"
-        accept="image/*"
-        capture="user"
-        className="hidden"
-        onChange={(e) => handleImagePicked("depth", e.target.files?.[0])}
-      />
-
-      <input
-        ref={undertoneInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={(e) => handleImagePicked("undertone", e.target.files?.[0])}
-      />
-
       <div className="mx-auto w-full max-w-xl">
+        {/* Header */}
         <header className="mb-3">
           <p className="text-neutral-400 text-xs">فزعة</p>
           <h1 className="text-xl sm:text-2xl font-bold text-white">
@@ -259,9 +168,8 @@ const res = await fetch("https://www.fazaa-app.com/api/analyze-skin", {
           </p>
         </header>
 
-        <section className="relative rounded-2xl border border-[#d6b56a]/20 bg-white/5 p-3 backdrop-blur">
-          <CameraIconButton onClick={() => openCameraInstructions("depth")} />
-
+        {/* ===== درجة البشرة ===== */}
+        <section className="rounded-2xl border border-[#d6b56a]/20 bg-white/5 p-3 backdrop-blur">
           <h2 className="text-white font-semibold text-sm">درجة البشرة</h2>
           <p className="text-neutral-400 text-xs mt-1">
             اختاري الدرجة الأقرب لك
@@ -305,9 +213,8 @@ const res = await fetch("https://www.fazaa-app.com/api/analyze-skin", {
           </div>
         </section>
 
-        <section className="relative mt-3 rounded-2xl border border-[#d6b56a]/20 bg-white/5 p-3 backdrop-blur">
-          <CameraIconButton onClick={() => openCameraInstructions("undertone")} />
-
+        {/* ===== الأندرتون ===== */}
+        <section className="mt-3 rounded-2xl border border-[#d6b56a]/20 bg-white/5 p-3 backdrop-blur">
           <h2 className="text-white font-semibold text-sm">الأندرتون</h2>
           <p className="text-neutral-400 text-xs mt-1">
             التدرج الداخلي للبشرة
@@ -354,74 +261,19 @@ const res = await fetch("https://www.fazaa-app.com/api/analyze-skin", {
         </div>
       </div>
 
-      {instructionTarget ? (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
-          <div className="w-full max-w-sm rounded-3xl border border-[#d6b56a]/30 bg-neutral-950 p-5 text-center shadow-[0_30px_80px_rgba(0,0,0,0.65)]">
-            <h3 className="text-white font-extrabold">
-              {instructionTarget === "depth" ? "تحليل لون البشرة" : "تحليل الأندرتون"}
-            </h3>
-
-            <div className="mt-4 text-sm text-neutral-300 leading-loose text-right">
-              {instructionTarget === "depth" ? (
-                <>
-                  <p>• استخدمي إضاءة طبيعية</p>
-                  <p>• اجعلي الوجه ظاهرًا بالكامل داخل الإطار</p>
-                  <p>• بدون مكياج</p>
-                </>
-              ) : (
-                <>
-                  <p>• استخدمي إضاءة طبيعية</p>
-                  <p>• صوري باطن المعصم بوضوح</p>
-                </>
-              )}
-            </div>
-
-            <button
-              type="button"
-              onClick={openCamera}
-              className="mt-5 w-full rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/15 py-3 text-sm font-extrabold text-white transition"
-            >
-              التالي
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setInstructionTarget(null)}
-              className="mt-3 text-xs font-semibold text-neutral-400 hover:text-white transition"
-            >
-              إغلاق
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {suggestionText ? (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
-          <div className="w-full max-w-sm rounded-3xl border border-[#d6b56a]/30 bg-neutral-950 p-5 text-center shadow-[0_30px_80px_rgba(0,0,0,0.65)]">
-            <p className="text-[#f3e0b0] text-sm font-extrabold leading-loose">
-              {suggestionText}
-            </p>
-
-            <button
-              type="button"
-              onClick={() => setSuggestionText("")}
-              className="mt-5 w-full rounded-2xl border border-[#d6b56a]/45 bg-black/25 py-3 text-sm font-extrabold text-white transition"
-            >
-              إغلاق
-            </button>
-          </div>
-        </div>
-      ) : null}
-
+      {/* ✅ ثلاث نقاط */}
       <ThreeDotsButton onClick={() => setDrawerOpen(true)} />
 
+      {/* ✅ Drawer (الاستدعاء الجديد الصحيح) */}
       <FazaaDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
 
+      {/* زر الرجوع */}
       <BackFab onClick={() => router.back()} />
     </main>
   );
 }
 
+/* ===== كرت الأندرتون ===== */
 function UndertoneCard({
   label,
   iconSrc,
