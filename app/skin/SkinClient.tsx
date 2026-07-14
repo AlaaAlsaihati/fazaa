@@ -161,7 +161,7 @@ export default function SkinClient() {
         <header className="mb-3">
           <p className="text-neutral-400 text-xs">فزعة</p>
           <h1 className="text-xl sm:text-2xl font-bold text-white">
-           2026 اختاري لون البشرة
+          اختاري لون البشرة
           </h1>
           <p className="text-neutral-400 mt-1 text-sm">
             عشان نطلع لك ألوان تبرزك وتطلع خيالية عليك ✨
