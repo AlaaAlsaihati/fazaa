@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import FazaaDrawer from "@/app/components/fazaaDrawer";
 
-/** ✅ ثلاث نقاط مع Safe Area */
+/** ثلاث نقاط مع Safe Area */
 function ThreeDotsButton({ onClick }: { onClick: () => void }) {
   return (
     <button
@@ -51,10 +51,10 @@ export default function HomePage() {
       dir="rtl"
       className="relative min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-900 to-black text-white flex items-center justify-center p-6 overflow-hidden"
     >
-      {/* ✅ زر الثلاث نقاط */}
+      {/* زر الثلاث نقاط */}
       <ThreeDotsButton onClick={() => setMenuOpen(true)} />
 
-      {/* ✅ Drawer (الملف الموحد الجديد) */}
+      {/* Drawer */}
       <FazaaDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div className="relative w-full max-w-6xl">
@@ -100,8 +100,8 @@ export default function HomePage() {
             transition={{ duration: 0.9, delay: 0.28, ease: "easeOut" }}
             className="mt-6 text-center text-neutral-300 max-w-3xl mx-auto leading-loose"
           >
-            تجربة ذكية تساعدك على اختيار الإطلالة الأنسب لك حسب المناسبة، لون بشرتك،
-            ومقاساتك — مع ترشيحات فخمة ومقاس محسوب بدقة.
+            توصيات مخصصة حسب المناسبة، لون بشرتك ومقاساتك، لتصلي إلى
+            القطع الأقرب لك مع مقاس مقترح لكل قطعة.
           </motion.p>
 
           {/* CTA */}
@@ -130,40 +130,60 @@ export default function HomePage() {
             }}
             className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-5"
           >
-            <Feature title="اختيار ذكي" desc="تحليل المناسبة، لون البشرة والمقاسات" />
-            <Feature title="مقاس مقترح" desc="نحسب لك المقاس الأنسب لكل قطعة" />
-            <Feature title="متاجر مختارة" desc="روابط مباشرة لمنتجات فخمة" />
+            <Feature
+              title="توصيات مخصصة"
+              desc="حسب المناسبة، لون البشرة والمقاسات"
+            />
+
+            <Feature
+              title="مقاس مقترح"
+              desc="اقتراح المقاس المناسب لكل قطعة"
+            />
+
+            <Feature
+              title="متاجر مختارة"
+              desc="روابط مباشرة للقطع المقترحة"
+            />
           </motion.div>
         </motion.div>
 
         {/* Footer */}
         <footer className="mt-8 text-center text-xs text-neutral-400 leading-tight space-y-0">
           <div className="text-neutral-500">© 2026</div>
-          <div className="text-amber-300 text-[12px] font-medium">Alaa Abdullah</div>
-          <div className="text-neutral-500">All Rights Reserved</div>
 
-          {/* Contact */}
-          <div dir="ltr" className="text-[11px] text-neutral-400">
-            <span className="inline-flex items-center gap-2">
-              <span>For contact</span>
-              <span className="opacity-60">:</span>
-              <a
-                href="mailto:contact@fazaa-app.com"
-                className="text-[#f3e0b0] text-[11px] font-medium tracking-[0.10em] hover:text-[#d6b56a] transition"
-              >
-                contact@fazaa-app.com
-              </a>
-            </span>
+          {/* يظهر في الصفحة الرئيسية فقط */}
+          <div className="text-amber-300 text-[12px] font-medium">
+            Alaa Abdullah
           </div>
 
-          {/* Privacy & Terms */}
+          <div className="text-neutral-500">All Rights Reserved</div>
+
+
+          {/* Support, Terms & Privacy */}
           <div className="flex items-center justify-center gap-2 text-[11px] text-neutral-400">
-            <a href="/privacy-policy" className="hover:text-[#d6b56a] transition">
-              Privacy Policy
+            <a
+              href="/support"
+              className="hover:text-[#d6b56a] transition no-underline"
+            >
+              Support
             </a>
+
             <span className="opacity-60">•</span>
-            <a href="/terms-and-conditions" className="hover:text-[#d6b56a] transition">
+
+            <a
+              href="/terms-and-conditions"
+              className="hover:text-[#d6b56a] transition no-underline"
+            >
               Terms & Conditions
+            </a>
+
+            <span className="opacity-60">•</span>
+
+            <a
+              href="/privacy-policy"
+              className="hover:text-[#d6b56a] transition no-underline"
+            >
+              Privacy Policy
             </a>
           </div>
         </footer>
