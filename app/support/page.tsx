@@ -38,7 +38,7 @@ export default function SupportPage() {
           </a>
 
           <a
-            href="mailto:support@fazaa-app.com"
+            href="contact@fazaa-app.com"
             className="flex items-center justify-center gap-2 rounded-2xl border border-[#d6b56a]/60 px-5 py-3 text-[#d6b56a] transition active:scale-[0.98]"
           >
             <span className="font-semibold">
@@ -49,7 +49,7 @@ export default function SupportPage() {
               dir="ltr"
               className="select-text text-sm font-medium text-white/70"
             >
-              support@fazaa-app.com
+              contact@fazaa-app.com
             </span>
           </a>
         </div>
