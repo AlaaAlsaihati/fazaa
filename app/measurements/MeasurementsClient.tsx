@@ -1,4 +1,4 @@
- "use client";
+"use client";
 
 import {
   useEffect,
@@ -31,10 +31,6 @@ type Unit = "cm" | "in";
 
 const STORAGE_KEY =
   "fazaa_measurements_v1";
-
-const STALE_DAYS = 60;
-const DAY_MS =
-  24 * 60 * 60 * 1000;
 
 /* =========================
    Helpers
@@ -635,14 +631,6 @@ export default function MeasurementsClient({
     );
 
   const [
-    savedLastUpdated,
-    setSavedLastUpdated,
-  ] =
-    useState<number | null>(
-      null
-    );
-
-  const [
     isDirty,
     setIsDirty,
   ] = useState(false);
@@ -680,10 +668,6 @@ export default function MeasurementsClient({
         null
       );
 
-      setSavedLastUpdated(
-        null
-      );
-
       setLastAction(
         null
       );
@@ -699,13 +683,6 @@ export default function MeasurementsClient({
 
       setSavedSnapshot(
         saved
-      );
-
-      setSavedLastUpdated(
-        typeof saved.lastUpdated ===
-          "number"
-          ? saved.lastUpdated
-          : null
       );
 
       setLastAction(
@@ -730,10 +707,6 @@ export default function MeasurementsClient({
         null
       );
 
-      setSavedLastUpdated(
-        null
-      );
-
       setLastAction(
         null
       );
@@ -755,24 +728,6 @@ export default function MeasurementsClient({
     }, [
       isLoggedIn,
       savedSnapshot,
-    ]);
-
-  const isStale =
-    useMemo(() => {
-      if (
-        !savedLastUpdated
-      ) {
-        return false;
-      }
-
-      return (
-        Date.now() -
-          savedLastUpdated >=
-        STALE_DAYS *
-          DAY_MS
-      );
-    }, [
-      savedLastUpdated,
     ]);
 
   /* =========================
@@ -920,9 +875,6 @@ export default function MeasurementsClient({
       nextUnit
     );
 
-    /*
-      نفس سلوك العربي الحالي
-    */
     setBust("");
     setWaist("");
     setHip("");
@@ -1022,11 +974,6 @@ export default function MeasurementsClient({
 
     setSavedSnapshot(
       payload
-    );
-
-    setSavedLastUpdated(
-      payload.lastUpdated ??
-        null
     );
 
     setIsDirty(false);
@@ -1250,7 +1197,6 @@ export default function MeasurementsClient({
 
     if (isDirty) {
       saveOrUpdateMeasurements();
-
       return;
     }
 
@@ -1258,12 +1204,6 @@ export default function MeasurementsClient({
       applySavedFromSnapshot();
     }
   }
-
-  const showStaleAppliedMessage =
-    !isDirty &&
-    lastAction ===
-      "applied" &&
-    isStale;
 
   /* =========================
      Render
@@ -1450,52 +1390,29 @@ export default function MeasurementsClient({
 
           {/* Saved measurement action */}
           {showActionButton ? (
-            <div className="mt-4">
-              <div className="flex items-center justify-start">
-                <button
-                  type="button"
-                  onClick={
-                    onActionClick
-                  }
-                  disabled={
-                    actionDisabled
-                  }
-                  className={[
-                    "inline-flex max-w-full items-center gap-2",
-                    "rounded-xl border px-3 py-2",
-                    "text-xs font-extrabold transition",
-                    "whitespace-nowrap",
-                    "border-[#d6b56a]/45 bg-black/20 text-white hover:border-[#d6b56a]/70",
-                    "disabled:opacity-60 disabled:hover:border-[#d6b56a]/45",
-                    lastAction
-                      ? "bg-[#d6b56a]/10 border-[#d6b56a]/60"
-                      : "",
-                  ].join(" ")}
-                >
-                  <span>
-                    {actionLabel}
-                  </span>
-
-                  {/* العربي يبقى بنفس شكل التنبيه القديم داخل الزر */}
-                  {isArabic &&
-                  showStaleAppliedMessage ? (
-                    <span className="mr-2 whitespace-nowrap rounded-full border border-[#d6b56a]/35 bg-black/20 px-2 py-0.5 text-[10px] text-[#f3e0b0]">
-                      {`مر ${STALE_DAYS} يوم على آخر تحديث للمقاسات`}
-                    </span>
-                  ) : null}
-                </button>
-              </div>
-
-              {/* English فقط:
-                  لو فيه تنبيه قديم نخليه بسطر مستقل
-                  حتى ما ينضغط داخل الزر.
-              */}
-              {!isArabic &&
-              showStaleAppliedMessage ? (
-                <div className="mt-2 text-[10px] text-[#f3e0b0]">
-                  {`Last updated over ${STALE_DAYS} days ago`}
-                </div>
-              ) : null}
+            <div className="mt-4 flex items-center justify-start">
+              <button
+                type="button"
+                onClick={
+                  onActionClick
+                }
+                disabled={
+                  actionDisabled
+                }
+                className={[
+                  "inline-flex max-w-full items-center",
+                  "rounded-xl border px-3 py-2",
+                  "text-xs font-extrabold transition",
+                  "whitespace-nowrap",
+                  "border-[#d6b56a]/45 bg-black/20 text-white hover:border-[#d6b56a]/70",
+                  "disabled:opacity-60 disabled:hover:border-[#d6b56a]/45",
+                  lastAction
+                    ? "bg-[#d6b56a]/10 border-[#d6b56a]/60"
+                    : "",
+                ].join(" ")}
+              >
+                {actionLabel}
+              </button>
             </div>
           ) : null}
 
@@ -1651,11 +1568,6 @@ function SelectField({
             "w-full appearance-none rounded-2xl border py-3 text-sm font-semibold transition overflow-hidden shrink-0",
             "border-white/10 bg-neutral-950 text-white",
             "focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10",
-
-            /*
-              العربي: نفس وضعه السابق
-              الإنجليزي: مساحة السهم تنتقل لليمين
-            */
             isArabic
               ? "px-4 text-right"
               : "pl-4 pr-10 text-left",
@@ -1687,11 +1599,6 @@ function SelectField({
           )}
         </select>
 
-        {/* العربي:
-            السهم يبقى يسار مثل قبل.
-            English:
-            ينتقل فقط إلى اليمين.
-        */}
         <div
           className={[
             "pointer-events-none absolute inset-y-0 flex items-center",
