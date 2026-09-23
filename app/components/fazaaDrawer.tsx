@@ -15,6 +15,7 @@ import {
 
 type Unit = "cm" | "in";
 type DrawerView = "main" | "settings";
+
 type SettingsBusy =
   | "name"
   | "email"
@@ -61,10 +62,13 @@ function safeLocalStorageGet(key: string) {
   }
 }
 
-function safeLocalStorageSet(key: string, val: string) {
+function safeLocalStorageSet(
+  key: string,
+  value: string
+) {
   try {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(key, val);
+    window.localStorage.setItem(key, value);
   } catch {
     // ignore
   }
@@ -83,37 +87,52 @@ function safeLocalStorageRemove(key: string) {
    Helpers
 ========================= */
 
-function range(min: number, max: number, step = 1) {
+function range(
+  min: number,
+  max: number,
+  step = 1
+) {
   const out: number[] = [];
 
-  for (let x = min; x <= max + 1e-9; x += step) {
+  for (
+    let x = min;
+    x <= max + 1e-9;
+    x += step
+  ) {
     out.push(x);
   }
 
   return out;
 }
 
-function toNum(v: string) {
-  const n = Number(String(v || "").trim());
-  return Number.isFinite(n) ? n : NaN;
+function toNum(value: string) {
+  const n = Number(
+    String(value || "").trim()
+  );
+
+  return Number.isFinite(n)
+    ? n
+    : NaN;
 }
 
-function inToCm(vIn: number) {
-  return vIn * 2.54;
+function inToCm(value: number) {
+  return value * 2.54;
 }
 
-function cmToIn(vCm: number) {
-  return vCm / 2.54;
+function cmToIn(value: number) {
+  return value / 2.54;
 }
 
-function hasAnySavedValue(p: SavedPayload | null) {
-  if (!p) return false;
+function hasAnySavedValue(
+  payload: SavedPayload | null
+) {
+  if (!payload) return false;
 
   return !!(
-    p.heightCm ||
-    p.bust ||
-    p.waist ||
-    p.hip
+    payload.heightCm ||
+    payload.bust ||
+    payload.waist ||
+    payload.hip
   );
 }
 
@@ -125,14 +144,21 @@ function getErrorMessage(
     error &&
     typeof error === "object" &&
     "message" in error &&
-    typeof (error as { message?: unknown }).message ===
-      "string"
+    typeof (
+      error as {
+        message?: unknown;
+      }
+    ).message === "string"
   ) {
     const message = (
-      error as { message: string }
+      error as {
+        message: string;
+      }
     ).message.trim();
 
-    if (message) return message;
+    if (message) {
+      return message;
+    }
   }
 
   return fallback;
@@ -142,23 +168,59 @@ function getErrorMessage(
    Measurement options
 ========================= */
 
-const HEIGHT_OPTIONS = range(140, 210, 1);
+const HEIGHT_OPTIONS = range(
+  140,
+  210,
+  1
+);
 
-const BUST_CM_OPTIONS = range(60, 160, 1);
-const WAIST_CM_OPTIONS = range(45, 160, 1);
-const HIP_CM_OPTIONS = range(60, 180, 1);
+const BUST_CM_OPTIONS = range(
+  60,
+  160,
+  1
+);
 
-const BUST_IN_OPTIONS = range(24, 63, 0.5);
-const WAIST_IN_OPTIONS = range(18, 63, 0.5);
-const HIP_IN_OPTIONS = range(24, 71, 0.5);
+const WAIST_CM_OPTIONS = range(
+  45,
+  160,
+  1
+);
+
+const HIP_CM_OPTIONS = range(
+  60,
+  180,
+  1
+);
+
+const BUST_IN_OPTIONS = range(
+  24,
+  63,
+  0.5
+);
+
+const WAIST_IN_OPTIONS = range(
+  18,
+  63,
+  0.5
+);
+
+const HIP_IN_OPTIONS = range(
+  24,
+  71,
+  0.5
+);
 
 /* =========================
    Query helpers
 ========================= */
 
-function normalizeResultsQuery(raw: string) {
+function normalizeResultsQuery(
+  raw: string
+) {
   try {
-    const s = String(raw || "").trim();
+    const s = String(
+      raw || ""
+    ).trim();
 
     if (!s) return "";
 
@@ -166,30 +228,44 @@ function normalizeResultsQuery(raw: string) {
       s.startsWith("http://") ||
       s.startsWith("https://")
     ) {
-      const u = new URL(s);
-      return u.search ? u.search : "";
+      const url = new URL(s);
+
+      return url.search
+        ? url.search
+        : "";
     }
 
     if (s.includes("?")) {
-      const idx = s.indexOf("?");
-      const after = s.slice(idx);
+      const index =
+        s.indexOf("?");
+
+      const after =
+        s.slice(index);
 
       return after.startsWith("?")
         ? after
         : `?${after}`;
     }
 
-    return s.startsWith("?") ? s : `?${s}`;
+    return s.startsWith("?")
+      ? s
+      : `?${s}`;
   } catch {
-    const s = String(raw || "").trim();
+    const s = String(
+      raw || ""
+    ).trim();
 
     if (!s) return "";
 
     if (s.includes("?")) {
-      return s.slice(s.indexOf("?"));
+      return s.slice(
+        s.indexOf("?")
+      );
     }
 
-    return s.startsWith("?") ? s : `?${s}`;
+    return s.startsWith("?")
+      ? s
+      : `?${s}`;
   }
 }
 
@@ -198,16 +274,25 @@ function subtitleFromQuery(
   isArabic: boolean
 ) {
   try {
-    const q = query.startsWith("?")
-      ? query.slice(1)
-      : query;
+    const q =
+      query.startsWith("?")
+        ? query.slice(1)
+        : query;
 
-    const p = new URLSearchParams(q);
+    const params =
+      new URLSearchParams(q);
 
-    const bust = p.get("bust");
-    const waist = p.get("waist");
-    const hip = p.get("hip");
-    const unit = p.get("unit");
+    const bust =
+      params.get("bust");
+
+    const waist =
+      params.get("waist");
+
+    const hip =
+      params.get("hip");
+
+    const unit =
+      params.get("unit");
 
     const unitText =
       unit === "in"
@@ -256,17 +341,24 @@ function translateHistoryTitle(
   title: string,
   isArabic: boolean
 ) {
-  if (isArabic) return title;
+  if (isArabic) {
+    return title;
+  }
 
-  const map: Record<string, string> = {
+  const map: Record<
+    string,
+    string
+  > = {
     زواج: "Wedding",
-    "ملّكة / خطوبة": "Engagement",
+    "ملّكة / خطوبة":
+      "Engagement",
     خطوبة: "Engagement",
     عمل: "Work",
     عباية: "Abaya",
     عبايات: "Abayas",
     رمضان: "Ramadan",
-    "غبقة / رمضان": "Ramadan",
+    "غبقة / رمضان":
+      "Ramadan",
     بحر: "Beach",
     شاليهات: "Chalets",
     مناسبة: "Occasion",
@@ -286,14 +378,16 @@ function UnitToggle({
   isArabic,
 }: {
   value: Unit;
-  onChange: (u: Unit) => void;
+  onChange: (unit: Unit) => void;
   isArabic: boolean;
 }) {
   return (
     <div className="inline-flex rounded-2xl border border-[#d6b56a]/45 bg-black/20 p-1">
       <button
         type="button"
-        onClick={() => onChange("cm")}
+        onClick={() =>
+          onChange("cm")
+        }
         className={[
           "px-3 py-1.5 rounded-xl text-xs font-extrabold transition",
           value === "cm"
@@ -306,7 +400,9 @@ function UnitToggle({
 
       <button
         type="button"
-        onClick={() => onChange("in")}
+        onClick={() =>
+          onChange("in")
+        }
         className={[
           "px-3 py-1.5 rounded-xl text-xs font-extrabold transition",
           value === "in"
@@ -314,7 +410,9 @@ function UnitToggle({
             : "text-neutral-300 hover:text-white",
         ].join(" ")}
       >
-        {isArabic ? "إنش" : "in"}
+        {isArabic
+          ? "إنش"
+          : "in"}
       </button>
     </div>
   );
@@ -330,7 +428,9 @@ function SelectField({
 }: {
   label: string;
   value: string;
-  onChange: (v: string) => void;
+  onChange: (
+    value: string
+  ) => void;
   placeholder?: string;
   options: number[];
   isArabic: boolean;
@@ -345,9 +445,14 @@ function SelectField({
         <select
           value={value}
           onChange={(e) =>
-            onChange(e.target.value)
+            onChange(
+              e.target.value
+            )
           }
-          style={{ colorScheme: "dark" }}
+          style={{
+            colorScheme:
+              "dark",
+          }}
           className={[
             "w-full appearance-none rounded-2xl border px-4 py-2.5 text-sm font-semibold transition",
             "border-white/10 bg-neutral-950 text-white",
@@ -365,15 +470,19 @@ function SelectField({
                 : "Select")}
           </option>
 
-          {options.map((n) => (
-            <option
-              key={n}
-              value={String(n)}
-              className="bg-neutral-950 text-white"
-            >
-              {n}
-            </option>
-          ))}
+          {options.map(
+            (n) => (
+              <option
+                key={n}
+                value={String(
+                  n
+                )}
+                className="bg-neutral-950 text-white"
+              >
+                {n}
+              </option>
+            )
+          )}
         </select>
 
         <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
@@ -397,6 +506,12 @@ function SelectField({
   );
 }
 
+/*
+  نفس هذا المكوّن مستخدم:
+  - في المقاسات
+  - آخر النتائج
+  - وكل أقسام الإعدادات
+*/
 function SectionDetails({
   title,
   defaultOpen = false,
@@ -409,7 +524,9 @@ function SectionDetails({
   return (
     <details
       {...(defaultOpen
-        ? { open: true }
+        ? {
+            open: true,
+          }
         : {})}
       className="group rounded-3xl border border-white/10 bg-white/5"
     >
@@ -460,7 +577,12 @@ function GearIcon() {
         strokeLinejoin="round"
         d="M9.6 3.2h4.8l.6 2.2c.5.2 1 .5 1.5.8l2.1-.7 2.4 4.1-1.6 1.5c0 .3.1.6.1.9s0 .6-.1.9l1.6 1.5-2.4 4.1-2.1-.7c-.5.3-1 .6-1.5.8l-.6 2.2H9.6L9 18.6c-.5-.2-1-.5-1.5-.8l-2.1.7L3 14.4l1.6-1.5c0-.3-.1-.6-.1-.9s0-.6.1-.9L3 9.6l2.4-4.1 2.1.7c.5-.3 1-.6 1.5-.8l.6-2.2Z"
       />
-      <circle cx="12" cy="12" r="3" />
+
+      <circle
+        cx="12"
+        cy="12"
+        r="3"
+      />
     </svg>
   );
 }
@@ -492,6 +614,29 @@ function BackIcon({
   );
 }
 
+function GlobeIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className="h-4 w-4"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+    >
+      <circle
+        cx="12"
+        cy="12"
+        r="9"
+      />
+
+      <path d="M3 12h18" />
+
+      <path d="M12 3c2.2 2.4 3.3 5.4 3.3 9S14.2 18.6 12 21c-2.2-2.4-3.3-5.4-3.3-9S9.8 5.4 12 3Z" />
+    </svg>
+  );
+}
+
 /* =========================
    Drawer
 ========================= */
@@ -503,7 +648,8 @@ export default function FazaaDrawer({
   open: boolean;
   onClose: () => void;
 }) {
-  const router = useRouter();
+  const router =
+    useRouter();
 
   const {
     language,
@@ -512,38 +658,66 @@ export default function FazaaDrawer({
     direction,
   } = useLanguage();
 
-  const [drawerView, setDrawerView] =
-    useState<DrawerView>("main");
-
-  const [tab, setTab] =
-    useState<"login" | "register">(
-      "login"
+  const [
+    drawerView,
+    setDrawerView,
+  ] =
+    useState<DrawerView>(
+      "main"
     );
+
+  const [
+    tab,
+    setTab,
+  ] = useState<
+    "login" | "register"
+  >("login");
 
   /* =========================
      Auth
   ========================= */
 
-  const [sessionUser, setSessionUser] =
-    useState<{
-      id: string;
-      email: string | null;
-      name: string | null;
-    } | null>(null);
+  const [
+    sessionUser,
+    setSessionUser,
+  ] = useState<{
+    id: string;
+    email: string | null;
+    name: string | null;
+  } | null>(null);
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] =
-    useState("");
+  const [
+    name,
+    setName,
+  ] = useState("");
 
-  const [showForgot, setShowForgot] =
-    useState(false);
+  const [
+    email,
+    setEmail,
+  ] = useState("");
 
-  const [forgotEmail, setForgotEmail] =
-    useState("");
+  const [
+    password,
+    setPassword,
+  ] = useState("");
 
-  const [authMsg, setAuthMsg] =
-    useState<UiMessage | null>(null);
+  const [
+    showForgot,
+    setShowForgot,
+  ] = useState(false);
+
+  const [
+    forgotEmail,
+    setForgotEmail,
+  ] = useState("");
+
+  const [
+    authMsg,
+    setAuthMsg,
+  ] =
+    useState<UiMessage | null>(
+      null
+    );
 
   /* =========================
      Settings
@@ -559,6 +733,15 @@ export default function FazaaDrawer({
     setSettingsEmail,
   ] = useState("");
 
+  /*
+    كلمة المرور:
+    الحالية + الجديدة + التأكيد
+  */
+  const [
+    settingsCurrentPassword,
+    setSettingsCurrentPassword,
+  ] = useState("");
+
   const [
     settingsPassword,
     setSettingsPassword,
@@ -572,12 +755,18 @@ export default function FazaaDrawer({
   const [
     settingsMsg,
     setSettingsMsg,
-  ] = useState<UiMessage | null>(null);
+  ] =
+    useState<UiMessage | null>(
+      null
+    );
 
   const [
     settingsBusy,
     setSettingsBusy,
-  ] = useState<SettingsBusy>(null);
+  ] =
+    useState<SettingsBusy>(
+      null
+    );
 
   const [
     deleteConfirm,
@@ -588,30 +777,47 @@ export default function FazaaDrawer({
      Measurements
   ========================= */
 
-  const [unit, setUnit] =
+  const [
+    unit,
+    setUnit,
+  ] =
     useState<Unit>("cm");
 
-  const [heightCm, setHeightCm] =
-    useState("");
+  const [
+    heightCm,
+    setHeightCm,
+  ] = useState("");
 
-  const [bust, setBust] =
-    useState("");
+  const [
+    bust,
+    setBust,
+  ] = useState("");
 
-  const [waist, setWaist] =
-    useState("");
+  const [
+    waist,
+    setWaist,
+  ] = useState("");
 
-  const [hip, setHip] =
-    useState("");
+  const [
+    hip,
+    setHip,
+  ] = useState("");
 
   const [
     savedSnapshot,
     setSavedSnapshot,
-  ] = useState<SavedPayload | null>(null);
+  ] =
+    useState<SavedPayload | null>(
+      null
+    );
 
   const [
     savedLastUpdated,
     setSavedLastUpdated,
-  ] = useState<number | null>(null);
+  ] =
+    useState<number | null>(
+      null
+    );
 
   const [
     saveStatus,
@@ -626,7 +832,10 @@ export default function FazaaDrawer({
      History
   ========================= */
 
-  const [history, setHistory] = useState<
+  const [
+    history,
+    setHistory,
+  ] = useState<
     HistoryItem[]
   >([]);
 
@@ -638,17 +847,25 @@ export default function FazaaDrawer({
   const [
     historyErr,
     setHistoryErr,
-  ] = useState<string | null>(null);
+  ] =
+    useState<string | null>(
+      null
+    );
 
-  const isLoggedIn = !!sessionUser;
+  const isLoggedIn =
+    !!sessionUser;
 
-  const storageKey = useMemo(() => {
-    const uid = sessionUser?.id;
+  const storageKey =
+    useMemo(() => {
+      const uid =
+        sessionUser?.id;
 
-    return uid
-      ? `${STORAGE_KEY_BASE}:${uid}`
-      : STORAGE_KEY_BASE;
-  }, [sessionUser?.id]);
+      return uid
+        ? `${STORAGE_KEY_BASE}:${uid}`
+        : STORAGE_KEY_BASE;
+    }, [
+      sessionUser?.id,
+    ]);
 
   /* =========================
      Session
@@ -661,17 +878,23 @@ export default function FazaaDrawer({
       const { data } =
         await supabase.auth.getSession();
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
-      const u = data.session?.user;
+      const user =
+        data.session?.user;
 
       setSessionUser(
-        u
+        user
           ? {
-              id: u.id,
-              email: u.email ?? null,
+              id: user.id,
+              email:
+                user.email ??
+                null,
               name:
-                (u.user_metadata
+                (user
+                  .user_metadata
                   ?.name as string) ??
                 null,
             }
@@ -681,17 +904,21 @@ export default function FazaaDrawer({
 
     const { data: listener } =
       supabase.auth.onAuthStateChange(
-        (_evt, session) => {
-          const u = session?.user;
+        (_event, session) => {
+          const user =
+            session?.user;
 
           setSessionUser(
-            u
+            user
               ? {
-                  id: u.id,
+                  id:
+                    user.id,
                   email:
-                    u.email ?? null,
+                    user.email ??
+                    null,
                   name:
-                    (u.user_metadata
+                    (user
+                      .user_metadata
                       ?.name as string) ??
                     null,
                 }
@@ -702,23 +929,53 @@ export default function FazaaDrawer({
 
     return () => {
       mounted = false;
+
       listener.subscription.unsubscribe();
     };
   }, []);
 
   useEffect(() => {
     if (!open) {
-      setDrawerView("main");
-      setDeleteConfirm(false);
-      setSettingsMsg(null);
+      setDrawerView(
+        "main"
+      );
+
+      setDeleteConfirm(
+        false
+      );
+
+      setSettingsMsg(
+        null
+      );
+
+      setSettingsCurrentPassword(
+        ""
+      );
+
+      setSettingsPassword(
+        ""
+      );
+
+      setSettingsPasswordConfirm(
+        ""
+      );
     }
   }, [open]);
 
   useEffect(() => {
-    if (!sessionUser && drawerView === "settings") {
-      setDrawerView("main");
+    if (
+      !sessionUser &&
+      drawerView ===
+        "settings"
+    ) {
+      setDrawerView(
+        "main"
+      );
     }
-  }, [sessionUser, drawerView]);
+  }, [
+    sessionUser,
+    drawerView,
+  ]);
 
   /* =========================
      Saved measurements
@@ -728,21 +985,33 @@ export default function FazaaDrawer({
     if (!open) return;
 
     const rawNew =
-      safeLocalStorageGet(storageKey);
+      safeLocalStorageGet(
+        storageKey
+      );
 
     const rawOld =
-      storageKey !== STORAGE_KEY_BASE
+      storageKey !==
+      STORAGE_KEY_BASE
         ? safeLocalStorageGet(
             STORAGE_KEY_BASE
           )
         : null;
 
-    const raw = rawNew || rawOld;
+    const raw =
+      rawNew || rawOld;
 
     if (!raw) {
-      setSavedSnapshot(null);
-      setSavedLastUpdated(null);
-      setSaveStatus("idle");
+      setSavedSnapshot(
+        null
+      );
+
+      setSavedLastUpdated(
+        null
+      );
+
+      setSaveStatus(
+        "idle"
+      );
 
       setUnit("cm");
       setHeightCm("");
@@ -754,11 +1023,14 @@ export default function FazaaDrawer({
     }
 
     try {
-      const saved = JSON.parse(
-        raw
-      ) as SavedPayload;
+      const saved =
+        JSON.parse(
+          raw
+        ) as SavedPayload;
 
-      setSavedSnapshot(saved);
+      setSavedSnapshot(
+        saved
+      );
 
       setSavedLastUpdated(
         typeof saved.lastUpdated ===
@@ -768,38 +1040,54 @@ export default function FazaaDrawer({
       );
 
       if (
-        saved.unit === "cm" ||
+        saved.unit ===
+          "cm" ||
         saved.unit === "in"
       ) {
-        setUnit(saved.unit);
+        setUnit(
+          saved.unit
+        );
       }
 
       if (
         typeof saved.heightCm ===
         "string"
       ) {
-        setHeightCm(saved.heightCm);
+        setHeightCm(
+          saved.heightCm
+        );
       }
 
       if (
-        typeof saved.bust === "string"
+        typeof saved.bust ===
+        "string"
       ) {
-        setBust(saved.bust);
+        setBust(
+          saved.bust
+        );
       }
 
       if (
-        typeof saved.waist === "string"
+        typeof saved.waist ===
+        "string"
       ) {
-        setWaist(saved.waist);
+        setWaist(
+          saved.waist
+        );
       }
 
       if (
-        typeof saved.hip === "string"
+        typeof saved.hip ===
+        "string"
       ) {
-        setHip(saved.hip);
+        setHip(
+          saved.hip
+        );
       }
 
-      setSaveStatus("idle");
+      setSaveStatus(
+        "idle"
+      );
 
       if (
         sessionUser?.id &&
@@ -812,9 +1100,17 @@ export default function FazaaDrawer({
         );
       }
     } catch {
-      setSavedSnapshot(null);
-      setSavedLastUpdated(null);
-      setSaveStatus("idle");
+      setSavedSnapshot(
+        null
+      );
+
+      setSavedLastUpdated(
+        null
+      );
+
+      setSaveStatus(
+        "idle"
+      );
     }
   }, [
     open,
@@ -822,17 +1118,23 @@ export default function FazaaDrawer({
     sessionUser?.id,
   ]);
 
-  const isStale = useMemo(() => {
-    if (!savedLastUpdated) {
-      return false;
-    }
+  const isStale =
+    useMemo(() => {
+      if (
+        !savedLastUpdated
+      ) {
+        return false;
+      }
 
-    return (
-      Date.now() -
-        savedLastUpdated >=
-      STALE_DAYS * DAY_MS
-    );
-  }, [savedLastUpdated]);
+      return (
+        Date.now() -
+          savedLastUpdated >=
+        STALE_DAYS *
+          DAY_MS
+      );
+    }, [
+      savedLastUpdated,
+    ]);
 
   const bustOptions =
     unit === "cm"
@@ -849,148 +1151,203 @@ export default function FazaaDrawer({
       ? HIP_CM_OPTIONS
       : HIP_IN_OPTIONS;
 
-  const canSave = useMemo(() => {
-    if (!isLoggedIn) return false;
+  const canSave =
+    useMemo(() => {
+      if (!isLoggedIn) {
+        return false;
+      }
 
-    const h = toNum(heightCm);
+      const h =
+        toNum(heightCm);
 
-    if (
-      !heightCm ||
-      h < 140 ||
-      h > 210
-    ) {
-      return false;
-    }
+      if (
+        !heightCm ||
+        h < 140 ||
+        h > 210
+      ) {
+        return false;
+      }
 
-    const b = toNum(bust);
-    const w = toNum(waist);
-    const hp = toNum(hip);
+      const b =
+        toNum(bust);
 
-    const bCm =
-      unit === "cm" ? b : inToCm(b);
+      const w =
+        toNum(waist);
 
-    const wCm =
-      unit === "cm" ? w : inToCm(w);
+      const hp =
+        toNum(hip);
 
-    const hipCm =
-      unit === "cm"
-        ? hp
-        : inToCm(hp);
+      const bCm =
+        unit === "cm"
+          ? b
+          : inToCm(b);
 
-    if (
-      !bust ||
-      bCm < 60 ||
-      bCm > 160
-    ) {
-      return false;
-    }
+      const wCm =
+        unit === "cm"
+          ? w
+          : inToCm(w);
 
-    if (
-      !waist ||
-      wCm < 45 ||
-      wCm > 160
-    ) {
-      return false;
-    }
+      const hipCm =
+        unit === "cm"
+          ? hp
+          : inToCm(hp);
 
-    if (
-      !hip ||
-      hipCm < 60 ||
-      hipCm > 180
-    ) {
-      return false;
-    }
+      if (
+        !bust ||
+        bCm < 60 ||
+        bCm > 160
+      ) {
+        return false;
+      }
 
-    return true;
-  }, [
-    isLoggedIn,
-    heightCm,
-    bust,
-    waist,
-    hip,
-    unit,
-  ]);
+      if (
+        !waist ||
+        wCm < 45 ||
+        wCm > 160
+      ) {
+        return false;
+      }
 
-  function markDirty() {
-    setSaveStatus("idle");
-  }
+      if (
+        !hip ||
+        hipCm < 60 ||
+        hipCm > 180
+      ) {
+        return false;
+      }
 
-  function onChangeUnit(next: Unit) {
-    if (next === unit) return;
-
-    markDirty();
-    setUnit(next);
-
-    const b = toNum(bust);
-    const w = toNum(waist);
-    const hp = toNum(hip);
-
-    if (Number.isFinite(b)) {
-      const conv =
-        next === "cm"
-          ? Math.round(
-              inToCm(b) * 10
-            ) / 10
-          : Math.round(
-              cmToIn(b) * 10
-            ) / 10;
-
-      setBust(String(conv));
-    }
-
-    if (Number.isFinite(w)) {
-      const conv =
-        next === "cm"
-          ? Math.round(
-              inToCm(w) * 10
-            ) / 10
-          : Math.round(
-              cmToIn(w) * 10
-            ) / 10;
-
-      setWaist(String(conv));
-    }
-
-    if (Number.isFinite(hp)) {
-      const conv =
-        next === "cm"
-          ? Math.round(
-              inToCm(hp) * 10
-            ) / 10
-          : Math.round(
-              cmToIn(hp) * 10
-            ) / 10;
-
-      setHip(String(conv));
-    }
-  }
-
-  function saveMeasurements() {
-    if (!canSave) return;
-
-    const hadSaved = !!(
-      savedSnapshot &&
-      hasAnySavedValue(savedSnapshot)
-    );
-
-    const payload: SavedPayload = {
-      unit,
+      return true;
+    }, [
+      isLoggedIn,
       heightCm,
       bust,
       waist,
       hip,
-      lastUpdated: Date.now(),
-    };
+      unit,
+    ]);
+
+  function markDirty() {
+    setSaveStatus(
+      "idle"
+    );
+  }
+
+  function onChangeUnit(
+    next: Unit
+  ) {
+    if (next === unit) {
+      return;
+    }
+
+    markDirty();
+
+    setUnit(next);
+
+    const b =
+      toNum(bust);
+
+    const w =
+      toNum(waist);
+
+    const hp =
+      toNum(hip);
+
+    if (
+      Number.isFinite(b)
+    ) {
+      const conv =
+        next === "cm"
+          ? Math.round(
+              inToCm(b) *
+                10
+            ) / 10
+          : Math.round(
+              cmToIn(b) *
+                10
+            ) / 10;
+
+      setBust(
+        String(conv)
+      );
+    }
+
+    if (
+      Number.isFinite(w)
+    ) {
+      const conv =
+        next === "cm"
+          ? Math.round(
+              inToCm(w) *
+                10
+            ) / 10
+          : Math.round(
+              cmToIn(w) *
+                10
+            ) / 10;
+
+      setWaist(
+        String(conv)
+      );
+    }
+
+    if (
+      Number.isFinite(hp)
+    ) {
+      const conv =
+        next === "cm"
+          ? Math.round(
+              inToCm(hp) *
+                10
+            ) / 10
+          : Math.round(
+              cmToIn(hp) *
+                10
+            ) / 10;
+
+      setHip(
+        String(conv)
+      );
+    }
+  }
+
+  function saveMeasurements() {
+    if (!canSave) {
+      return;
+    }
+
+    const hadSaved =
+      !!(
+        savedSnapshot &&
+        hasAnySavedValue(
+          savedSnapshot
+        )
+      );
+
+    const payload: SavedPayload =
+      {
+        unit,
+        heightCm,
+        bust,
+        waist,
+        hip,
+        lastUpdated:
+          Date.now(),
+      };
 
     safeLocalStorageSet(
       storageKey,
-      JSON.stringify(payload)
+      JSON.stringify(
+        payload
+      )
     );
 
-    setSavedSnapshot(payload);
+    setSavedSnapshot(
+      payload
+    );
 
     setSavedLastUpdated(
-      payload.lastUpdated ?? null
+      payload.lastUpdated ??
+        null
     );
 
     setSaveStatus(
@@ -1001,7 +1358,7 @@ export default function FazaaDrawer({
   }
 
   /* =========================
-     Auth actions
+     Auth
   ========================= */
 
   async function handleLogin() {
@@ -1018,20 +1375,29 @@ export default function FazaaDrawer({
           }
         );
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
-      setShowForgot(false);
+      setShowForgot(
+        false
+      );
+
       setPassword("");
+
       setAuthMsg(null);
-    } catch (error: unknown) {
+    } catch (
+      error: unknown
+    ) {
       setAuthMsg({
         type: "err",
-        text: getErrorMessage(
-          error,
-          isArabic
-            ? "تعذر تسجيل الدخول"
-            : "Unable to sign in"
-        ),
+        text:
+          getErrorMessage(
+            error,
+            isArabic
+              ? "تعذر تسجيل الدخول"
+              : "Unable to sign in"
+          ),
       });
     }
   }
@@ -1040,24 +1406,32 @@ export default function FazaaDrawer({
     setAuthMsg(null);
 
     try {
-      const cleanEmail = email
-        .trim()
-        .toLowerCase();
+      const cleanEmail =
+        email
+          .trim()
+          .toLowerCase();
 
-      const cleanName = name.trim();
+      const cleanName =
+        name.trim();
 
       const { error } =
-        await supabase.auth.signUp({
-          email: cleanEmail,
-          password,
-          options: {
-            data: {
-              name: cleanName,
+        await supabase.auth.signUp(
+          {
+            email:
+              cleanEmail,
+            password,
+            options: {
+              data: {
+                name:
+                  cleanName,
+              },
             },
-          },
-        });
+          }
+        );
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       setAuthMsg({
         type: "ok",
@@ -1067,15 +1441,18 @@ export default function FazaaDrawer({
       });
 
       setPassword("");
-    } catch (error: unknown) {
+    } catch (
+      error: unknown
+    ) {
       setAuthMsg({
         type: "err",
-        text: getErrorMessage(
-          error,
-          isArabic
-            ? "تعذر إنشاء الحساب"
-            : "Unable to create account"
-        ),
+        text:
+          getErrorMessage(
+            error,
+            isArabic
+              ? "تعذر إنشاء الحساب"
+              : "Unable to create account"
+          ),
       });
     }
   }
@@ -1085,7 +1462,9 @@ export default function FazaaDrawer({
 
     await supabase.auth.signOut();
 
-    setDrawerView("main");
+    setDrawerView(
+      "main"
+    );
 
     onClose();
   }
@@ -1093,11 +1472,12 @@ export default function FazaaDrawer({
   async function handleSendReset() {
     setAuthMsg(null);
 
-    const e = forgotEmail
-      .trim()
-      .toLowerCase();
+    const cleanEmail =
+      forgotEmail
+        .trim()
+        .toLowerCase();
 
-    if (!e) {
+    if (!cleanEmail) {
       setAuthMsg({
         type: "err",
         text: isArabic
@@ -1114,13 +1494,15 @@ export default function FazaaDrawer({
 
       const { error } =
         await supabase.auth.resetPasswordForEmail(
-          e,
+          cleanEmail,
           {
             redirectTo,
           }
         );
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       setAuthMsg({
         type: "ok",
@@ -1129,16 +1511,21 @@ export default function FazaaDrawer({
           : "A password reset link has been sent to your email",
       });
 
-      setShowForgot(false);
-    } catch (error: unknown) {
+      setShowForgot(
+        false
+      );
+    } catch (
+      error: unknown
+    ) {
       setAuthMsg({
         type: "err",
-        text: getErrorMessage(
-          error,
-          isArabic
-            ? "تعذر إرسال الرابط"
-            : "Unable to send the link"
-        ),
+        text:
+          getErrorMessage(
+            error,
+            isArabic
+              ? "تعذر إرسال الرابط"
+              : "Unable to send the link"
+          ),
       });
     }
   }
@@ -1148,30 +1535,64 @@ export default function FazaaDrawer({
   ========================= */
 
   function openSettings() {
-    if (!sessionUser) return;
+    if (!sessionUser) {
+      return;
+    }
 
     setSettingsName(
       sessionUser.name || ""
     );
 
     setSettingsEmail(
-      sessionUser.email || ""
+      sessionUser.email ||
+        ""
     );
 
-    setSettingsPassword("");
-    setSettingsPasswordConfirm("");
-    setSettingsMsg(null);
-    setDeleteConfirm(false);
+    setSettingsCurrentPassword(
+      ""
+    );
 
-    setDrawerView("settings");
+    setSettingsPassword(
+      ""
+    );
+
+    setSettingsPasswordConfirm(
+      ""
+    );
+
+    setSettingsMsg(null);
+
+    setDeleteConfirm(
+      false
+    );
+
+    setDrawerView(
+      "settings"
+    );
   }
 
   function closeSettings() {
     setSettingsMsg(null);
-    setDeleteConfirm(false);
-    setSettingsPassword("");
-    setSettingsPasswordConfirm("");
-    setDrawerView("main");
+
+    setDeleteConfirm(
+      false
+    );
+
+    setSettingsCurrentPassword(
+      ""
+    );
+
+    setSettingsPassword(
+      ""
+    );
+
+    setSettingsPasswordConfirm(
+      ""
+    );
+
+    setDrawerView(
+      "main"
+    );
   }
 
   async function handleUpdateName() {
@@ -1192,24 +1613,33 @@ export default function FazaaDrawer({
     }
 
     try {
-      setSettingsBusy("name");
+      setSettingsBusy(
+        "name"
+      );
 
       const { error } =
-        await supabase.auth.updateUser({
-          data: {
-            name: cleanName,
-          },
-        });
+        await supabase.auth.updateUser(
+          {
+            data: {
+              name:
+                cleanName,
+            },
+          }
+        );
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
-      setSessionUser((current) =>
-        current
-          ? {
-              ...current,
-              name: cleanName,
-            }
-          : current
+      setSessionUser(
+        (current) =>
+          current
+            ? {
+                ...current,
+                name:
+                  cleanName,
+              }
+            : current
       );
 
       setSettingsMsg({
@@ -1218,15 +1648,18 @@ export default function FazaaDrawer({
           ? "تم تحديث الاسم بنجاح"
           : "Name updated successfully",
       });
-    } catch (error: unknown) {
+    } catch (
+      error: unknown
+    ) {
       setSettingsMsg({
         type: "err",
-        text: getErrorMessage(
-          error,
-          isArabic
-            ? "تعذر تحديث الاسم"
-            : "Unable to update your name"
-        ),
+        text:
+          getErrorMessage(
+            error,
+            isArabic
+              ? "تعذر تحديث الاسم"
+              : "Unable to update your name"
+          ),
       });
     } finally {
       setSettingsBusy(null);
@@ -1243,7 +1676,9 @@ export default function FazaaDrawer({
 
     if (
       !cleanEmail ||
-      !cleanEmail.includes("@")
+      !cleanEmail.includes(
+        "@"
+      )
     ) {
       setSettingsMsg({
         type: "err",
@@ -1272,14 +1707,21 @@ export default function FazaaDrawer({
     }
 
     try {
-      setSettingsBusy("email");
+      setSettingsBusy(
+        "email"
+      );
 
       const { error } =
-        await supabase.auth.updateUser({
-          email: cleanEmail,
-        });
+        await supabase.auth.updateUser(
+          {
+            email:
+              cleanEmail,
+          }
+        );
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       setSettingsMsg({
         type: "ok",
@@ -1287,32 +1729,55 @@ export default function FazaaDrawer({
           ? "تم إرسال طلب تغيير البريد. لإكمال التغيير، أكدي الرسائل المرسلة إلى بريدك الحالي والبريد الجديد."
           : "Your email change request was sent. To complete the change, confirm the messages sent to your current and new email addresses.",
       });
-    } catch (error: unknown) {
+    } catch (
+      error: unknown
+    ) {
       setSettingsMsg({
         type: "err",
-        text: getErrorMessage(
-          error,
-          isArabic
-            ? "تعذر تحديث البريد الإلكتروني"
-            : "Unable to update your email"
-        ),
+        text:
+          getErrorMessage(
+            error,
+            isArabic
+              ? "تعذر تحديث البريد الإلكتروني"
+              : "Unable to update your email"
+          ),
       });
     } finally {
       setSettingsBusy(null);
     }
   }
 
+  /*
+    تغيير كلمة المرور:
+    1- الحالية مطلوبة
+    2- نتأكد منها بتسجيل دخول فعلي
+    3- بعدها فقط نغيّرها
+  */
   async function handleUpdatePassword() {
     setSettingsMsg(null);
 
     if (
-      settingsPassword.length < 6
+      !settingsCurrentPassword
     ) {
       setSettingsMsg({
         type: "err",
         text: isArabic
-          ? "كلمة المرور لازم تكون 6 أحرف على الأقل"
-          : "Password must be at least 6 characters",
+          ? "اكتبي كلمة المرور الحالية"
+          : "Enter your current password",
+      });
+
+      return;
+    }
+
+    if (
+      settingsPassword.length <
+      6
+    ) {
+      setSettingsMsg({
+        type: "err",
+        text: isArabic
+          ? "كلمة المرور الجديدة لازم تكون 6 أحرف على الأقل"
+          : "The new password must be at least 6 characters",
       });
 
       return;
@@ -1325,25 +1790,106 @@ export default function FazaaDrawer({
       setSettingsMsg({
         type: "err",
         text: isArabic
-          ? "كلمتا المرور غير متطابقتين"
-          : "Passwords do not match",
+          ? "كلمتا المرور الجديدة غير متطابقتين"
+          : "The new passwords do not match",
+      });
+
+      return;
+    }
+
+    if (
+      settingsCurrentPassword ===
+      settingsPassword
+    ) {
+      setSettingsMsg({
+        type: "err",
+        text: isArabic
+          ? "اختاري كلمة مرور جديدة مختلفة عن الحالية"
+          : "Choose a new password that is different from your current password",
+      });
+
+      return;
+    }
+
+    const currentEmail =
+      sessionUser?.email
+        ?.trim()
+        .toLowerCase();
+
+    if (!currentEmail) {
+      setSettingsMsg({
+        type: "err",
+        text: isArabic
+          ? "تعذر التحقق من حسابك"
+          : "Unable to verify your account",
       });
 
       return;
     }
 
     try {
-      setSettingsBusy("password");
+      setSettingsBusy(
+        "password"
+      );
 
-      const { error } =
-        await supabase.auth.updateUser({
-          password: settingsPassword,
+      /*
+        التحقق الفعلي
+        من كلمة المرور الحالية
+      */
+      const {
+        error:
+          verifyError,
+      } =
+        await supabase.auth.signInWithPassword(
+          {
+            email:
+              currentEmail,
+            password:
+              settingsCurrentPassword,
+          }
+        );
+
+      if (verifyError) {
+        setSettingsMsg({
+          type: "err",
+          text: isArabic
+            ? "كلمة المرور الحالية غير صحيحة"
+            : "Your current password is incorrect",
         });
 
-      if (error) throw error;
+        return;
+      }
 
-      setSettingsPassword("");
-      setSettingsPasswordConfirm("");
+      /*
+        الآن فقط نغيّر
+        كلمة المرور
+      */
+      const {
+        error:
+          updateError,
+      } =
+        await supabase.auth.updateUser(
+          {
+            password:
+              settingsPassword,
+          }
+        );
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      setSettingsCurrentPassword(
+        ""
+      );
+
+      setSettingsPassword(
+        ""
+      );
+
+      setSettingsPasswordConfirm(
+        ""
+      );
 
       setSettingsMsg({
         type: "ok",
@@ -1351,15 +1897,18 @@ export default function FazaaDrawer({
           ? "تم تحديث كلمة المرور بنجاح"
           : "Password updated successfully",
       });
-    } catch (error: unknown) {
+    } catch (
+      error: unknown
+    ) {
       setSettingsMsg({
         type: "err",
-        text: getErrorMessage(
-          error,
-          isArabic
-            ? "تعذر تحديث كلمة المرور"
-            : "Unable to update your password"
-        ),
+        text:
+          getErrorMessage(
+            error,
+            isArabic
+              ? "تعذر تحديث كلمة المرور"
+              : "Unable to update your password"
+          ),
       });
     } finally {
       setSettingsBusy(null);
@@ -1367,18 +1916,25 @@ export default function FazaaDrawer({
   }
 
   async function handleDeleteAccount() {
-    if (!sessionUser) return;
+    if (!sessionUser) {
+      return;
+    }
 
     setSettingsMsg(null);
 
-    const uid = sessionUser.id;
+    const uid =
+      sessionUser.id;
 
     try {
-      setSettingsBusy("delete");
+      setSettingsBusy(
+        "delete"
+      );
 
       const {
-        data: sessionData,
-        error: sessionError,
+        data:
+          sessionData,
+        error:
+          sessionError,
       } =
         await supabase.auth.getSession();
 
@@ -1417,7 +1973,8 @@ export default function FazaaDrawer({
 
       if (
         data &&
-        typeof data === "object" &&
+        typeof data ===
+          "object" &&
         "error" in data &&
         typeof (
           data as {
@@ -1453,28 +2010,41 @@ export default function FazaaDrawer({
       try {
         await supabase.auth.signOut();
       } catch {
-        // الحساب حُذف بالفعل
+        // الحساب انحذف بالفعل
       }
 
-      setDeleteConfirm(false);
-      setSettingsBusy(null);
-      setDrawerView("main");
+      setDeleteConfirm(
+        false
+      );
+
+      setSettingsBusy(
+        null
+      );
+
+      setDrawerView(
+        "main"
+      );
 
       onClose();
 
       router.replace("/");
-    } catch (error: unknown) {
+    } catch (
+      error: unknown
+    ) {
       setSettingsMsg({
         type: "err",
-        text: getErrorMessage(
-          error,
-          isArabic
-            ? "تعذر حذف الحساب. حاولي مرة ثانية."
-            : "Unable to delete the account. Please try again."
-        ),
+        text:
+          getErrorMessage(
+            error,
+            isArabic
+              ? "تعذر حذف الحساب. حاولي مرة ثانية."
+              : "Unable to delete the account. Please try again."
+          ),
       });
 
-      setSettingsBusy(null);
+      setSettingsBusy(
+        null
+      );
     }
   }
 
@@ -1485,23 +2055,43 @@ export default function FazaaDrawer({
   useEffect(() => {
     if (!open) return;
 
-    if (!sessionUser?.id) {
+    if (
+      !sessionUser?.id
+    ) {
       setHistory([]);
-      setHistoryErr(null);
-      setHistoryLoading(false);
+
+      setHistoryErr(
+        null
+      );
+
+      setHistoryLoading(
+        false
+      );
+
       return;
     }
 
-    let cancelled = false;
+    let cancelled =
+      false;
 
     (async () => {
-      setHistoryLoading(true);
-      setHistoryErr(null);
+      setHistoryLoading(
+        true
+      );
+
+      setHistoryErr(
+        null
+      );
 
       try {
-        const { data, error } =
+        const {
+          data,
+          error,
+        } =
           await supabase
-            .from("fazaa_history")
+            .from(
+              "fazaa_history"
+            )
             .select(
               "id,title,subtitle,query,created_at"
             )
@@ -1512,20 +2102,30 @@ export default function FazaaDrawer({
             .order(
               "created_at",
               {
-                ascending: false,
+                ascending:
+                  false,
               }
             )
             .limit(10);
 
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
-        if (error) throw error;
+        if (error) {
+          throw error;
+        }
 
         setHistory(
-          (data || []) as HistoryItem[]
+          (data ||
+            []) as HistoryItem[]
         );
-      } catch (error: unknown) {
-        if (cancelled) return;
+      } catch (
+        error: unknown
+      ) {
+        if (cancelled) {
+          return;
+        }
 
         setHistory([]);
 
@@ -1539,7 +2139,9 @@ export default function FazaaDrawer({
         );
       } finally {
         if (!cancelled) {
-          setHistoryLoading(false);
+          setHistoryLoading(
+            false
+          );
         }
       }
     })();
@@ -1554,56 +2156,68 @@ export default function FazaaDrawer({
   ]);
 
   /* =========================
-     Display values
+     Display
   ========================= */
 
-  const overlayClass = open
-    ? "opacity-100 pointer-events-auto"
-    : "opacity-0 pointer-events-none";
+  const overlayClass =
+    open
+      ? "opacity-100 pointer-events-auto"
+      : "opacity-0 pointer-events-none";
 
-  const hasSaved = !!(
-    savedSnapshot &&
-    hasAnySavedValue(savedSnapshot)
-  );
+  const hasSaved =
+    !!(
+      savedSnapshot &&
+      hasAnySavedValue(
+        savedSnapshot
+      )
+    );
 
-  const saveButtonText = !hasSaved
-    ? saveStatus === "saved_done"
-      ? isArabic
-        ? "تم حفظ المقاسات"
-        : "Measurements saved"
-      : isArabic
-      ? "حفظ المقاسات"
-      : "Save measurements"
-    : saveStatus === "updated_done"
-    ? isArabic
-      ? "تم تحديث المقاسات"
-      : "Measurements updated"
-    : isArabic
-    ? "تحديث المقاسات"
-    : "Update measurements";
-
-  const saveButtonClass = [
-    "w-full rounded-2xl border py-2.5 text-xs font-extrabold transition",
-    !canSave
-      ? "border-white/10 bg-black/20 text-neutral-500"
+  const saveButtonText =
+    !hasSaved
+      ? saveStatus ===
+        "saved_done"
+        ? isArabic
+          ? "تم حفظ المقاسات"
+          : "Measurements saved"
+        : isArabic
+        ? "حفظ المقاسات"
+        : "Save measurements"
       : saveStatus ===
-          "updated_done" ||
-        saveStatus === "saved_done"
-      ? "border-[#d6b56a]/55 bg-[#d6b56a]/18 text-white"
-      : "border-[#d6b56a]/45 bg-[#d6b56a]/15 text-white hover:border-[#d6b56a]/70",
-  ].join(" ");
+        "updated_done"
+      ? isArabic
+        ? "تم تحديث المقاسات"
+        : "Measurements updated"
+      : isArabic
+      ? "تحديث المقاسات"
+      : "Update measurements";
 
-  const cmText = isArabic
-    ? "سم"
-    : "cm";
+  const saveButtonClass =
+    [
+      "w-full rounded-2xl border py-2.5 text-xs font-extrabold transition",
+      !canSave
+        ? "border-white/10 bg-black/20 text-neutral-500"
+        : saveStatus ===
+            "updated_done" ||
+          saveStatus ===
+            "saved_done"
+        ? "border-[#d6b56a]/55 bg-[#d6b56a]/18 text-white"
+        : "border-[#d6b56a]/45 bg-[#d6b56a]/15 text-white hover:border-[#d6b56a]/70",
+    ].join(" ");
 
-  const inText = isArabic
-    ? "إنش"
-    : "in";
+  const cmText =
+    isArabic
+      ? "سم"
+      : "cm";
 
-  const centimeterText = isArabic
-    ? "سنتيمتر"
-    : "Centimeters";
+  const inText =
+    isArabic
+      ? "إنش"
+      : "in";
+
+  const centimeterText =
+    isArabic
+      ? "سنتيمتر"
+      : "Centimeters";
 
   /* =========================
      Render
@@ -1616,7 +2230,9 @@ export default function FazaaDrawer({
           "fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition",
           overlayClass,
         ].join(" ")}
-        onClick={onClose}
+        onClick={
+          onClose
+        }
       />
 
       <aside
@@ -1630,7 +2246,8 @@ export default function FazaaDrawer({
             : "translate-x-full",
         ].join(" ")}
         style={{
-          top: "env(safe-area-inset-top)",
+          top:
+            "env(safe-area-inset-top)",
           height:
             "calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom))",
         }}
@@ -1643,7 +2260,8 @@ export default function FazaaDrawer({
         <div className="px-5 py-4 border-b border-white/10">
           <div className="flex items-center justify-between">
             <div className="text-sm font-extrabold text-white">
-              {drawerView === "settings"
+              {drawerView ===
+              "settings"
                 ? isArabic
                   ? "الإعدادات"
                   : "Settings"
@@ -1656,7 +2274,9 @@ export default function FazaaDrawer({
             "settings" ? (
               <button
                 type="button"
-                onClick={closeSettings}
+                onClick={
+                  closeSettings
+                }
                 className="h-10 w-10 rounded-2xl border border-[#d6b56a]/35 bg-black/30 text-[#d6b56a] hover:border-[#d6b56a]/60 transition flex items-center justify-center"
                 aria-label={
                   isArabic
@@ -1665,13 +2285,17 @@ export default function FazaaDrawer({
                 }
               >
                 <BackIcon
-                  isArabic={isArabic}
+                  isArabic={
+                    isArabic
+                  }
                 />
               </button>
             ) : (
               <button
                 type="button"
-                onClick={onClose}
+                onClick={
+                  onClose
+                }
                 className="h-10 w-10 rounded-2xl border border-[#d6b56a]/35 bg-black/30 text-[#d6b56a] hover:border-[#d6b56a]/60 transition"
                 aria-label={
                   isArabic
@@ -1685,7 +2309,8 @@ export default function FazaaDrawer({
           </div>
 
           {isLoggedIn &&
-          drawerView === "main" ? (
+          drawerView ===
+            "main" ? (
             <div className="mt-3">
               <div className="text-sm font-extrabold text-white">
                 {sessionUser?.name ||
@@ -1694,20 +2319,17 @@ export default function FazaaDrawer({
                     : "User")}
               </div>
 
-              {/* الترس أقصى اليسار */}
               <div
                 dir="ltr"
                 className="mt-1 flex items-center gap-3"
               >
+                {/* الترس أقصى اليسار */}
                 <button
                   type="button"
-                  onClick={openSettings}
-                  aria-label={
-                    isArabic
-                      ? "الإعدادات"
-                      : "Settings"
+                  onClick={
+                    openSettings
                   }
-                  title={
+                  aria-label={
                     isArabic
                       ? "الإعدادات"
                       : "Settings"
@@ -1729,7 +2351,9 @@ export default function FazaaDrawer({
                   dir="ltr"
                   className="min-w-0 flex-1 truncate text-right text-xs text-neutral-400"
                 >
-                  {sessionUser?.email}
+                  {
+                    sessionUser?.email
+                  }
                 </div>
               </div>
 
@@ -1739,7 +2363,7 @@ export default function FazaaDrawer({
         </div>
 
         {/* =====================
-            SETTINGS VIEW
+            SETTINGS
         ====================== */}
 
         {drawerView ===
@@ -1755,88 +2379,32 @@ export default function FazaaDrawer({
                     : "border-rose-400/30 bg-rose-500/10 text-rose-100",
                 ].join(" ")}
               >
-                {settingsMsg.text}
+                {
+                  settingsMsg.text
+                }
               </div>
             ) : null}
 
-            {/* اللغة */}
-            <section className="rounded-3xl border border-white/10 bg-white/5 p-4">
-              <div className="text-sm font-extrabold text-white">
-                {isArabic
-                  ? "اللغة"
-                  : "Language"}
-              </div>
-
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                {(
-                  [
-                    {
-                      value: "ar",
-                      label:
-                        "العربية",
-                    },
-                    {
-                      value: "en",
-                      label:
-                        "English",
-                    },
-                  ] as {
-                    value: AppLanguage;
-                    label: string;
-                  }[]
-                ).map(
-                  ({
-                    value,
-                    label,
-                  }) => {
-                    const active =
-                      language ===
-                      value;
-
-                    return (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() =>
-                          setLanguage(
-                            value
-                          )
-                        }
-                        className={[
-                          "rounded-2xl border px-3 py-2.5 text-xs font-extrabold transition",
-                          active
-                            ? "border-[#d6b56a]/60 bg-[#d6b56a]/15 text-white ring-1 ring-[#d6b56a]/20"
-                            : "border-white/10 bg-black/20 text-neutral-300 hover:border-white/20",
-                        ].join(
-                          " "
-                        )}
-                      >
-                        {label}
-                      </button>
-                    );
-                  }
-                )}
-              </div>
-            </section>
-
             {/* الاسم */}
-            <section className="rounded-3xl border border-white/10 bg-white/5 p-4">
-              <div className="text-sm font-extrabold text-white">
-                {isArabic
+            <SectionDetails
+              title={
+                isArabic
                   ? "الاسم"
-                  : "Name"}
-              </div>
-
+                  : "Name"
+              }
+            >
               <input
                 type="text"
-                value={settingsName}
+                value={
+                  settingsName
+                }
                 onChange={(e) =>
                   setSettingsName(
                     e.target.value
                   )
                 }
                 autoComplete="name"
-                className="mt-3 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white outline-none focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10"
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white outline-none focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10"
               />
 
               <button
@@ -1859,16 +2427,16 @@ export default function FazaaDrawer({
                   ? "حفظ الاسم"
                   : "Save name"}
               </button>
-            </section>
+            </SectionDetails>
 
-            {/* الإيميل */}
-            <section className="rounded-3xl border border-white/10 bg-white/5 p-4">
-              <div className="text-sm font-extrabold text-white">
-                {isArabic
+            {/* البريد */}
+            <SectionDetails
+              title={
+                isArabic
                   ? "البريد الإلكتروني"
-                  : "Email"}
-              </div>
-
+                  : "Email"
+              }
+            >
               <input
                 type="email"
                 dir="ltr"
@@ -1881,7 +2449,7 @@ export default function FazaaDrawer({
                   )
                 }
                 autoComplete="email"
-                className="mt-3 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-left text-sm text-white outline-none focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10"
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-left text-sm text-white outline-none focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10"
               />
 
               <p className="mt-2 text-[11px] leading-5 text-neutral-400">
@@ -1910,16 +2478,41 @@ export default function FazaaDrawer({
                   ? "تغيير البريد"
                   : "Change email"}
               </button>
-            </section>
+            </SectionDetails>
 
             {/* كلمة المرور */}
-            <section className="rounded-3xl border border-white/10 bg-white/5 p-4">
-              <div className="text-sm font-extrabold text-white">
-                {isArabic
+            <SectionDetails
+              title={
+                isArabic
                   ? "كلمة المرور"
-                  : "Password"}
-              </div>
+                  : "Password"
+              }
+            >
+              {/* الحالية */}
+              <label className="mt-2 block">
+                <div className="text-xs font-semibold text-neutral-300">
+                  {isArabic
+                    ? "كلمة المرور الحالية"
+                    : "Current password"}
+                </div>
 
+                <input
+                  type="password"
+                  value={
+                    settingsCurrentPassword
+                  }
+                  onChange={(e) =>
+                    setSettingsCurrentPassword(
+                      e.target.value
+                    )
+                  }
+                  autoComplete="current-password"
+                  placeholder="********"
+                  className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white outline-none focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10"
+                />
+              </label>
+
+              {/* الجديدة */}
               <label className="mt-3 block">
                 <div className="text-xs font-semibold text-neutral-300">
                   {isArabic
@@ -1934,8 +2527,7 @@ export default function FazaaDrawer({
                   }
                   onChange={(e) =>
                     setSettingsPassword(
-                      e.target
-                        .value
+                      e.target.value
                     )
                   }
                   autoComplete="new-password"
@@ -1944,11 +2536,12 @@ export default function FazaaDrawer({
                 />
               </label>
 
+              {/* التأكيد */}
               <label className="mt-3 block">
                 <div className="text-xs font-semibold text-neutral-300">
                   {isArabic
-                    ? "تأكيد كلمة المرور"
-                    : "Confirm password"}
+                    ? "تأكيد كلمة المرور الجديدة"
+                    : "Confirm new password"}
                 </div>
 
                 <input
@@ -1958,8 +2551,7 @@ export default function FazaaDrawer({
                   }
                   onChange={(e) =>
                     setSettingsPasswordConfirm(
-                      e.target
-                        .value
+                      e.target.value
                     )
                   }
                   autoComplete="new-password"
@@ -1982,101 +2574,199 @@ export default function FazaaDrawer({
                 {settingsBusy ===
                 "password"
                   ? isArabic
-                    ? "جاري التحديث..."
-                    : "Updating..."
+                    ? "جاري التحقق والتحديث..."
+                    : "Verifying and updating..."
                   : isArabic
                   ? "تحديث كلمة المرور"
                   : "Update password"}
               </button>
-            </section>
+            </SectionDetails>
 
-            {/* حذف الحساب */}
-            <section className="rounded-3xl border border-rose-400/25 bg-rose-500/[0.06] p-4">
-              <div className="text-sm font-extrabold text-rose-100">
-                {isArabic
-                  ? "حذف الحساب"
-                  : "Delete account"}
-              </div>
-
-              <p className="mt-2 text-[11px] leading-5 text-neutral-400">
-                {isArabic
-                  ? "حذف الحساب نهائي. سيتم حذف بيانات حسابك والمقاسات وسجل النتائج المرتبط بالحساب."
-                  : "Account deletion is permanent. Your account data, saved measurements, and result history linked to the account will be deleted."}
-              </p>
-
-              {!deleteConfirm ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSettingsMsg(
-                      null
-                    );
-
-                    setDeleteConfirm(
-                      true
-                    );
-                  }}
-                  disabled={
-                    settingsBusy !==
-                    null
-                  }
-                  className="mt-3 w-full rounded-2xl border border-rose-400/35 bg-rose-500/10 py-2.5 text-xs font-extrabold text-rose-100 hover:bg-rose-500/15 transition disabled:opacity-50"
-                >
-                  {isArabic
-                    ? "حذف الحساب"
-                    : "Delete account"}
-                </button>
-              ) : (
-                <div className="mt-3 rounded-2xl border border-rose-400/30 bg-black/25 p-3">
-                  <div className="text-xs font-bold text-rose-100">
-                    {isArabic
-                      ? "هل أنتِ متأكدة؟ لا يمكن التراجع عن هذا الإجراء."
-                      : "Are you sure? This action cannot be undone."}
+            {/* اللغة - قبل حذف الحساب */}
+            <SectionDetails
+              title={
+                isArabic
+                  ? "اللغة"
+                  : "Language"
+              }
+            >
+              <div className="mt-2 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2 text-neutral-300">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#d6b56a]/25 bg-black/20 text-[#d6b56a]">
+                    <GlobeIcon />
                   </div>
 
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setDeleteConfirm(
-                          false
-                        )
-                      }
-                      disabled={
-                        settingsBusy ===
-                        "delete"
-                      }
-                      className="rounded-xl border border-white/10 bg-black/20 py-2.5 text-xs font-extrabold text-white hover:bg-black/30 transition disabled:opacity-50"
-                    >
+                  <div>
+                    <div className="text-xs font-semibold text-white">
                       {isArabic
-                        ? "إلغاء"
-                        : "Cancel"}
-                    </button>
+                        ? "لغة التطبيق"
+                        : "App language"}
+                    </div>
 
-                    <button
-                      type="button"
-                      onClick={
-                        handleDeleteAccount
-                      }
-                      disabled={
-                        settingsBusy ===
-                        "delete"
-                      }
-                      className="rounded-xl border border-rose-400/40 bg-rose-500/15 py-2.5 text-xs font-extrabold text-rose-100 hover:bg-rose-500/25 transition disabled:opacity-50"
-                    >
-                      {settingsBusy ===
-                      "delete"
-                        ? isArabic
-                          ? "جاري الحذف..."
-                          : "Deleting..."
-                        : isArabic
-                        ? "حذف نهائي"
-                        : "Delete permanently"}
-                    </button>
+                    <div className="mt-0.5 text-[10px] text-neutral-500">
+                      {language ===
+                      "ar"
+                        ? "العربية"
+                        : "English"}
+                    </div>
                   </div>
                 </div>
-              )}
-            </section>
+
+                {/* اختيار صغير ولطيف */}
+                <div
+                  dir="ltr"
+                  className="inline-flex rounded-xl border border-white/10 bg-black/25 p-1"
+                >
+                  {(
+                    [
+                      {
+                        value:
+                          "ar",
+                        label:
+                          "ع",
+                      },
+                      {
+                        value:
+                          "en",
+                        label:
+                          "EN",
+                      },
+                    ] as {
+                      value: AppLanguage;
+                      label: string;
+                    }[]
+                  ).map(
+                    (option) => {
+                      const active =
+                        language ===
+                        option.value;
+
+                      return (
+                        <button
+                          key={
+                            option.value
+                          }
+                          type="button"
+                          onClick={() =>
+                            setLanguage(
+                              option.value
+                            )
+                          }
+                          aria-label={
+                            option.value ===
+                            "ar"
+                              ? "العربية"
+                              : "English"
+                          }
+                          className={[
+                            "min-w-10 rounded-lg px-2.5 py-1.5 text-[11px] font-extrabold transition",
+                            active
+                              ? "border border-[#d6b56a]/40 bg-[#d6b56a]/15 text-[#f3e0b0]"
+                              : "border border-transparent text-neutral-400 hover:text-white",
+                          ].join(
+                            " "
+                          )}
+                        >
+                          {
+                            option.label
+                          }
+                        </button>
+                      );
+                    }
+                  )}
+                </div>
+              </div>
+            </SectionDetails>
+
+            {/* حذف الحساب */}
+            <SectionDetails
+              title={
+                isArabic
+                  ? "حذف الحساب"
+                  : "Delete account"
+              }
+            >
+              <div className="mt-2">
+                <p className="text-[11px] leading-5 text-neutral-400">
+                  {isArabic
+                    ? "حذف الحساب نهائي. سيتم حذف بيانات حسابك والمقاسات وسجل النتائج المرتبط بالحساب."
+                    : "Account deletion is permanent. Your account data, saved measurements, and result history linked to the account will be deleted."}
+                </p>
+
+                {!deleteConfirm ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSettingsMsg(
+                        null
+                      );
+
+                      setDeleteConfirm(
+                        true
+                      );
+                    }}
+                    disabled={
+                      settingsBusy !==
+                      null
+                    }
+                    className="mt-3 w-full rounded-2xl border border-rose-400/35 bg-rose-500/10 py-2.5 text-xs font-extrabold text-rose-100 hover:bg-rose-500/15 transition disabled:opacity-50"
+                  >
+                    {isArabic
+                      ? "حذف الحساب"
+                      : "Delete account"}
+                  </button>
+                ) : (
+                  <div className="mt-3 rounded-2xl border border-rose-400/30 bg-black/25 p-3">
+                    <div className="text-xs font-bold text-rose-100">
+                      {isArabic
+                        ? "هل أنتِ متأكدة؟ لا يمكن التراجع عن هذا الإجراء."
+                        : "Are you sure? This action cannot be undone."}
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDeleteConfirm(
+                            false
+                          )
+                        }
+                        disabled={
+                          settingsBusy ===
+                          "delete"
+                        }
+                        className="rounded-xl border border-white/10 bg-black/20 py-2.5 text-xs font-extrabold text-white hover:bg-black/30 transition disabled:opacity-50"
+                      >
+                        {isArabic
+                          ? "إلغاء"
+                          : "Cancel"}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={
+                          handleDeleteAccount
+                        }
+                        disabled={
+                          settingsBusy ===
+                          "delete"
+                        }
+                        className="rounded-xl border border-rose-400/40 bg-rose-500/15 py-2.5 text-xs font-extrabold text-rose-100 hover:bg-rose-500/25 transition disabled:opacity-50"
+                      >
+                        {settingsBusy ===
+                        "delete"
+                          ? isArabic
+                            ? "جاري الحذف..."
+                            : "Deleting..."
+                          : isArabic
+                          ? "حذف نهائي"
+                          : "Delete permanently"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </SectionDetails>
           </div>
         ) : (
           /* =====================
@@ -2084,7 +2774,6 @@ export default function FazaaDrawer({
           ====================== */
 
           <div className="p-5 space-y-4 overflow-y-auto flex-1 min-h-0">
-            {/* غير مسجلة دخول */}
             {!isLoggedIn ? (
               <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
                 <div className="flex items-center justify-between mb-3">
@@ -2169,7 +2858,9 @@ export default function FazaaDrawer({
                       " "
                     )}
                   >
-                    {authMsg.text}
+                    {
+                      authMsg.text
+                    }
                   </div>
                 ) : null}
 
@@ -2188,12 +2879,9 @@ export default function FazaaDrawer({
                         value={
                           forgotEmail
                         }
-                        onChange={(
-                          e
-                        ) =>
+                        onChange={(e) =>
                           setForgotEmail(
-                            e.target
-                              .value
+                            e.target.value
                           )
                         }
                         placeholder="example@email.com"
@@ -2245,13 +2933,12 @@ export default function FazaaDrawer({
                       </label>
 
                       <input
-                        value={name}
-                        onChange={(
-                          e
-                        ) =>
+                        value={
+                          name
+                        }
+                        onChange={(e) =>
                           setName(
-                            e.target
-                              .value
+                            e.target.value
                           )
                         }
                         autoComplete="name"
@@ -2269,13 +2956,12 @@ export default function FazaaDrawer({
                       <input
                         type="email"
                         dir="ltr"
-                        value={email}
-                        onChange={(
-                          e
-                        ) =>
+                        value={
+                          email
+                        }
+                        onChange={(e) =>
                           setEmail(
-                            e.target
-                              .value
+                            e.target.value
                           )
                         }
                         autoComplete="email"
@@ -2295,12 +2981,9 @@ export default function FazaaDrawer({
                         value={
                           password
                         }
-                        onChange={(
-                          e
-                        ) =>
+                        onChange={(e) =>
                           setPassword(
-                            e.target
-                              .value
+                            e.target.value
                           )
                         }
                         autoComplete="new-password"
@@ -2332,13 +3015,12 @@ export default function FazaaDrawer({
                       <input
                         type="email"
                         dir="ltr"
-                        value={email}
-                        onChange={(
-                          e
-                        ) =>
+                        value={
+                          email
+                        }
+                        onChange={(e) =>
                           setEmail(
-                            e.target
-                              .value
+                            e.target.value
                           )
                         }
                         autoComplete="email"
@@ -2358,12 +3040,9 @@ export default function FazaaDrawer({
                         value={
                           password
                         }
-                        onChange={(
-                          e
-                        ) =>
+                        onChange={(e) =>
                           setPassword(
-                            e.target
-                              .value
+                            e.target.value
                           )
                         }
                         autoComplete="current-password"
@@ -2419,7 +3098,6 @@ export default function FazaaDrawer({
                     ? "المقاسات"
                     : "Measurements"
                 }
-                defaultOpen={false}
               >
                 <div className="flex items-center justify-between">
                   <div className="text-[11px] font-semibold text-neutral-300">
@@ -2429,7 +3107,9 @@ export default function FazaaDrawer({
                   </div>
 
                   <UnitToggle
-                    value={unit}
+                    value={
+                      unit
+                    }
                     onChange={
                       onChangeUnit
                     }
@@ -2461,12 +3141,11 @@ export default function FazaaDrawer({
                     value={
                       heightCm
                     }
-                    onChange={(
-                      v
-                    ) => {
+                    onChange={(value) => {
                       markDirty();
+
                       setHeightCm(
-                        v
+                        value
                       );
                     }}
                     placeholder={
@@ -2496,12 +3175,15 @@ export default function FazaaDrawer({
                               : inText
                           })`
                     }
-                    value={bust}
-                    onChange={(
-                      v
-                    ) => {
+                    value={
+                      bust
+                    }
+                    onChange={(value) => {
                       markDirty();
-                      setBust(v);
+
+                      setBust(
+                        value
+                      );
                     }}
                     placeholder={
                       unit === "cm"
@@ -2532,12 +3214,15 @@ export default function FazaaDrawer({
                               : inText
                           })`
                     }
-                    value={waist}
-                    onChange={(
-                      v
-                    ) => {
+                    value={
+                      waist
+                    }
+                    onChange={(value) => {
                       markDirty();
-                      setWaist(v);
+
+                      setWaist(
+                        value
+                      );
                     }}
                     placeholder={
                       unit === "cm"
@@ -2568,12 +3253,15 @@ export default function FazaaDrawer({
                               : inText
                           })`
                     }
-                    value={hip}
-                    onChange={(
-                      v
-                    ) => {
+                    value={
+                      hip
+                    }
+                    onChange={(value) => {
                       markDirty();
-                      setHip(v);
+
+                      setHip(
+                        value
+                      );
                     }}
                     placeholder={
                       unit === "cm"
@@ -2624,7 +3312,6 @@ export default function FazaaDrawer({
                     ? "آخر النتائج"
                     : "Recent results"
                 }
-                defaultOpen={false}
               >
                 {historyLoading ? (
                   <div className="text-xs text-neutral-400">
@@ -2634,7 +3321,9 @@ export default function FazaaDrawer({
                   </div>
                 ) : historyErr ? (
                   <div className="text-xs text-rose-200/90">
-                    {historyErr}
+                    {
+                      historyErr
+                    }
                   </div>
                 ) : history.length ===
                   0 ? (
@@ -2646,22 +3335,22 @@ export default function FazaaDrawer({
                 ) : (
                   <div className="space-y-2">
                     {history.map(
-                      (h) => (
+                      (item) => (
                         <button
                           key={
-                            h.id
+                            item.id
                           }
                           type="button"
                           onClick={() => {
                             if (
-                              !h.query
+                              !item.query
                             ) {
                               return;
                             }
 
                             const q =
                               normalizeResultsQuery(
-                                h.query
+                                item.query
                               );
 
                             if (!q) {
@@ -2686,7 +3375,7 @@ export default function FazaaDrawer({
                         >
                           <div className="text-xs font-extrabold text-white">
                             {translateHistoryTitle(
-                              h.title,
+                              item.title,
                               isArabic
                             )}
                           </div>
@@ -2694,11 +3383,11 @@ export default function FazaaDrawer({
                           <div className="mt-1 text-[11px] text-neutral-400">
                             {subtitleFromQuery(
                               normalizeResultsQuery(
-                                h.query
+                                item.query
                               ),
                               isArabic
                             ) ||
-                              h.subtitle}
+                              item.subtitle}
                           </div>
                         </button>
                       )

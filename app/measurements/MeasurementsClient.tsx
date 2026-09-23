@@ -1,10 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import {
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
 import SiteFooter from "@/app/components/FazaaFooter";
 import FazaaDrawer from "@/app/components/fazaaDrawer";
 import { supabase } from "@/app/lib/supabaseClient";
+import { useLanguage } from "@/app/components/LanguageProvider";
 
 type InitialParams = {
   occasion?: string;
@@ -13,42 +21,91 @@ type InitialParams = {
   undertone?: string;
 };
 
-type BodyShapeArabic = "ساعة رملية" | "كمثري" | "مستقيم" | "تفاحة";
+type BodyShapeArabic =
+  | "ساعة رملية"
+  | "كمثري"
+  | "مستقيم"
+  | "تفاحة";
+
 type Unit = "cm" | "in";
 
-const STORAGE_KEY = "fazaa_measurements_v1"; // ✅ صار Base
+const STORAGE_KEY =
+  "fazaa_measurements_v1";
+
 const STALE_DAYS = 60;
-const DAY_MS = 24 * 60 * 60 * 1000;
+const DAY_MS =
+  24 * 60 * 60 * 1000;
+
+/* =========================
+   Helpers
+========================= */
 
 function toNum(v: string) {
-  const n = Number(String(v || "").trim());
-  return Number.isFinite(n) ? n : NaN;
+  const n = Number(
+    String(v || "").trim()
+  );
+
+  return Number.isFinite(n)
+    ? n
+    : NaN;
 }
 
-function safeLocalStorageGet(key: string) {
+function safeLocalStorageGet(
+  key: string
+) {
   try {
-    if (typeof window === "undefined") return null;
-    return window.localStorage.getItem(key);
+    if (
+      typeof window === "undefined"
+    ) {
+      return null;
+    }
+
+    return window.localStorage.getItem(
+      key
+    );
   } catch {
     return null;
   }
 }
 
-function safeLocalStorageSet(key: string, val: string) {
+function safeLocalStorageSet(
+  key: string,
+  val: string
+) {
   try {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(key, val);
+    if (
+      typeof window === "undefined"
+    ) {
+      return;
+    }
+
+    window.localStorage.setItem(
+      key,
+      val
+    );
   } catch {
     // ignore
   }
 }
 
-function range(min: number, max: number, step = 1) {
+function range(
+  min: number,
+  max: number,
+  step = 1
+) {
   const out: number[] = [];
-  for (let x = min; x <= max + 1e-9; x += step) {
-    const v = Math.round(x * 2) / 2;
+
+  for (
+    let x = min;
+    x <= max + 1e-9;
+    x += step
+  ) {
+    const v =
+      Math.round(x * 2) / 2;
+
     out.push(v);
   }
+
   return out;
 }
 
@@ -56,13 +113,36 @@ function inToCm(vIn: number) {
   return vIn * 2.54;
 }
 
-/* ========= أيقونات القياسات (PNG) ========= */
-function MeasureIconImg({ type }: { type: "height" | "bust" | "waist" | "hip" }) {
-  const map: Record<"height" | "bust" | "waist" | "hip", string> = {
-    height: "/icons/measurements/height.png",
-    bust: "/icons/measurements/bust.png",
-    waist: "/icons/measurements/waist.png",
-    hip: "/icons/measurements/hip.png",
+/* =========================
+   Measurement icons
+========================= */
+
+function MeasureIconImg({
+  type,
+  isArabic,
+}: {
+  type:
+    | "height"
+    | "bust"
+    | "waist"
+    | "hip";
+  isArabic: boolean;
+}) {
+  const map: Record<
+    | "height"
+    | "bust"
+    | "waist"
+    | "hip",
+    string
+  > = {
+    height:
+      "/icons/measurements/height.png",
+    bust:
+      "/icons/measurements/bust.png",
+    waist:
+      "/icons/measurements/waist.png",
+    hip:
+      "/icons/measurements/hip.png",
   };
 
   return (
@@ -70,46 +150,118 @@ function MeasureIconImg({ type }: { type: "height" | "bust" | "waist" | "hip" })
       src={map[type]}
       alt=""
       draggable={false}
-      className="h-7 w-7 shrink-0 object-contain transform scale-[5] -translate-x-2"
+      className={[
+        "h-7 w-7 shrink-0 object-contain transform scale-[5]",
+        isArabic
+          ? "-translate-x-2"
+          : "translate-x-2",
+      ].join(" ")}
     />
   );
 }
 
-function ShapeIcon({ type }: { type: BodyShapeArabic }) {
-  const map: Record<BodyShapeArabic, string> = {
-    "ساعة رملية": "/icons/body-shapes/hourglass.png",
-    "كمثري": "/icons/body-shapes/pear.png",
-    "مستقيم": "/icons/body-shapes/straight.png",
-    "تفاحة": "/icons/body-shapes/apple.png",
+function ShapeIcon({
+  type,
+  isArabic,
+}: {
+  type: BodyShapeArabic;
+  isArabic: boolean;
+}) {
+  const map: Record<
+    BodyShapeArabic,
+    string
+  > = {
+    "ساعة رملية":
+      "/icons/body-shapes/hourglass.png",
+    كمثري:
+      "/icons/body-shapes/pear.png",
+    مستقيم:
+      "/icons/body-shapes/straight.png",
+    تفاحة:
+      "/icons/body-shapes/apple.png",
   };
 
   return (
     <img
       src={map[type]}
       alt=""
-      className="h-30 w-30 object-contain select-none pointer-events-none ml-6"
+      className={[
+        "h-30 w-30 object-contain select-none pointer-events-none",
+        isArabic
+          ? "ml-6"
+          : "mr-6",
+      ].join(" ")}
       draggable={false}
     />
   );
 }
 
-/* ========= خيارات Dropdown ========= */
-const HEIGHT_OPTIONS = range(140, 210, 1);
+/* =========================
+   Dropdown options
+========================= */
 
-const BUST_CM_OPTIONS = range(60, 160, 1);
-const WAIST_CM_OPTIONS = range(45, 160, 1);
-const HIP_CM_OPTIONS = range(60, 180, 1);
+const HEIGHT_OPTIONS = range(
+  140,
+  210,
+  1
+);
 
-const BUST_IN_OPTIONS = range(24, 63, 0.5);
-const WAIST_IN_OPTIONS = range(18, 63, 0.5);
-const HIP_IN_OPTIONS = range(24, 71, 0.5);
+const BUST_CM_OPTIONS = range(
+  60,
+  160,
+  1
+);
 
-function UnitToggle({ value, onChange }: { value: Unit; onChange: (u: Unit) => void }) {
+const WAIST_CM_OPTIONS = range(
+  45,
+  160,
+  1
+);
+
+const HIP_CM_OPTIONS = range(
+  60,
+  180,
+  1
+);
+
+const BUST_IN_OPTIONS = range(
+  24,
+  63,
+  0.5
+);
+
+const WAIST_IN_OPTIONS = range(
+  18,
+  63,
+  0.5
+);
+
+const HIP_IN_OPTIONS = range(
+  24,
+  71,
+  0.5
+);
+
+/* =========================
+   Unit toggle
+========================= */
+
+function UnitToggle({
+  value,
+  onChange,
+  isArabic,
+}: {
+  value: Unit;
+  onChange: (u: Unit) => void;
+  isArabic: boolean;
+}) {
   return (
     <div className="inline-flex rounded-2xl border border-[#d6b56a]/45 bg-black/20 p-1">
       <button
         type="button"
-        onClick={() => onChange("cm")}
+        onClick={() =>
+          onChange("cm")
+        }
         className={[
           "px-3 py-1.5 rounded-xl text-xs font-extrabold transition",
           value === "cm"
@@ -117,12 +269,16 @@ function UnitToggle({ value, onChange }: { value: Unit; onChange: (u: Unit) => v
             : "text-neutral-300 hover:text-white",
         ].join(" ")}
       >
-        سم
+        {isArabic
+          ? "سم"
+          : "cm"}
       </button>
 
       <button
         type="button"
-        onClick={() => onChange("in")}
+        onClick={() =>
+          onChange("in")
+        }
         className={[
           "px-3 py-1.5 rounded-xl text-xs font-extrabold transition",
           value === "in"
@@ -130,18 +286,34 @@ function UnitToggle({ value, onChange }: { value: Unit; onChange: (u: Unit) => v
             : "text-neutral-300 hover:text-white",
         ].join(" ")}
       >
-        إنش
+        {isArabic
+          ? "إنش"
+          : "in"}
       </button>
     </div>
   );
 }
 
-function BackFab({ onClick }: { onClick: () => void }) {
+/* =========================
+   Back
+========================= */
+
+function BackFab({
+  onClick,
+  isArabic,
+}: {
+  onClick: () => void;
+  isArabic: boolean;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label="رجوع"
+      aria-label={
+        isArabic
+          ? "رجوع"
+          : "Back"
+      }
       className={[
         "fixed bottom-6 right-6 z-50",
         "h-12 w-12 rounded-2xl",
@@ -159,22 +331,41 @@ function BackFab({ onClick }: { onClick: () => void }) {
         stroke="currentColor"
         strokeWidth={2.5}
       >
-        <path strokeLinecap="round" strokeLinejoin="round" d="M10 7l5 5-5 5" />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d={
+            isArabic
+              ? "M10 7l5 5-5 5"
+              : "M14 7l-5 5 5 5"
+          }
+        />
       </svg>
     </button>
   );
 }
 
-/** ✅ ثلاث نقاط مع Safe Area */
-function ThreeDotsButton({ onClick }: { onClick: () => void }) {
+/* =========================
+   Three dots
+========================= */
+
+function ThreeDotsButton({
+  onClick,
+  ariaLabel,
+}: {
+  onClick: () => void;
+  ariaLabel: string;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label="القائمة"
+      aria-label={ariaLabel}
       style={{
-        top: "calc(env(safe-area-inset-top, 0px) + 1.5rem)",
-        right: "calc(env(safe-area-inset-right, 0px) + 1.5rem)",
+        top:
+          "calc(env(safe-area-inset-top, 0px) + 1.5rem)",
+        right:
+          "calc(env(safe-area-inset-right, 0px) + 1.5rem)",
       }}
       className={[
         "fixed z-30",
@@ -191,13 +382,31 @@ function ThreeDotsButton({ onClick }: { onClick: () => void }) {
         viewBox="0 0 24 24"
         fill="currentColor"
       >
-        <circle cx="5" cy="12" r="1.4" />
-        <circle cx="12" cy="12" r="1.4" />
-        <circle cx="19" cy="12" r="1.4" />
+        <circle
+          cx="5"
+          cy="12"
+          r="1.4"
+        />
+
+        <circle
+          cx="12"
+          cy="12"
+          r="1.4"
+        />
+
+        <circle
+          cx="19"
+          cy="12"
+          r="1.4"
+        />
       </svg>
     </button>
   );
 }
+
+/* =========================
+   Saved payload
+========================= */
 
 type SavedPayload = {
   unit?: Unit;
@@ -205,188 +414,585 @@ type SavedPayload = {
   bust?: string;
   waist?: string;
   hip?: string;
-  bodyShape?: BodyShapeArabic | "";
+  bodyShape?:
+    | BodyShapeArabic
+    | "";
   lastUpdated?: number;
 };
 
-function hasAnySavedValue(p: SavedPayload | null) {
+function hasAnySavedValue(
+  p: SavedPayload | null
+) {
   if (!p) return false;
-  return !!(p.heightCm || p.bust || p.waist || p.hip || p.bodyShape);
+
+  return !!(
+    p.heightCm ||
+    p.bust ||
+    p.waist ||
+    p.hip ||
+    p.bodyShape
+  );
 }
 
-export default function MeasurementsClient({ initialParams }: { initialParams: InitialParams }) {
+/* =========================
+   Body shapes
+========================= */
+
+const BODY_SHAPES: {
+  value: BodyShapeArabic;
+  labelAr: string;
+  labelEn: string;
+}[] = [
+  {
+    value: "ساعة رملية",
+    labelAr: "ساعة رملية",
+    labelEn: "Hourglass",
+  },
+  {
+    value: "كمثري",
+    labelAr: "كمثري",
+    labelEn: "Pear",
+  },
+  {
+    value: "مستقيم",
+    labelAr: "مستقيم",
+    labelEn: "Straight",
+  },
+  {
+    value: "تفاحة",
+    labelAr: "تفاحة",
+    labelEn: "Apple",
+  },
+];
+
+/* =========================
+   Main page
+========================= */
+
+export default function MeasurementsClient({
+  initialParams,
+}: {
+  initialParams: InitialParams;
+}) {
   const router = useRouter();
   const sp = useSearchParams();
 
-  const occasion = initialParams.occasion || sp.get("occasion") || "";
-  const weddingStyle = initialParams.weddingStyle || sp.get("weddingStyle") || "";
-  const depth = initialParams.depth || sp.get("depth") || "";
-  const undertone = initialParams.undertone || sp.get("undertone") || "";
+  const {
+    isArabic,
+    direction,
+  } = useLanguage();
 
-  // Drawer
-  const [menuOpen, setMenuOpen] = useState(false);
-  const history: { id: string; title: string; subtitle: string }[] = [];
+  const occasion =
+    initialParams.occasion ||
+    sp.get("occasion") ||
+    "";
 
-  // Auth (Supabase ONLY)
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null); // ✅
+  const weddingStyle =
+    initialParams.weddingStyle ||
+    sp.get("weddingStyle") ||
+    "";
+
+  const depth =
+    initialParams.depth ||
+    sp.get("depth") ||
+    "";
+
+  const undertone =
+    initialParams.undertone ||
+    sp.get("undertone") ||
+    "";
+
+  /* =========================
+     Drawer
+  ========================= */
+
+  const [
+    menuOpen,
+    setMenuOpen,
+  ] = useState(false);
+
+  /* =========================
+     Auth
+  ========================= */
+
+  const [
+    isLoggedIn,
+    setIsLoggedIn,
+  ] = useState(false);
+
+  const [
+    userId,
+    setUserId,
+  ] = useState<string | null>(
+    null
+  );
 
   useEffect(() => {
     let mounted = true;
 
     (async () => {
-      const { data } = await supabase.auth.getSession();
+      const { data } =
+        await supabase.auth.getSession();
+
       if (!mounted) return;
-      const u = data.session?.user ?? null;
-      setIsLoggedIn(!!u);
-      setUserId(u?.id ?? null);
+
+      const user =
+        data.session?.user ??
+        null;
+
+      setIsLoggedIn(
+        !!user
+      );
+
+      setUserId(
+        user?.id ?? null
+      );
     })();
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_evt, session) => {
-      const u = session?.user ?? null;
-      setIsLoggedIn(!!u);
-      setUserId(u?.id ?? null);
-    });
+    const { data: listener } =
+      supabase.auth.onAuthStateChange(
+        (_evt, session) => {
+          const user =
+            session?.user ??
+            null;
+
+          setIsLoggedIn(
+            !!user
+          );
+
+          setUserId(
+            user?.id ??
+              null
+          );
+        }
+      );
 
     return () => {
       mounted = false;
+
       listener.subscription.unsubscribe();
     };
   }, []);
 
-  // ✅ user-scoped key (مثل الداور)
-  const storageKey = useMemo(() => {
-    return userId ? `${STORAGE_KEY}:${userId}` : STORAGE_KEY;
-  }, [userId]);
+  /* =========================
+     User-scoped local storage
+  ========================= */
 
-  // Unit
-  const [unit, setUnit] = useState<Unit>("cm");
+  const storageKey = useMemo(
+    () => {
+      return userId
+        ? `${STORAGE_KEY}:${userId}`
+        : STORAGE_KEY;
+    },
+    [userId]
+  );
 
-  // Draft values
-  const [heightCm, setHeightCm] = useState<string>("");
-  const [bust, setBust] = useState<string>("");
-  const [waist, setWaist] = useState<string>("");
-  const [hip, setHip] = useState<string>("");
-  const [bodyShape, setBodyShape] = useState<BodyShapeArabic | "">("");
+  /* =========================
+     Form state
+  ========================= */
 
-  // Saved snapshot
-  const [savedSnapshot, setSavedSnapshot] = useState<SavedPayload | null>(null);
-  const [savedLastUpdated, setSavedLastUpdated] = useState<number | null>(null);
+  const [unit, setUnit] =
+    useState<Unit>("cm");
 
-  // dirty
-  const [isDirty, setIsDirty] = useState(false);
+  const [
+    heightCm,
+    setHeightCm,
+  ] = useState("");
 
-  // آخر إجراء ثبت للمستخدم (يثبت لين يتغير شيء)
-  const [lastAction, setLastAction] = useState<"saved" | "applied" | null>(null);
+  const [bust, setBust] =
+    useState("");
 
-  // ✅ Load saved (no auto-apply) + migrate old->new مرة وحدة
+  const [waist, setWaist] =
+    useState("");
+
+  const [hip, setHip] =
+    useState("");
+
+  const [
+    bodyShape,
+    setBodyShape,
+  ] = useState<
+    BodyShapeArabic | ""
+  >("");
+
+  /* =========================
+     Saved values
+  ========================= */
+
+  const [
+    savedSnapshot,
+    setSavedSnapshot,
+  ] = useState<SavedPayload | null>(
+    null
+  );
+
+  const [
+    savedLastUpdated,
+    setSavedLastUpdated,
+  ] = useState<number | null>(
+    null
+  );
+
+  const [
+    isDirty,
+    setIsDirty,
+  ] = useState(false);
+
+  const [
+    lastAction,
+    setLastAction,
+  ] = useState<
+    "saved" | "applied" | null
+  >(null);
+
+  /* =========================
+     Load saved
+  ========================= */
+
   useEffect(() => {
-    const rawNew = safeLocalStorageGet(storageKey);
-    const rawOld = storageKey !== STORAGE_KEY ? safeLocalStorageGet(STORAGE_KEY) : null;
-    const raw = rawNew || rawOld;
+    const rawNew =
+      safeLocalStorageGet(
+        storageKey
+      );
+
+    const rawOld =
+      storageKey !==
+      STORAGE_KEY
+        ? safeLocalStorageGet(
+            STORAGE_KEY
+          )
+        : null;
+
+    const raw =
+      rawNew || rawOld;
 
     if (!raw) {
-      setSavedSnapshot(null);
-      setSavedLastUpdated(null);
-      setLastAction(null);
+      setSavedSnapshot(
+        null
+      );
+
+      setSavedLastUpdated(
+        null
+      );
+
+      setLastAction(
+        null
+      );
+
       return;
     }
 
     try {
-      const saved = JSON.parse(raw) as SavedPayload;
-      setSavedSnapshot(saved);
-      setSavedLastUpdated(typeof saved.lastUpdated === "number" ? saved.lastUpdated : null);
-      setLastAction(null);
+      const saved =
+        JSON.parse(
+          raw
+        ) as SavedPayload;
 
-      // migrate once
-      if (userId && rawOld && !rawNew) {
-        safeLocalStorageSet(storageKey, rawOld);
+      setSavedSnapshot(
+        saved
+      );
+
+      setSavedLastUpdated(
+        typeof saved.lastUpdated ===
+          "number"
+          ? saved.lastUpdated
+          : null
+      );
+
+      setLastAction(
+        null
+      );
+
+      /*
+        migrate old -> user-scoped key
+      */
+      if (
+        userId &&
+        rawOld &&
+        !rawNew
+      ) {
+        safeLocalStorageSet(
+          storageKey,
+          rawOld
+        );
       }
     } catch {
-      setSavedSnapshot(null);
-      setSavedLastUpdated(null);
-      setLastAction(null);
+      setSavedSnapshot(
+        null
+      );
+
+      setSavedLastUpdated(
+        null
+      );
+
+      setLastAction(
+        null
+      );
     }
-  }, [isLoggedIn, storageKey, userId]);
+  }, [
+    isLoggedIn,
+    storageKey,
+    userId,
+  ]);
 
-  const hasSaved = useMemo(() => {
-    return isLoggedIn && hasAnySavedValue(savedSnapshot);
-  }, [isLoggedIn, savedSnapshot]);
+  const hasSaved =
+    useMemo(() => {
+      return (
+        isLoggedIn &&
+        hasAnySavedValue(
+          savedSnapshot
+        )
+      );
+    }, [
+      isLoggedIn,
+      savedSnapshot,
+    ]);
 
-  const isStale = useMemo(() => {
-    if (!savedLastUpdated) return false;
-    return Date.now() - savedLastUpdated >= STALE_DAYS * DAY_MS;
-  }, [savedLastUpdated]);
+  const isStale =
+    useMemo(() => {
+      if (
+        !savedLastUpdated
+      ) {
+        return false;
+      }
 
-  const bustOptions = unit === "cm" ? BUST_CM_OPTIONS : BUST_IN_OPTIONS;
-  const waistOptions = unit === "cm" ? WAIST_CM_OPTIONS : WAIST_IN_OPTIONS;
-  const hipOptions = unit === "cm" ? HIP_CM_OPTIONS : HIP_IN_OPTIONS;
+      return (
+        Date.now() -
+          savedLastUpdated >=
+        STALE_DAYS *
+          DAY_MS
+      );
+    }, [
+      savedLastUpdated,
+    ]);
 
-  // ✅ Validation للمقاسات فقط (بدون bodyShape) — للحفظ/التحديث
-  const measErrors = useMemo(() => {
-    const h = toNum(heightCm);
-    const b = toNum(bust);
-    const w = toNum(waist);
-    const hp = toNum(hip);
+  /* =========================
+     Options
+  ========================= */
 
-    const bCm = unit === "cm" ? b : inToCm(b);
-    const wCm = unit === "cm" ? w : inToCm(w);
-    const hipCm = unit === "cm" ? hp : inToCm(hp);
+  const bustOptions =
+    unit === "cm"
+      ? BUST_CM_OPTIONS
+      : BUST_IN_OPTIONS;
 
-    return {
-      height: !heightCm || h < 140 || h > 210 ? "x" : "",
-      bust: !bust || bCm < 60 || bCm > 160 ? "x" : "",
-      waist: !waist || wCm < 45 || wCm > 160 ? "x" : "",
-      hip: !hip || hipCm < 60 || hipCm > 180 ? "x" : "",
-    };
-  }, [heightCm, bust, waist, hip, unit]);
+  const waistOptions =
+    unit === "cm"
+      ? WAIST_CM_OPTIONS
+      : WAIST_IN_OPTIONS;
 
-  const canSaveMeasurements = useMemo(() => {
-    return !measErrors.height && !measErrors.bust && !measErrors.waist && !measErrors.hip;
-  }, [measErrors]);
+  const hipOptions =
+    unit === "cm"
+      ? HIP_CM_OPTIONS
+      : HIP_IN_OPTIONS;
 
-  // ✅ Validation لعرض النتائج (يشمل bodyShape)
-  const canSubmit = useMemo(() => {
-    return canSaveMeasurements && !!bodyShape;
-  }, [canSaveMeasurements, bodyShape]);
+  /* =========================
+     Validation
+  ========================= */
 
-  const canUpdate = useMemo(() => {
-    return isLoggedIn && canSaveMeasurements;
-  }, [isLoggedIn, canSaveMeasurements]);
+  const measErrors =
+    useMemo(() => {
+      const h =
+        toNum(heightCm);
+
+      const b =
+        toNum(bust);
+
+      const w =
+        toNum(waist);
+
+      const hp =
+        toNum(hip);
+
+      const bCm =
+        unit === "cm"
+          ? b
+          : inToCm(b);
+
+      const wCm =
+        unit === "cm"
+          ? w
+          : inToCm(w);
+
+      const hipCm =
+        unit === "cm"
+          ? hp
+          : inToCm(hp);
+
+      return {
+        height:
+          !heightCm ||
+          h < 140 ||
+          h > 210
+            ? "x"
+            : "",
+
+        bust:
+          !bust ||
+          bCm < 60 ||
+          bCm > 160
+            ? "x"
+            : "",
+
+        waist:
+          !waist ||
+          wCm < 45 ||
+          wCm > 160
+            ? "x"
+            : "",
+
+        hip:
+          !hip ||
+          hipCm < 60 ||
+          hipCm > 180
+            ? "x"
+            : "",
+      };
+    }, [
+      heightCm,
+      bust,
+      waist,
+      hip,
+      unit,
+    ]);
+
+  const canSaveMeasurements =
+    useMemo(() => {
+      return (
+        !measErrors.height &&
+        !measErrors.bust &&
+        !measErrors.waist &&
+        !measErrors.hip
+      );
+    }, [measErrors]);
+
+  const canSubmit =
+    useMemo(() => {
+      return (
+        canSaveMeasurements &&
+        !!bodyShape
+      );
+    }, [
+      canSaveMeasurements,
+      bodyShape,
+    ]);
+
+  const canUpdate =
+    useMemo(() => {
+      return (
+        isLoggedIn &&
+        canSaveMeasurements
+      );
+    }, [
+      isLoggedIn,
+      canSaveMeasurements,
+    ]);
+
+  /* =========================
+     Actions
+  ========================= */
 
   function markDirty() {
     setIsDirty(true);
-    setLastAction(null); // أي تعديل يلغي “تم…”
+    setLastAction(null);
   }
 
-  function onChangeUnit(u: Unit) {
-    if (u === unit) return;
+  function onChangeUnit(
+    nextUnit: Unit
+  ) {
+    if (
+      nextUnit === unit
+    ) {
+      return;
+    }
+
     markDirty();
 
-    setUnit(u);
+    setUnit(
+      nextUnit
+    );
+
+    /*
+      نفس سلوك ملفك الأصلي:
+      عند تغيير الوحدة نفرغ المحيطات
+      وشكل الجسم.
+    */
     setBust("");
     setWaist("");
     setHip("");
-    // body shape ما له علاقة بالحفظ، بس نخليه زي سلوكك السابق
     setBodyShape("");
   }
 
   function applySavedFromSnapshot() {
-    if (!savedSnapshot) return;
+    if (!savedSnapshot) {
+      return;
+    }
 
     setIsDirty(false);
-    setLastAction("applied");
 
-    if (savedSnapshot.unit === "cm" || savedSnapshot.unit === "in") setUnit(savedSnapshot.unit);
-    if (typeof savedSnapshot.heightCm === "string") setHeightCm(savedSnapshot.heightCm);
-    if (typeof savedSnapshot.bust === "string") setBust(savedSnapshot.bust);
-    if (typeof savedSnapshot.waist === "string") setWaist(savedSnapshot.waist);
-    if (typeof savedSnapshot.hip === "string") setHip(savedSnapshot.hip);
-    if (savedSnapshot.bodyShape) setBodyShape(savedSnapshot.bodyShape);
+    setLastAction(
+      "applied"
+    );
+
+    if (
+      savedSnapshot.unit ===
+        "cm" ||
+      savedSnapshot.unit ===
+        "in"
+    ) {
+      setUnit(
+        savedSnapshot.unit
+      );
+    }
+
+    if (
+      typeof savedSnapshot.heightCm ===
+      "string"
+    ) {
+      setHeightCm(
+        savedSnapshot.heightCm
+      );
+    }
+
+    if (
+      typeof savedSnapshot.bust ===
+      "string"
+    ) {
+      setBust(
+        savedSnapshot.bust
+      );
+    }
+
+    if (
+      typeof savedSnapshot.waist ===
+      "string"
+    ) {
+      setWaist(
+        savedSnapshot.waist
+      );
+    }
+
+    if (
+      typeof savedSnapshot.hip ===
+      "string"
+    ) {
+      setHip(
+        savedSnapshot.hip
+      );
+    }
+
+    if (
+      savedSnapshot.bodyShape
+    ) {
+      setBodyShape(
+        savedSnapshot.bodyShape
+      );
+    }
   }
 
   function saveOrUpdateMeasurements() {
-    if (!canUpdate) return;
+    if (!canUpdate) {
+      return;
+    }
 
     const payload: SavedPayload = {
       unit,
@@ -394,268 +1000,581 @@ export default function MeasurementsClient({ initialParams }: { initialParams: I
       bust,
       waist,
       hip,
-      // نخزّن bodyShape إذا موجود (اختياري)، بس مو شرط للحفظ
-      bodyShape: bodyShape || "",
-      lastUpdated: Date.now(),
+      bodyShape:
+        bodyShape || "",
+      lastUpdated:
+        Date.now(),
     };
 
-    // ✅ write user-scoped
-    safeLocalStorageSet(storageKey, JSON.stringify(payload));
+    safeLocalStorageSet(
+      storageKey,
+      JSON.stringify(
+        payload
+      )
+    );
 
-    setSavedSnapshot(payload);
-    setSavedLastUpdated(payload.lastUpdated ?? null);
+    setSavedSnapshot(
+      payload
+    );
+
+    setSavedLastUpdated(
+      payload.lastUpdated ??
+        null
+    );
 
     setIsDirty(false);
-    setLastAction("saved"); // ✅ تثبت “تم تحديث…” وما ترجع
+
+    setLastAction(
+      "saved"
+    );
   }
 
   function goResults() {
-    if (!canSubmit) return;
+    if (!canSubmit) {
+      return;
+    }
 
-    const params = new URLSearchParams();
+    const params =
+      new URLSearchParams();
 
-    if (occasion) params.set("occasion", occasion);
-    if (weddingStyle) params.set("weddingStyle", weddingStyle);
-    if (depth) params.set("depth", depth);
-    if (undertone) params.set("undertone", undertone);
+    if (occasion) {
+      params.set(
+        "occasion",
+        occasion
+      );
+    }
 
-    const h = toNum(heightCm);
-    const b = toNum(bust);
-    const w = toNum(waist);
-    const hp = toNum(hip);
+    if (weddingStyle) {
+      params.set(
+        "weddingStyle",
+        weddingStyle
+      );
+    }
 
-    const bustCm = unit === "cm" ? b : Math.round(inToCm(b) * 10) / 10;
-    const waistCm = unit === "cm" ? w : Math.round(inToCm(w) * 10) / 10;
-    const hipCm = unit === "cm" ? hp : Math.round(inToCm(hp) * 10) / 10;
+    if (depth) {
+      params.set(
+        "depth",
+        depth
+      );
+    }
 
-    params.set("height", String(h));
-    params.set("bust", String(bustCm));
-    params.set("waist", String(waistCm));
-    params.set("hip", String(hipCm));
-    params.set("bodyShape", bodyShape);
-    params.set("unit", unit);
+    if (undertone) {
+      params.set(
+        "undertone",
+        undertone
+      );
+    }
 
-    router.push(`/results?${params.toString()}`);
+    const h =
+      toNum(heightCm);
+
+    const b =
+      toNum(bust);
+
+    const w =
+      toNum(waist);
+
+    const hp =
+      toNum(hip);
+
+    const bustCm =
+      unit === "cm"
+        ? b
+        : Math.round(
+            inToCm(b) *
+              10
+          ) / 10;
+
+    const waistCm =
+      unit === "cm"
+        ? w
+        : Math.round(
+            inToCm(w) *
+              10
+          ) / 10;
+
+    const hipCm =
+      unit === "cm"
+        ? hp
+        : Math.round(
+            inToCm(hp) *
+              10
+          ) / 10;
+
+    params.set(
+      "height",
+      String(h)
+    );
+
+    params.set(
+      "bust",
+      String(bustCm)
+    );
+
+    params.set(
+      "waist",
+      String(waistCm)
+    );
+
+    params.set(
+      "hip",
+      String(hipCm)
+    );
+
+    /*
+      مهم:
+      نخزن القيمة العربية الأصلية
+      حتى تظل توصيات العبايات شغالة.
+    */
+    params.set(
+      "bodyShape",
+      bodyShape
+    );
+
+    params.set(
+      "unit",
+      unit
+    );
+
+    router.push(
+      `/results?${params.toString()}`
+    );
   }
 
-  const circumPlaceholder = unit === "cm" ? "سنتيمتر" : "إنش";
-  const heightPlaceholder = "سنتيمتر";
+  /* =========================
+     Labels
+  ========================= */
 
-  // ✅ زر واحد: يا استخدام / يا حفظ-تحديث / يا تم…
-  const showActionButton = isLoggedIn;
+  const circumPlaceholder =
+    unit === "cm"
+      ? isArabic
+        ? "سنتيمتر"
+        : "Centimeters"
+      : isArabic
+      ? "إنش"
+      : "Inches";
 
-  const actionLabel = useMemo(() => {
-    // لو تم حفظ/تحديث: تثبت
-    if (lastAction === "saved") return hasSaved ? "تم تحديث المقاسات" : "تم حفظ المقاسات";
+  const heightPlaceholder =
+    isArabic
+      ? "سنتيمتر"
+      : "Centimeters";
 
-    // لو تم تطبيق المحفوظ: تثبت
-    if (lastAction === "applied") return "تم استخدام المقاسات المحفوظة";
+  const showActionButton =
+    isLoggedIn;
 
-    // غير كذا:
-    if (isDirty) return hasSaved ? "تحديث المقاسات" : "حفظ المقاسات";
+  const actionLabel =
+    useMemo(() => {
+      if (
+        lastAction ===
+        "saved"
+      ) {
+        if (hasSaved) {
+          return isArabic
+            ? "تم تحديث المقاسات"
+            : "Measurements updated";
+        }
 
-    // مو dirty
-    return hasSaved ? "استخدام المقاسات المحفوظة" : "حفظ المقاسات";
-  }, [lastAction, isDirty, hasSaved]);
+        return isArabic
+          ? "تم حفظ المقاسات"
+          : "Measurements saved";
+      }
 
-  const actionDisabled = useMemo(() => {
-    // إذا ثبتت “تم …” نخليه disabled لين المستخدم يعدّل شي
-    if (lastAction) return true;
+      if (
+        lastAction ===
+        "applied"
+      ) {
+        return isArabic
+          ? "تم استخدام المقاسات المحفوظة"
+          : "Saved measurements applied";
+      }
 
-    if (isDirty) return !canUpdate;
+      if (isDirty) {
+        return hasSaved
+          ? isArabic
+            ? "تحديث المقاسات"
+            : "Update measurements"
+          : isArabic
+          ? "حفظ المقاسات"
+          : "Save measurements";
+      }
 
-    // مو dirty:
-    if (hasSaved) return false; // استخدام المحفوظ متاح
-    return true; // ما عنده محفوظ وما عدّل شي -> ما في شيء يسويه
-  }, [lastAction, isDirty, canUpdate, hasSaved]);
+      return hasSaved
+        ? isArabic
+          ? "استخدام المقاسات المحفوظة"
+          : "Use saved measurements"
+        : isArabic
+        ? "حفظ المقاسات"
+        : "Save measurements";
+    }, [
+      lastAction,
+      isDirty,
+      hasSaved,
+      isArabic,
+    ]);
+
+  const actionDisabled =
+    useMemo(() => {
+      if (lastAction) {
+        return true;
+      }
+
+      if (isDirty) {
+        return !canUpdate;
+      }
+
+      if (hasSaved) {
+        return false;
+      }
+
+      return true;
+    }, [
+      lastAction,
+      isDirty,
+      canUpdate,
+      hasSaved,
+    ]);
 
   function onActionClick() {
-    if (!isLoggedIn) return;
-    if (lastAction) return;
+    if (!isLoggedIn) {
+      return;
+    }
+
+    if (lastAction) {
+      return;
+    }
 
     if (isDirty) {
       saveOrUpdateMeasurements();
       return;
     }
 
-    // مو dirty
-    if (hasSaved) applySavedFromSnapshot();
+    if (hasSaved) {
+      applySavedFromSnapshot();
+    }
   }
+
+  /* =========================
+     Render
+  ========================= */
 
   return (
     <main
-      dir="rtl"
+      dir={direction}
       className="min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-900 to-black p-6"
     >
-      <ThreeDotsButton onClick={() => setMenuOpen(true)} />
+      <ThreeDotsButton
+        onClick={() =>
+          setMenuOpen(true)
+        }
+        ariaLabel={
+          isArabic
+            ? "القائمة"
+            : "Menu"
+        }
+      />
 
-      <FazaaDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <FazaaDrawer
+        open={menuOpen}
+        onClose={() =>
+          setMenuOpen(false)
+        }
+      />
 
       <div className="mx-auto max-w-2xl">
+        {/* Header */}
         <header className="mb-6 text-center">
-          <p className="text-sm text-neutral-400">الخطوة الأخيرة</p>
+          <p className="text-sm text-neutral-400">
+            {isArabic
+              ? "الخطوة الأخيرة"
+              : "Final Step"}
+          </p>
+
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white">
-            خلّينا نضبط المقاس المثالي لك
+            {isArabic
+              ? "خلّينا نضبط المقاس المثالي لك"
+              : "Let's Find Your Best Fit"}
           </h1>
+
           <p className="mt-3 text-sm text-neutral-400">
-            نطلع لك اقتراحات فخمة + مقاس محسوب عليك.
+            {isArabic
+              ? "نطلع لك اقتراحات فخمة + مقاس محسوب عليك."
+              : "We'll recommend pieces for you with a size suggestion based on your measurements."}
           </p>
         </header>
 
+        {/* Main card */}
         <div className="relative overflow-hidden rounded-3xl border border-[#d6b56a]/35 bg-white/5 p-6 shadow-[0_0_0_1px_rgba(214,181,106,0.12),0_20px_60px_rgba(0,0,0,0.55)] backdrop-blur">
           <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-[#d6b56a]/22" />
+
           <div className="pointer-events-none absolute -top-24 left-1/2 h-40 w-[520px] -translate-x-1/2 rounded-full bg-[#d6b56a]/10 blur-3xl" />
 
+          {/* Unit */}
           <div className="mb-4 flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <div />
+
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-neutral-300">
-                  وحدة المحيطات:
+                  {isArabic
+                    ? "وحدة المحيطات:"
+                    : "Measurement unit:"}
                 </span>
-                <UnitToggle value={unit} onChange={onChangeUnit} />
+
+                <UnitToggle
+                  value={unit}
+                  onChange={
+                    onChangeUnit
+                  }
+                  isArabic={
+                    isArabic
+                  }
+                />
               </div>
             </div>
           </div>
 
+          {/* Measurements */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <SelectField
-              label="الطول "
+              label={
+                isArabic
+                  ? "الطول"
+                  : "Height"
+              }
               iconType="height"
-              value={heightCm}
+              value={
+                heightCm
+              }
               onChange={(v) => {
                 markDirty();
-                setHeightCm(v);
+
+                setHeightCm(
+                  v
+                );
               }}
-              placeholder={heightPlaceholder}
-              options={HEIGHT_OPTIONS}
+              placeholder={
+                heightPlaceholder
+              }
+              options={
+                HEIGHT_OPTIONS
+              }
+              isArabic={
+                isArabic
+              }
             />
 
             <SelectField
-              label="محيط الصدر"
+              label={
+                isArabic
+                  ? "محيط الصدر"
+                  : "Bust"
+              }
               iconType="bust"
               value={bust}
               onChange={(v) => {
                 markDirty();
+
                 setBust(v);
               }}
-              placeholder={circumPlaceholder}
-              options={bustOptions}
+              placeholder={
+                circumPlaceholder
+              }
+              options={
+                bustOptions
+              }
+              isArabic={
+                isArabic
+              }
             />
 
             <SelectField
-              label="محيط الخصر"
+              label={
+                isArabic
+                  ? "محيط الخصر"
+                  : "Waist"
+              }
               iconType="waist"
               value={waist}
               onChange={(v) => {
                 markDirty();
+
                 setWaist(v);
               }}
-              placeholder={circumPlaceholder}
-              options={waistOptions}
+              placeholder={
+                circumPlaceholder
+              }
+              options={
+                waistOptions
+              }
+              isArabic={
+                isArabic
+              }
             />
 
             <SelectField
-              label="محيط الأرداف"
+              label={
+                isArabic
+                  ? "محيط الأرداف"
+                  : "Hips"
+              }
               iconType="hip"
               value={hip}
               onChange={(v) => {
                 markDirty();
+
                 setHip(v);
               }}
-              placeholder={circumPlaceholder}
-              options={hipOptions}
+              placeholder={
+                circumPlaceholder
+              }
+              options={
+                hipOptions
+              }
+              isArabic={
+                isArabic
+              }
             />
           </div>
 
-          {/* ✅ زر واحد */}
+          {/* Saved measurement action */}
           {showActionButton ? (
             <div className="mt-4 flex items-center justify-start">
               <button
                 type="button"
-                onClick={onActionClick}
-                disabled={actionDisabled}
+                onClick={
+                  onActionClick
+                }
+                disabled={
+                  actionDisabled
+                }
                 className={[
                   "inline-flex items-center gap-2",
                   "rounded-xl border px-3 py-2",
                   "text-xs font-extrabold transition",
                   "border-[#d6b56a]/45 bg-black/20 text-white hover:border-[#d6b56a]/70",
                   "disabled:opacity-60 disabled:hover:border-[#d6b56a]/45",
-                  lastAction ? "bg-[#d6b56a]/10 border-[#d6b56a]/60" : "",
+                  lastAction
+                    ? "bg-[#d6b56a]/10 border-[#d6b56a]/60"
+                    : "",
                 ].join(" ")}
               >
-                <span>{actionLabel}</span>
+                <span>
+                  {actionLabel}
+                </span>
 
-                {!isDirty && lastAction === "applied" && isStale ? (
-                  <span className="mr-2 rounded-full border border-[#d6b56a]/35 bg-black/20 px-2 py-0.5 text-[10px] text-[#f3e0b0]">
-                    مر {STALE_DAYS} يوم على آخر تحديث للمقاسات
+                {!isDirty &&
+                lastAction ===
+                  "applied" &&
+                isStale ? (
+                  <span
+                    className={[
+                      "rounded-full border border-[#d6b56a]/35 bg-black/20 px-2 py-0.5 text-[10px] text-[#f3e0b0]",
+                      isArabic
+                        ? "mr-2"
+                        : "ml-2",
+                    ].join(
+                      " "
+                    )}
+                  >
+                    {isArabic
+                      ? `مر ${STALE_DAYS} يوم على آخر تحديث للمقاسات`
+                      : `Last updated over ${STALE_DAYS} days ago`}
                   </span>
                 ) : null}
               </button>
             </div>
           ) : null}
 
+          {/* Body shape */}
           <div className="mt-6">
-            <p className="text-sm font-semibold text-white">شكل الجسم</p>
-            <p className="mt-2 text-xs text-neutral-400">نستخدمه فقط لترتيب النتائج بدقة</p>
+            <p className="text-sm font-semibold text-white">
+              {isArabic
+                ? "شكل الجسم"
+                : "Body Shape"}
+            </p>
+
+            <p className="mt-2 text-xs text-neutral-400">
+              {isArabic
+                ? "نستخدمه فقط لترتيب النتائج بدقة"
+                : "We use this only to improve the order of your recommendations"}
+            </p>
 
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <Chip
-                label="ساعة رملية"
-                active={bodyShape === "ساعة رملية"}
-                onClick={() => {
-                  markDirty();
-                  setBodyShape("ساعة رملية");
-                }}
-              />
-              <Chip
-                label="كمثري"
-                active={bodyShape === "كمثري"}
-                onClick={() => {
-                  markDirty();
-                  setBodyShape("كمثري");
-                }}
-              />
-              <Chip
-                label="مستقيم"
-                active={bodyShape === "مستقيم"}
-                onClick={() => {
-                  markDirty();
-                  setBodyShape("مستقيم");
-                }}
-              />
-              <Chip
-                label="تفاحة"
-                active={bodyShape === "تفاحة"}
-                onClick={() => {
-                  markDirty();
-                  setBodyShape("تفاحة");
-                }}
-              />
+              {BODY_SHAPES.map(
+                (shape) => (
+                  <Chip
+                    key={
+                      shape.value
+                    }
+                    value={
+                      shape.value
+                    }
+                    label={
+                      isArabic
+                        ? shape.labelAr
+                        : shape.labelEn
+                    }
+                    active={
+                      bodyShape ===
+                      shape.value
+                    }
+                    onClick={() => {
+                      markDirty();
+
+                      setBodyShape(
+                        shape.value
+                      );
+                    }}
+                    isArabic={
+                      isArabic
+                    }
+                  />
+                )
+              )}
             </div>
           </div>
 
+          {/* Results */}
           <button
-            onClick={goResults}
-            disabled={!canSubmit}
+            onClick={
+              goResults
+            }
+            disabled={
+              !canSubmit
+            }
             className="mt-6 w-full rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/15 py-3 text-sm font-extrabold text-white shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:border-[#d6b56a]/70 disabled:opacity-40 disabled:hover:border-[#d6b56a]/45"
             type="button"
           >
-            عرض النتائج
+            {isArabic
+              ? "عرض النتائج"
+              : "View Results"}
           </button>
 
           <p className="mt-3 text-center text-xs text-neutral-400">
-            * الطول بالسنتيمتر دائمًا — ووحدة المحيطات حسب اختيارك.
+            {isArabic
+              ? "* الطول بالسنتيمتر دائمًا — ووحدة المحيطات حسب اختيارك."
+              : "* Height is always measured in centimeters — circumference units follow your selection."}
           </p>
         </div>
 
         <SiteFooter />
       </div>
 
-      <BackFab onClick={() => router.back()} />
+      <BackFab
+        onClick={() =>
+          router.back()
+        }
+        isArabic={
+          isArabic
+        }
+      />
     </main>
   );
 }
+
+/* =========================
+   Select field
+========================= */
 
 function SelectField({
   label,
@@ -664,43 +1583,81 @@ function SelectField({
   onChange,
   placeholder,
   options,
+  isArabic,
 }: {
   label: string;
-  iconType: "height" | "bust" | "waist" | "hip";
+  iconType:
+    | "height"
+    | "bust"
+    | "waist"
+    | "hip";
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   options: number[];
+  isArabic: boolean;
 }) {
   return (
     <label className="block">
       <span className="text-sm font-semibold text-white inline-flex items-center gap-2">
-        <span>{label}</span>
+        <span>
+          {label}
+        </span>
+
         <span className="pointer-events-none">
-          <MeasureIconImg type={iconType} />
+          <MeasureIconImg
+            type={
+              iconType
+            }
+            isArabic={
+              isArabic
+            }
+          />
         </span>
       </span>
 
       <div className="relative mt-2">
         <select
           value={value}
-          onChange={(e) => onChange(e.target.value)}
-          style={{ colorScheme: "dark" }}
+          onChange={(e) =>
+            onChange(
+              e.target.value
+            )
+          }
+          style={{
+            colorScheme:
+              "dark",
+          }}
           className={[
             "w-full appearance-none rounded-2xl border px-4 py-3 text-sm font-semibold transition overflow-hidden shrink-0",
             "border-white/10 bg-neutral-950 text-white",
             "focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10",
           ].join(" ")}
         >
-          <option value="" disabled className="bg-neutral-950 text-neutral-400">
-            {placeholder || "اختاري"}
+          <option
+            value=""
+            disabled
+            className="bg-neutral-950 text-neutral-400"
+          >
+            {placeholder ||
+              (isArabic
+                ? "اختاري"
+                : "Select")}
           </option>
 
-          {options.map((n) => (
-            <option key={n} value={String(n)} className="bg-neutral-950 text-white">
-              {n}
-            </option>
-          ))}
+          {options.map(
+            (n) => (
+              <option
+                key={n}
+                value={String(
+                  n
+                )}
+                className="bg-neutral-950 text-white"
+              >
+                {n}
+              </option>
+            )
+          )}
         </select>
 
         <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
@@ -712,7 +1669,11 @@ function SelectField({
             stroke="currentColor"
             strokeWidth={2}
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M19 9l-7 7-7-7"
+            />
           </svg>
         </div>
       </div>
@@ -720,14 +1681,22 @@ function SelectField({
   );
 }
 
+/* =========================
+   Body shape chip
+========================= */
+
 function Chip({
+  value,
   label,
   active,
   onClick,
+  isArabic,
 }: {
-  label: BodyShapeArabic;
+  value: BodyShapeArabic;
+  label: string;
   active: boolean;
   onClick: () => void;
+  isArabic: boolean;
 }) {
   return (
     <button
@@ -739,12 +1708,29 @@ function Chip({
         "bg-black/20 border-white/10 text-white hover:bg-black/30",
         "flex items-center justify-center gap-2",
         "overflow-hidden",
-        active ? "ring-2 ring-[#d6b56a]/40 border-[#d6b56a]/35 bg-[#d6b56a]/10" : "",
+        active
+          ? "ring-2 ring-[#d6b56a]/40 border-[#d6b56a]/35 bg-[#d6b56a]/10"
+          : "",
       ].join(" ")}
     >
-      <span className="mr-18 whitespace-nowrap">{label}</span>
+      <span
+        className={[
+          "whitespace-nowrap",
+          isArabic
+            ? "mr-18"
+            : "ml-18",
+        ].join(" ")}
+      >
+        {label}
+      </span>
+
       <span className="shrink-0">
-        <ShapeIcon type={label} />
+        <ShapeIcon
+          type={value}
+          isArabic={
+            isArabic
+          }
+        />
       </span>
     </button>
   );

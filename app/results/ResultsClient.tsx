@@ -1,7 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
 import {
   products,
   type Product,
@@ -14,8 +22,11 @@ import { STORE_MAP } from "@/app/data/stores";
 import SiteFooter from "@/app/components/FazaaFooter";
 import FazaaDrawer from "@/app/components/fazaaDrawer";
 import { supabase } from "@/app/lib/supabaseClient";
+import { useLanguage } from "@/app/components/LanguageProvider";
 
-type BodyShape = "" | BodyShapeArabic;
+type BodyShape =
+  | ""
+  | BodyShapeArabic;
 
 type InitialParams = {
   occasion?: string;
@@ -29,16 +40,27 @@ type InitialParams = {
   bodyShape?: string;
 };
 
-/** ✅ ثلاث نقاط مع Safe Area */
-function ThreeDotsButton({ onClick }: { onClick: () => void }) {
+/* =========================
+   Three dots
+========================= */
+
+function ThreeDotsButton({
+  onClick,
+  ariaLabel,
+}: {
+  onClick: () => void;
+  ariaLabel: string;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label="القائمة"
+      aria-label={ariaLabel}
       style={{
-        top: "calc(env(safe-area-inset-top, 0px) + 1.5rem)",
-        right: "calc(env(safe-area-inset-right, 0px) + 1.5rem)",
+        top:
+          "calc(env(safe-area-inset-top, 0px) + 1.5rem)",
+        right:
+          "calc(env(safe-area-inset-right, 0px) + 1.5rem)",
       }}
       className={[
         "fixed z-30",
@@ -55,134 +77,430 @@ function ThreeDotsButton({ onClick }: { onClick: () => void }) {
         viewBox="0 0 24 24"
         fill="currentColor"
       >
-        <circle cx="5" cy="12" r="1.4" />
-        <circle cx="12" cy="12" r="1.4" />
-        <circle cx="19" cy="12" r="1.4" />
+        <circle
+          cx="5"
+          cy="12"
+          r="1.4"
+        />
+
+        <circle
+          cx="12"
+          cy="12"
+          r="1.4"
+        />
+
+        <circle
+          cx="19"
+          cy="12"
+          r="1.4"
+        />
       </svg>
     </button>
   );
 }
 
-/* ===== Labels (مطابقة لقيمك) ===== */
-function occasionLabel(o: string) {
-  if (o === "wedding") return "زواج";
-  if (o === "engagement") return "ملّكة / خطوبة";
-  if (o === "event") return "مناسبة";
-  if (o === "abaya") return "عباية";
-  if (o === "ramadan") return "رمضان";
-  if (o === "beach") return "بحر";
-  if (o === "chalets") return "شاليهات";
+/* =========================
+   History labels
+   نخليها بالقيم الأصلية
+========================= */
+
+function occasionLabel(
+  occasion: string
+) {
+  if (
+    occasion === "wedding"
+  ) {
+    return "زواج";
+  }
+
+  if (
+    occasion ===
+    "engagement"
+  ) {
+    return "ملّكة / خطوبة";
+  }
+
+  if (
+    occasion === "work"
+  ) {
+    return "عمل";
+  }
+
+  if (
+    occasion === "event"
+  ) {
+    return "مناسبة";
+  }
+
+  if (
+    occasion === "abaya"
+  ) {
+    return "عباية";
+  }
+
+  if (
+    occasion === "ramadan"
+  ) {
+    return "رمضان";
+  }
+
+  if (
+    occasion === "beach"
+  ) {
+    return "بحر";
+  }
+
+  if (
+    occasion === "chalets"
+  ) {
+    return "شاليهات";
+  }
+
   return "نتائج";
 }
 
-function subtitleFromParams(params: {
-  weddingStyle?: string;
-  depth?: string;
-  undertone?: string;
-  bodyShape?: string;
-}) {
-  const parts: string[] = [];
-  if (params.weddingStyle) parts.push(`ستايل: ${params.weddingStyle}`);
-  if (params.depth) parts.push(`العمق: ${params.depth}`);
-  if (params.undertone) parts.push(`الأندرتون: ${params.undertone}`);
-  if (params.bodyShape) parts.push(`شكل الجسم: ${params.bodyShape}`);
-  return parts.length ? parts.join(" • ") : "آخر تجربة محفوظة";
+function subtitleFromParams(
+  params: {
+    weddingStyle?: string;
+    depth?: string;
+    undertone?: string;
+    bodyShape?: string;
+  }
+) {
+  const parts: string[] =
+    [];
+
+  if (
+    params.weddingStyle
+  ) {
+    parts.push(
+      `ستايل: ${params.weddingStyle}`
+    );
+  }
+
+  if (params.depth) {
+    parts.push(
+      `العمق: ${params.depth}`
+    );
+  }
+
+  if (
+    params.undertone
+  ) {
+    parts.push(
+      `الأندرتون: ${params.undertone}`
+    );
+  }
+
+  if (
+    params.bodyShape
+  ) {
+    parts.push(
+      `شكل الجسم: ${params.bodyShape}`
+    );
+  }
+
+  return parts.length
+    ? parts.join(" • ")
+    : "آخر تجربة محفوظة";
 }
+
+/* =========================
+   Translate size output
+========================= */
+
+function translateSize(
+  size: string,
+  isArabic: boolean
+) {
+  if (isArabic) {
+    return size;
+  }
+
+  if (
+    size === "غير محدد"
+  ) {
+    return "Not determined";
+  }
+
+  return size;
+}
+
+function translateSizeNote(
+  note: string,
+  isArabic: boolean
+) {
+  if (isArabic) {
+    return note;
+  }
+
+  const map: Record<
+    string,
+    string
+  > = {
+    "أدخلي طولك عشان نحدد مقاس العباية بدقة.":
+      "Enter your height so we can suggest the most suitable abaya size.",
+
+    "مقاس مضبوط حسب طولك.":
+      "This size matches your height.",
+
+    "مقاس قريب — لو تحبين العباية أطول أو أقصر عدّلي حسب ذوقك.":
+      "This is the closest size based on your height. Adjust depending on whether you prefer your abaya longer or shorter.",
+
+    "الأرداف أكبر من نطاق المقاس — يفضّل أخذ مقاس أعلى لو القصة ضيقة.":
+      "Your hip measurement is above this size range. Consider sizing up if the fit is narrow.",
+
+    "الأرداف أصغر من نطاق المقاس — لو تحبين القصة ضيقة ممكن مقاس أصغر (حسب التصميم).":
+      "Your hip measurement is below this size range. A smaller size may work if you prefer a closer fit, depending on the design.",
+
+    "محيط الصدر أكبر من نطاق المقاس — لو التصميم محدد من الأعلى قد تحتاجين مقاس أكبر.":
+      "Your bust measurement is above this size range. You may need a larger size if the design is fitted at the top.",
+
+    "محيط الصدر أصغر من نطاق المقاس — لو تحبين القصة ضيقة ممكن مقاس أصغر (حسب التصميم).":
+      "Your bust measurement is below this size range. A smaller size may work if you prefer a closer fit, depending on the design.",
+
+    "محيط الخصر أكبر من نطاق المقاس — الفساتين المحددة على الخصر قد تكون أضيق.":
+      "Your waist measurement is above this size range. Fitted-waist styles may feel tighter.",
+
+    "محيط الخصر أصغر من نطاق المقاس — لو التصميم محدد على الخصر ممكن مقاس أصغر يناسبك.":
+      "Your waist measurement is below this size range. A smaller size may suit you if the design is fitted at the waist.",
+
+    "مقاس محسوب حسب قياساتك.":
+      "Suggested based on your measurements.",
+
+    "أكملي قياسات الصدر والخصر والأرداف عشان نطلع لك المقاس بدقة.":
+      "Complete your bust, waist, and hip measurements so we can suggest a size more accurately.",
+  };
+
+  return map[note] || note;
+}
+
+/* =========================
+   Main Results
+========================= */
 
 export default function ResultsClient({
   initialParams = {},
 }: {
   initialParams?: InitialParams;
 }) {
-  const sp = useSearchParams();
-  const router = useRouter();
+  const sp =
+    useSearchParams();
 
-  // ✅ Drawer state
-  const [menuOpen, setMenuOpen] = useState(false);
+  const router =
+    useRouter();
 
-  const occasion = ((initialParams.occasion ?? sp.get("occasion") ?? "") as
-    | Occasion
-    | "");
+  const {
+    isArabic,
+    direction,
+  } = useLanguage();
 
-  const weddingStyle = ((initialParams.weddingStyle ??
-    sp.get("weddingStyle") ??
-    "") as WeddingStyle | "");
+  const [
+    menuOpen,
+    setMenuOpen,
+  ] = useState(false);
 
-  const depth = initialParams.depth ?? sp.get("depth") ?? "";
-  const undertone = initialParams.undertone ?? sp.get("undertone") ?? "";
+  const occasion =
+    ((
+      initialParams.occasion ??
+      sp.get("occasion") ??
+      ""
+    ) as Occasion | "");
 
-  const height = Number(initialParams.height ?? sp.get("height") ?? 0);
-  const bust = Number(initialParams.bust ?? sp.get("bust") ?? 0);
-  const waist = Number(initialParams.waist ?? sp.get("waist") ?? 0);
-  const hip = Number(initialParams.hip ?? sp.get("hip") ?? 0);
+  const weddingStyle =
+    ((
+      initialParams.weddingStyle ??
+      sp.get(
+        "weddingStyle"
+      ) ??
+      ""
+    ) as
+      | WeddingStyle
+      | "");
 
-  const bodyShape = ((initialParams.bodyShape ??
-    sp.get("bodyShape") ??
-    "") as BodyShape);
+  const depth =
+    initialParams.depth ??
+    sp.get("depth") ??
+    "";
 
-  const queryString = useMemo(() => sp.toString(), [sp]);
+  const undertone =
+    initialParams.undertone ??
+    sp.get(
+      "undertone"
+    ) ??
+    "";
 
-  // ✅ يمنع الحفظ المكرر داخل نفس الصفحة
-  const savedOnceRef = useRef<string>("");
+  const height =
+    Number(
+      initialParams.height ??
+        sp.get("height") ??
+        0
+    );
 
-  // ✅ حفظ الهستري في Supabase (إذا مسجل دخول) — بدون تكرار
+  const bust =
+    Number(
+      initialParams.bust ??
+        sp.get("bust") ??
+        0
+    );
+
+  const waist =
+    Number(
+      initialParams.waist ??
+        sp.get("waist") ??
+        0
+    );
+
+  const hip =
+    Number(
+      initialParams.hip ??
+        sp.get("hip") ??
+        0
+    );
+
+  const bodyShape =
+    ((
+      initialParams.bodyShape ??
+      sp.get(
+        "bodyShape"
+      ) ??
+      ""
+    ) as BodyShape);
+
+  const queryString =
+    useMemo(
+      () => sp.toString(),
+      [sp]
+    );
+
+  /*
+    يمنع حفظ نفس
+    النتيجة أكثر من مرة
+  */
+  const savedOnceRef =
+    useRef<string>("");
+
+  /* =========================
+     Save history
+  ========================= */
+
   useEffect(() => {
-    if (!occasion) return;
+    if (!occasion) {
+      return;
+    }
 
-    const query = `/results?${queryString}`;
+    const query =
+      `/results?${queryString}`;
 
-    // منع تكرار داخل نفس الرندر/التغييرات
-    if (savedOnceRef.current === query) return;
-    savedOnceRef.current = query;
+    if (
+      savedOnceRef.current ===
+      query
+    ) {
+      return;
+    }
 
-    let cancelled = false;
+    savedOnceRef.current =
+      query;
+
+    let cancelled =
+      false;
 
     (async () => {
       try {
-        const { data } = await supabase.auth.getSession();
-        const u = data.session?.user;
-        if (!u) return;
+        const { data } =
+          await supabase.auth.getSession();
 
-        const title = occasionLabel(String(occasion));
+        const user =
+          data.session?.user;
 
-        const subtitle =
-          occasion === "abaya"
-            ? subtitleFromParams({
-                weddingStyle: "",
-                depth,
-                undertone,
-                bodyShape: bodyShape || "",
-              })
-            : subtitleFromParams({
-                weddingStyle: weddingStyle || "",
-                depth,
-                undertone,
-              });
-
-        // ✅ 1) شيّك إذا نفس query محفوظة قبل (عشان ما تتكرر)
-        const { data: exists, error: existsErr } = await supabase
-          .from("fazaa_history")
-          .select("id")
-          .eq("user_id", u.id)
-          .eq("query", query)
-          .limit(1);
-
-        if (cancelled) return;
-        if (existsErr) {
-          // silent
-        } else if (exists && exists.length > 0) {
-          return; // موجودة مسبقًا
+        if (!user) {
+          return;
         }
 
-        // ✅ 2) insert مرّة وحدة
-        const { error } = await supabase.from("fazaa_history").insert({
-          user_id: u.id,
-          title,
-          subtitle,
-          query,
-        });
+        const title =
+          occasionLabel(
+            String(
+              occasion
+            )
+          );
 
-        if (cancelled) return;
+        const subtitle =
+          occasion ===
+          "abaya"
+            ? subtitleFromParams(
+                {
+                  weddingStyle:
+                    "",
+                  depth,
+                  undertone,
+                  bodyShape:
+                    bodyShape ||
+                    "",
+                }
+              )
+            : subtitleFromParams(
+                {
+                  weddingStyle:
+                    weddingStyle ||
+                    "",
+                  depth,
+                  undertone,
+                }
+              );
+
+        /*
+          نتأكد أول أن
+          نفس النتيجة مو محفوظة
+        */
+        const {
+          data: exists,
+          error:
+            existsErr,
+        } =
+          await supabase
+            .from(
+              "fazaa_history"
+            )
+            .select("id")
+            .eq(
+              "user_id",
+              user.id
+            )
+            .eq(
+              "query",
+              query
+            )
+            .limit(1);
+
+        if (cancelled) {
+          return;
+        }
+
+        if (
+          !existsErr &&
+          exists &&
+          exists.length > 0
+        ) {
+          return;
+        }
+
+        const { error } =
+          await supabase
+            .from(
+              "fazaa_history"
+            )
+            .insert({
+              user_id:
+                user.id,
+              title,
+              subtitle,
+              query,
+            });
+
+        if (cancelled) {
+          return;
+        }
+
         if (error) {
           // silent
         }
@@ -194,100 +512,257 @@ export default function ResultsClient({
     return () => {
       cancelled = true;
     };
-  }, [occasion, weddingStyle, depth, undertone, bodyShape, queryString]);
+  }, [
+    occasion,
+    weddingStyle,
+    depth,
+    undertone,
+    bodyShape,
+    queryString,
+  ]);
 
-  const top6 = useMemo(() => {
-    if (!occasion) return [];
+  /* =========================
+     Best 6 products
+  ========================= */
 
-    return products
-      .filter((p) => {
-        if (p.occasion !== occasion) return false;
+  const top6 =
+    useMemo(() => {
+      if (!occasion) {
+        return [];
+      }
 
-        // زواج: لازم يطابق الستايل
-        if (occasion === "wedding" && p.weddingStyle !== weddingStyle) return false;
+      return products
+        .filter((product) => {
+          /*
+            لازم المناسبة
+            تطابق
+          */
+          if (
+            product.occasion !==
+            occasion
+          ) {
+            return false;
+          }
 
-        // عباية: بس abaya
-        if (occasion === "abaya" && p.category !== "abaya") return false;
+          /*
+            الزواج لازم
+            يطابق الستايل
+          */
+          if (
+            occasion ===
+              "wedding" &&
+            product.weddingStyle !==
+              weddingStyle
+          ) {
+            return false;
+          }
 
-        // غير العباية: لا تعرض abaya
-        if (occasion !== "abaya" && p.category === "abaya") return false;
+          /*
+            إذا عباية:
+            نعرض عبايات فقط
+          */
+          if (
+            occasion ===
+              "abaya" &&
+            product.category !==
+              "abaya"
+          ) {
+            return false;
+          }
 
-        return true;
-      })
-      .map((p) => {
-        let score = 4;
+          /*
+            باقي المناسبات:
+            لا نعرض عبايات
+          */
+          if (
+            occasion !==
+              "abaya" &&
+            product.category ===
+              "abaya"
+          ) {
+            return false;
+          }
 
-        if (depth && p.bestFor?.depth?.includes(depth as any)) score += 3;
-        if (undertone && p.bestFor?.undertone?.includes(undertone as any)) score += 3;
+          return true;
+        })
+        .map(
+          (product) => {
+            /*
+              هذا نفس منطق
+              مشروعك الحالي لاختيار
+              الأقرب للمدخلات.
+              ما نعرض أي نقاط للمستخدمة.
+            */
+            let match = 4;
 
-        if (
-          occasion === "abaya" &&
-          bodyShape &&
-          p.abayaBestForShapes?.includes(bodyShape)
-        ) {
-          score += 6;
-        }
+            if (
+              depth &&
+              product.bestFor
+                ?.depth?.includes(
+                  depth as any
+                )
+            ) {
+              match += 3;
+            }
 
-        return { p, score };
-      })
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 6)
-      .map((x) => x.p);
-  }, [occasion, weddingStyle, depth, undertone, bodyShape]);
+            if (
+              undertone &&
+              product.bestFor
+                ?.undertone?.includes(
+                  undertone as any
+                )
+            ) {
+              match += 3;
+            }
+
+            if (
+              occasion ===
+                "abaya" &&
+              bodyShape &&
+              product.abayaBestForShapes?.includes(
+                bodyShape
+              )
+            ) {
+              match += 6;
+            }
+
+            return {
+              product,
+              match,
+            };
+          }
+        )
+        .sort(
+          (a, b) =>
+            b.match -
+            a.match
+        )
+        .slice(0, 6)
+        .map(
+          (item) =>
+            item.product
+        );
+    }, [
+      occasion,
+      weddingStyle,
+      depth,
+      undertone,
+      bodyShape,
+    ]);
 
   return (
     <main
-      dir="rtl"
+      dir={direction}
       className="min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-900 to-black px-6 py-10"
     >
-      {/* ✅ الثلاث نقاط */}
-      <ThreeDotsButton onClick={() => setMenuOpen(true)} />
+      {/* Three dots */}
+      <ThreeDotsButton
+        onClick={() =>
+          setMenuOpen(true)
+        }
+        ariaLabel={
+          isArabic
+            ? "القائمة"
+            : "Menu"
+        }
+      />
 
-      {/* ✅ Drawer (المفروض توقيعه open/onClose فقط) */}
-      <FazaaDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
+      {/* Drawer */}
+      <FazaaDrawer
+        open={menuOpen}
+        onClose={() =>
+          setMenuOpen(false)
+        }
+      />
 
       <div className="mx-auto max-w-6xl">
+        {/* Header */}
         <div className="text-center">
-          <p className="text-sm text-neutral-400">نتائجك</p>
+          <p className="text-sm text-neutral-400">
+            {isArabic
+              ? "نتائجك"
+              : "Your Results"}
+          </p>
+
           <h1 className="mt-2 text-3xl font-extrabold text-white">
-            إطلالات مختارة بذوق فزعة
+            {isArabic
+              ? "إطلالات مختارة بذوق فزعة"
+              : "Looks Selected the Fazaa Way"}
           </h1>
+
           <p className="mt-3 text-sm text-neutral-400">
-            مختارة لك بعناية لتناسب مناسبتك، لون بشرتك، ومقاسك ✨
+            {isArabic
+              ? "مختارة لك بعناية لتناسب مناسبتك، لون بشرتك، ومقاسك ✨"
+              : "Carefully selected to suit your occasion, skin tone, and measurements ✨"}
           </p>
         </div>
 
+        {/* Results */}
         <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {top6.map((p) => {
-            const rec = recommendSize(p, {
-              heightCm: height,
-              bustCm: bust,
-              waistCm: waist,
-              hipCm: hip,
-            });
+          {top6.map(
+            (product) => {
+              const rec =
+                recommendSize(
+                  product,
+                  {
+                    heightCm:
+                      height,
+                    bustCm:
+                      bust,
+                    waistCm:
+                      waist,
+                    hipCm:
+                      hip,
+                  }
+                );
 
-            const deal = STORE_MAP[p.store];
+              const deal =
+                STORE_MAP[
+                  product.store
+                ];
 
-            return (
-              <LuxuryCard
-                key={p.id}
-                p={p}
-                recommendedSize={rec.size}
-                sizeNote={rec.note}
-                deal={deal}
-              />
-            );
-          })}
+              return (
+                <LuxuryCard
+                  key={
+                    product.id
+                  }
+                  product={
+                    product
+                  }
+                  recommendedSize={translateSize(
+                    rec.size,
+                    isArabic
+                  )}
+                  sizeNote={translateSizeNote(
+                    rec.note,
+                    isArabic
+                  )}
+                  deal={
+                    deal
+                  }
+                  isArabic={
+                    isArabic
+                  }
+                />
+              );
+            }
+          )}
         </div>
 
         <SiteFooter />
       </div>
 
-      {/* زر الرجوع */}
+      {/* Back */}
       <button
         type="button"
-        onClick={() => router.back()}
-        aria-label="رجوع"
+        onClick={() =>
+          router.back()
+        }
+        aria-label={
+          isArabic
+            ? "رجوع"
+            : "Back"
+        }
         className={[
           "fixed bottom-6 right-6 z-50",
           "h-12 w-12 rounded-2xl",
@@ -303,76 +778,146 @@ export default function ResultsClient({
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          strokeWidth={2.5}
+          strokeWidth={
+            2.5
+          }
         >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M10 7l5 5-5 5" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d={
+              isArabic
+                ? "M10 7l5 5-5 5"
+                : "M14 7l-5 5 5 5"
+            }
+          />
         </svg>
       </button>
     </main>
   );
 }
 
+/* =========================
+   Product card
+========================= */
+
 function LuxuryCard({
-  p,
+  product,
   recommendedSize,
   sizeNote,
   deal,
+  isArabic,
 }: {
-  p: Product;
+  product: Product;
   recommendedSize: string;
   sizeNote: string;
+
   deal?: {
     discountCode?: string;
     discountLabel?: string;
     affiliateBaseUrl?: string;
   };
+
+  isArabic: boolean;
 }) {
-  const finalUrl = deal?.affiliateBaseUrl || p.url;
-  const [copied, setCopied] = useState(false);
+  const finalUrl =
+    deal?.affiliateBaseUrl ||
+    product.url;
+
+  const [
+    copied,
+    setCopied,
+  ] = useState(false);
 
   async function copyCode() {
-    if (!deal?.discountCode) return;
-    await navigator.clipboard.writeText(deal.discountCode);
+    if (
+      !deal?.discountCode
+    ) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(
+      deal.discountCode
+    );
+
     setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
+
+    setTimeout(
+      () =>
+        setCopied(false),
+      1800
+    );
   }
 
   return (
     <div className="rounded-3xl border border-[#d6b56a]/35 bg-white/5 p-4 backdrop-blur">
       <img
-        src={p.image}
-        alt={p.title}
+        src={
+          product.image
+        }
+        alt={
+          product.title
+        }
         className="h-64 w-full object-cover rounded-2xl border border-white/10"
         loading="lazy"
       />
 
       <div className="mt-4">
-        <h3 className="text-white font-semibold">{p.title}</h3>
-        <p className="text-neutral-400 text-sm">{p.store}</p>
+        {/* اسم المنتج يبقى اسم المتجر الأصلي */}
+        <h3 className="text-white font-semibold">
+          {product.title}
+        </h3>
+
+        <p className="text-neutral-400 text-sm">
+          {product.store}
+        </p>
 
         <div className="mt-3 flex justify-between items-center gap-3">
           <p className="text-lg font-bold text-white">
-            {p.priceSar} <span className="text-sm text-neutral-300">ر.س</span>
+            {product.priceSar}{" "}
+            <span className="text-sm text-neutral-300">
+              {isArabic
+                ? "ر.س"
+                : "SAR"}
+            </span>
           </p>
 
           <span className="rounded-full border border-[#d6b56a]/40 bg-[#d6b56a]/10 px-3 py-1 text-xs font-semibold text-[#f3e0b0]">
-            المقاس المقترح: {recommendedSize}
+            {isArabic
+              ? `المقاس المقترح: ${recommendedSize}`
+              : `Suggested size: ${recommendedSize}`}
           </span>
         </div>
 
+        {/* Discount */}
         {deal?.discountCode && (
           <div className="mt-2 flex justify-end">
             <button
               type="button"
-              onClick={copyCode}
+              onClick={
+                copyCode
+              }
+              aria-label={
+                isArabic
+                  ? "نسخ كود الخصم"
+                  : "Copy discount code"
+              }
               className="rounded-full border border-[#d6b56a]/40 bg-[#d6b56a]/10 px-3 py-1 text-xs font-semibold text-[#f3e0b0]"
             >
-              {copied ? "تم النسخ ✓" : deal.discountCode}
+              {copied
+                ? isArabic
+                  ? "تم النسخ ✓"
+                  : "Copied ✓"
+                : deal.discountCode}
             </button>
           </div>
         )}
 
-        {sizeNote && <p className="mt-2 text-xs text-neutral-400">{sizeNote}</p>}
+        {sizeNote && (
+          <p className="mt-2 text-xs text-neutral-400 leading-5">
+            {sizeNote}
+          </p>
+        )}
 
         <a
           href={finalUrl}
@@ -380,7 +925,9 @@ function LuxuryCard({
           rel="noreferrer"
           className="mt-4 inline-flex w-full justify-center rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/10 py-3 text-sm font-extrabold text-white"
         >
-          لتصفح المنتج
+          {isArabic
+            ? "لتصفح المنتج"
+            : "View Product"}
         </a>
       </div>
     </div>
