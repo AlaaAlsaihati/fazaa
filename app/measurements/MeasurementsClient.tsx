@@ -9,6 +9,7 @@ import {
   useRouter,
   useSearchParams,
 } from "next/navigation";
+
 import SiteFooter from "@/app/components/FazaaFooter";
 import FazaaDrawer from "@/app/components/fazaaDrawer";
 import { supabase } from "@/app/lib/supabaseClient";
@@ -29,6 +30,16 @@ type BodyShapeArabic =
 
 type Unit = "cm" | "in";
 
+type SavedPayload = {
+  unit?: Unit;
+  heightCm?: string;
+  bust?: string;
+  waist?: string;
+  hip?: string;
+  bodyShape?: BodyShapeArabic | "";
+  lastUpdated?: number;
+};
+
 const STORAGE_KEY =
   "fazaa_measurements_v1";
 
@@ -36,14 +47,18 @@ const STORAGE_KEY =
    Helpers
 ========================= */
 
-function toNum(v: string) {
+function toNum(value: string) {
   const n = Number(
-    String(v || "").trim()
+    String(value || "").trim()
   );
 
   return Number.isFinite(n)
     ? n
     : NaN;
+}
+
+function inToCm(value: number) {
+  return value * 2.54;
 }
 
 function safeLocalStorageGet(
@@ -66,7 +81,7 @@ function safeLocalStorageGet(
 
 function safeLocalStorageSet(
   key: string,
-  val: string
+  value: string
 ) {
   try {
     if (
@@ -77,11 +92,27 @@ function safeLocalStorageSet(
 
     window.localStorage.setItem(
       key,
-      val
+      value
     );
   } catch {
     // ignore
   }
+}
+
+function hasAnySavedValue(
+  payload: SavedPayload | null
+) {
+  if (!payload) {
+    return false;
+  }
+
+  return !!(
+    payload.heightCm ||
+    payload.bust ||
+    payload.waist ||
+    payload.hip ||
+    payload.bodyShape
+  );
 }
 
 function range(
@@ -89,28 +120,96 @@ function range(
   max: number,
   step = 1
 ) {
-  const out: number[] = [];
+  const values: number[] = [];
 
   for (
     let x = min;
     x <= max + 1e-9;
     x += step
   ) {
-    const v =
-      Math.round(x * 2) / 2;
-
-    out.push(v);
+    values.push(
+      Math.round(x * 2) / 2
+    );
   }
 
-  return out;
-}
-
-function inToCm(vIn: number) {
-  return vIn * 2.54;
+  return values;
 }
 
 /* =========================
-   Measurement icons
+   Options
+========================= */
+
+const HEIGHT_OPTIONS = range(
+  140,
+  210,
+  1
+);
+
+const BUST_CM_OPTIONS = range(
+  60,
+  160,
+  1
+);
+
+const WAIST_CM_OPTIONS = range(
+  45,
+  160,
+  1
+);
+
+const HIP_CM_OPTIONS = range(
+  60,
+  180,
+  1
+);
+
+const BUST_IN_OPTIONS = range(
+  24,
+  63,
+  0.5
+);
+
+const WAIST_IN_OPTIONS = range(
+  18,
+  63,
+  0.5
+);
+
+const HIP_IN_OPTIONS = range(
+  24,
+  71,
+  0.5
+);
+
+const BODY_SHAPES: {
+  value: BodyShapeArabic;
+  ar: string;
+  en: string;
+}[] = [
+  {
+    value: "ساعة رملية",
+    ar: "ساعة رملية",
+    en: "Hourglass",
+  },
+  {
+    value: "كمثري",
+    ar: "كمثري",
+    en: "Pear",
+  },
+  {
+    value: "مستقيم",
+    ar: "مستقيم",
+    en: "Straight",
+  },
+  {
+    value: "تفاحة",
+    ar: "تفاحة",
+    en: "Apple",
+  },
+];
+
+/* =========================
+   Icons
 ========================= */
 
 function MeasureIconImg({
@@ -124,13 +223,7 @@ function MeasureIconImg({
     | "hip";
   isArabic: boolean;
 }) {
-  const map: Record<
-    | "height"
-    | "bust"
-    | "waist"
-    | "hip",
-    string
-  > = {
+  const map = {
     height:
       "/icons/measurements/height.png",
     bust:
@@ -181,163 +274,14 @@ function ShapeIcon({
     <img
       src={map[type]}
       alt=""
+      draggable={false}
       className={[
         "h-30 w-30 object-contain select-none pointer-events-none",
         isArabic
           ? "ml-6"
           : "mr-6",
       ].join(" ")}
-      draggable={false}
     />
-  );
-}
-
-/* =========================
-   Dropdown options
-========================= */
-
-const HEIGHT_OPTIONS = range(
-  140,
-  210,
-  1
-);
-
-const BUST_CM_OPTIONS = range(
-  60,
-  160,
-  1
-);
-
-const WAIST_CM_OPTIONS = range(
-  45,
-  160,
-  1
-);
-
-const HIP_CM_OPTIONS = range(
-  60,
-  180,
-  1
-);
-
-const BUST_IN_OPTIONS = range(
-  24,
-  63,
-  0.5
-);
-
-const WAIST_IN_OPTIONS = range(
-  18,
-  63,
-  0.5
-);
-
-const HIP_IN_OPTIONS = range(
-  24,
-  71,
-  0.5
-);
-
-/* =========================
-   Unit toggle
-========================= */
-
-function UnitToggle({
-  value,
-  onChange,
-  isArabic,
-}: {
-  value: Unit;
-  onChange: (u: Unit) => void;
-  isArabic: boolean;
-}) {
-  return (
-    <div className="inline-flex rounded-2xl border border-[#d6b56a]/45 bg-black/20 p-1">
-      <button
-        type="button"
-        onClick={() =>
-          onChange("cm")
-        }
-        className={[
-          "px-3 py-1.5 rounded-xl text-xs font-extrabold transition",
-          value === "cm"
-            ? "bg-[#d6b56a]/15 text-white border border-[#d6b56a]/35"
-            : "text-neutral-300 hover:text-white",
-        ].join(" ")}
-      >
-        {isArabic
-          ? "سم"
-          : "cm"}
-      </button>
-
-      <button
-        type="button"
-        onClick={() =>
-          onChange("in")
-        }
-        className={[
-          "px-3 py-1.5 rounded-xl text-xs font-extrabold transition",
-          value === "in"
-            ? "bg-[#d6b56a]/15 text-white border border-[#d6b56a]/35"
-            : "text-neutral-300 hover:text-white",
-        ].join(" ")}
-      >
-        {isArabic
-          ? "إنش"
-          : "in"}
-      </button>
-    </div>
-  );
-}
-
-/* =========================
-   Back
-========================= */
-
-function BackFab({
-  onClick,
-  isArabic,
-}: {
-  onClick: () => void;
-  isArabic: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={
-        isArabic
-          ? "رجوع"
-          : "Back"
-      }
-      className={[
-        "fixed bottom-6 right-6 z-50",
-        "h-12 w-12 rounded-2xl",
-        "border border-[#d6b56a]/55 bg-black/35 backdrop-blur",
-        "shadow-[0_10px_30px_rgba(0,0,0,0.45)]",
-        "flex items-center justify-center",
-        "active:scale-95 transition",
-      ].join(" ")}
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="h-5 w-5 text-[#d6b56a]"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2.5}
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d={
-            isArabic
-              ? "M10 7l5 5-5 5"
-              : "M14 7l-5 5 5 5"
-          }
-        />
-      </svg>
-    </button>
   );
 }
 
@@ -401,68 +345,296 @@ function ThreeDotsButton({
 }
 
 /* =========================
-   Saved payload
+   Back
 ========================= */
 
-type SavedPayload = {
-  unit?: Unit;
-  heightCm?: string;
-  bust?: string;
-  waist?: string;
-  hip?: string;
-  bodyShape?:
-    | BodyShapeArabic
-    | "";
-  lastUpdated?: number;
-};
-
-function hasAnySavedValue(
-  p: SavedPayload | null
-) {
-  if (!p) return false;
-
-  return !!(
-    p.heightCm ||
-    p.bust ||
-    p.waist ||
-    p.hip ||
-    p.bodyShape
+function BackFab({
+  onClick,
+  isArabic,
+}: {
+  onClick: () => void;
+  isArabic: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={
+        isArabic
+          ? "رجوع"
+          : "Back"
+      }
+      className={[
+        "fixed bottom-6 right-6 z-50",
+        "h-12 w-12 rounded-2xl",
+        "border border-[#d6b56a]/55 bg-black/35 backdrop-blur",
+        "shadow-[0_10px_30px_rgba(0,0,0,0.45)]",
+        "flex items-center justify-center",
+        "active:scale-95 transition",
+      ].join(" ")}
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-5 w-5 text-[#d6b56a]"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2.5}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d={
+            isArabic
+              ? "M10 7l5 5-5 5"
+              : "M14 7l-5 5 5 5"
+          }
+        />
+      </svg>
+    </button>
   );
 }
 
 /* =========================
-   Body shapes
+   Unit toggle
 ========================= */
 
-const BODY_SHAPES: {
-  value: BodyShapeArabic;
-  labelAr: string;
-  labelEn: string;
-}[] = [
-  {
-    value: "ساعة رملية",
-    labelAr: "ساعة رملية",
-    labelEn: "Hourglass",
-  },
-  {
-    value: "كمثري",
-    labelAr: "كمثري",
-    labelEn: "Pear",
-  },
-  {
-    value: "مستقيم",
-    labelAr: "مستقيم",
-    labelEn: "Straight",
-  },
-  {
-    value: "تفاحة",
-    labelAr: "تفاحة",
-    labelEn: "Apple",
-  },
-];
+function UnitToggle({
+  value,
+  onChange,
+  isArabic,
+}: {
+  value: Unit;
+  onChange: (unit: Unit) => void;
+  isArabic: boolean;
+}) {
+  return (
+    <div className="inline-flex rounded-2xl border border-[#d6b56a]/45 bg-black/20 p-1">
+      <button
+        type="button"
+        onClick={() =>
+          onChange("cm")
+        }
+        className={[
+          "px-3 py-1.5 rounded-xl text-xs font-extrabold transition",
+          value === "cm"
+            ? "bg-[#d6b56a]/15 text-white border border-[#d6b56a]/35"
+            : "text-neutral-300 hover:text-white",
+        ].join(" ")}
+      >
+        {isArabic
+          ? "سم"
+          : "cm"}
+      </button>
+
+      <button
+        type="button"
+        onClick={() =>
+          onChange("in")
+        }
+        className={[
+          "px-3 py-1.5 rounded-xl text-xs font-extrabold transition",
+          value === "in"
+            ? "bg-[#d6b56a]/15 text-white border border-[#d6b56a]/35"
+            : "text-neutral-300 hover:text-white",
+        ].join(" ")}
+      >
+        {isArabic
+          ? "إنش"
+          : "in"}
+      </button>
+    </div>
+  );
+}
 
 /* =========================
-   Main page
+   Select
+========================= */
+
+function SelectField({
+  label,
+  iconType,
+  value,
+  onChange,
+  placeholder,
+  options,
+  isArabic,
+}: {
+  label: string;
+
+  iconType:
+    | "height"
+    | "bust"
+    | "waist"
+    | "hip";
+
+  value: string;
+
+  onChange: (
+    value: string
+  ) => void;
+
+  placeholder: string;
+
+  options: number[];
+
+  isArabic: boolean;
+}) {
+  return (
+    <label className="block">
+      <span className="inline-flex items-center gap-2 text-sm font-semibold text-white">
+        <span>
+          {label}
+        </span>
+
+        <span className="pointer-events-none">
+          <MeasureIconImg
+            type={
+              iconType
+            }
+            isArabic={
+              isArabic
+            }
+          />
+        </span>
+      </span>
+
+      <div className="relative mt-2">
+        <select
+          dir={
+            isArabic
+              ? "rtl"
+              : "ltr"
+          }
+          value={value}
+          onChange={(e) =>
+            onChange(
+              e.target.value
+            )
+          }
+          style={{
+            colorScheme:
+              "dark",
+          }}
+          className={[
+            "w-full appearance-none rounded-2xl border py-3 text-sm font-semibold transition",
+            "border-white/10 bg-neutral-950 text-white",
+            "focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10",
+
+            isArabic
+              ? "px-4 text-right"
+              : "pl-4 pr-10 text-left",
+          ].join(" ")}
+        >
+          <option
+            value=""
+            disabled
+            className="bg-neutral-950 text-neutral-400"
+          >
+            {placeholder}
+          </option>
+
+          {options.map(
+            (n) => (
+              <option
+                key={n}
+                value={String(
+                  n
+                )}
+                className="bg-neutral-950 text-white"
+              >
+                {n}
+              </option>
+            )
+          )}
+        </select>
+
+        <div
+          className={[
+            "pointer-events-none absolute inset-y-0 flex items-center",
+            isArabic
+              ? "left-3"
+              : "right-3",
+          ].join(" ")}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-4 w-4 text-[#d6b56a]"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </div>
+      </div>
+    </label>
+  );
+}
+
+/* =========================
+   Body shape
+========================= */
+
+function ShapeChip({
+  value,
+  label,
+  active,
+  onClick,
+  isArabic,
+}: {
+  value: BodyShapeArabic;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  isArabic: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "h-[48px] w-full",
+        "rounded-2xl border px-4 text-xs font-semibold transition",
+        "bg-black/20 border-white/10 text-white hover:bg-black/30",
+        "flex items-center justify-center gap-2",
+        "overflow-hidden",
+
+        active
+          ? "ring-2 ring-[#d6b56a]/40 border-[#d6b56a]/35 bg-[#d6b56a]/10"
+          : "",
+      ].join(" ")}
+    >
+      <span
+        className={[
+          "whitespace-nowrap",
+          isArabic
+            ? "mr-18"
+            : "ml-18",
+        ].join(" ")}
+      >
+        {label}
+      </span>
+
+      <span className="shrink-0">
+        <ShapeIcon
+          type={value}
+          isArabic={
+            isArabic
+          }
+        />
+      </span>
+    </button>
+  );
+}
+
+/* =========================
+   Main
 ========================= */
 
 export default function MeasurementsClient({
@@ -470,8 +642,11 @@ export default function MeasurementsClient({
 }: {
   initialParams: InitialParams;
 }) {
-  const router = useRouter();
-  const sp = useSearchParams();
+  const router =
+    useRouter();
+
+  const sp =
+    useSearchParams();
 
   const {
     isArabic,
@@ -485,7 +660,9 @@ export default function MeasurementsClient({
 
   const weddingStyle =
     initialParams.weddingStyle ||
-    sp.get("weddingStyle") ||
+    sp.get(
+      "weddingStyle"
+    ) ||
     "";
 
   const depth =
@@ -519,9 +696,10 @@ export default function MeasurementsClient({
   const [
     userId,
     setUserId,
-  ] = useState<string | null>(
-    null
-  );
+  ] =
+    useState<string | null>(
+      null
+    );
 
   useEffect(() => {
     let mounted = true;
@@ -530,7 +708,9 @@ export default function MeasurementsClient({
       const { data } =
         await supabase.auth.getSession();
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       const user =
         data.session?.user ??
@@ -541,13 +721,14 @@ export default function MeasurementsClient({
       );
 
       setUserId(
-        user?.id ?? null
+        user?.id ??
+          null
       );
     })();
 
     const { data: listener } =
       supabase.auth.onAuthStateChange(
-        (_evt, session) => {
+        (_event, session) => {
           const user =
             session?.user ??
             null;
@@ -571,7 +752,7 @@ export default function MeasurementsClient({
   }, []);
 
   /* =========================
-     User-scoped local storage
+     User-scoped storage
   ========================= */
 
   const storageKey =
@@ -582,7 +763,7 @@ export default function MeasurementsClient({
     }, [userId]);
 
   /* =========================
-     Form state
+     Draft
   ========================= */
 
   const [
@@ -614,12 +795,13 @@ export default function MeasurementsClient({
   const [
     bodyShape,
     setBodyShape,
-  ] = useState<
-    BodyShapeArabic | ""
-  >("");
+  ] =
+    useState<
+      BodyShapeArabic | ""
+    >("");
 
   /* =========================
-     Saved values
+     Saved state
   ========================= */
 
   const [
@@ -630,6 +812,11 @@ export default function MeasurementsClient({
       null
     );
 
+  /*
+    مهم:
+    ما نعبّي الحقول تلقائيًا.
+    فقط نعرف إن فيه بيانات محفوظة.
+  */
   const [
     isDirty,
     setIsDirty,
@@ -639,7 +826,9 @@ export default function MeasurementsClient({
     lastAction,
     setLastAction,
   ] = useState<
-    "saved" | "applied" | null
+    | "saved"
+    | "applied"
+    | null
   >(null);
 
   /* =========================
@@ -690,7 +879,8 @@ export default function MeasurementsClient({
       );
 
       /*
-        migrate old -> user-scoped key
+        migrate legacy key
+        إلى user-scoped key
       */
       if (
         userId &&
@@ -717,6 +907,10 @@ export default function MeasurementsClient({
     userId,
   ]);
 
+  /*
+    ما نعتبر فيه محفوظ
+    إلا لو المستخدم عنده حساب
+  */
   const hasSaved =
     useMemo(() => {
       return (
@@ -731,7 +925,7 @@ export default function MeasurementsClient({
     ]);
 
   /* =========================
-     Options
+     Dropdown options
   ========================= */
 
   const bustOptions =
@@ -753,6 +947,11 @@ export default function MeasurementsClient({
      Validation
   ========================= */
 
+  /*
+    الحفظ / التحديث:
+    يحتاج القياسات فقط.
+    شكل الجسم ليس شرط للحفظ.
+  */
   const measErrors =
     useMemo(() => {
       const h =
@@ -829,6 +1028,10 @@ export default function MeasurementsClient({
       );
     }, [measErrors]);
 
+  /*
+    عرض النتائج يحتاج
+    القياسات + شكل الجسم
+  */
   const canSubmit =
     useMemo(() => {
       return (
@@ -840,6 +1043,10 @@ export default function MeasurementsClient({
       bodyShape,
     ]);
 
+  /*
+    الحفظ والتحديث
+    للحسابات فقط
+  */
   const canUpdate =
     useMemo(() => {
       return (
@@ -852,11 +1059,26 @@ export default function MeasurementsClient({
     ]);
 
   /* =========================
-     Actions
+     Dirty
   ========================= */
 
   function markDirty() {
+    /*
+      أول ما المستخدم يغير
+      أي قيمة:
+      نفس الزر يتحول من
+      "استخدام المحفوظ"
+      إلى "تحديث المقاسات"
+      إذا عنده محفوظ.
+    */
     setIsDirty(true);
+
+    /*
+      أي تعديل يلغي
+      "تم الحفظ"
+      أو
+      "تم استخدام..."
+    */
     setLastAction(null);
   }
 
@@ -875,11 +1097,18 @@ export default function MeasurementsClient({
       nextUnit
     );
 
+    /*
+      نفس السلوك القديم
+    */
     setBust("");
     setWaist("");
     setHip("");
     setBodyShape("");
   }
+
+  /* =========================
+     Use saved
+  ========================= */
 
   function applySavedFromSnapshot() {
     if (!savedSnapshot) {
@@ -948,22 +1177,32 @@ export default function MeasurementsClient({
     }
   }
 
+  /* =========================
+     Save / update
+  ========================= */
+
   function saveOrUpdateMeasurements() {
     if (!canUpdate) {
       return;
     }
 
-    const payload: SavedPayload = {
-      unit,
-      heightCm,
-      bust,
-      waist,
-      hip,
-      bodyShape:
-        bodyShape || "",
-      lastUpdated:
-        Date.now(),
-    };
+    const payload: SavedPayload =
+      {
+        unit,
+        heightCm,
+        bust,
+        waist,
+        hip,
+
+        /*
+          اختياري بالحفظ
+        */
+        bodyShape:
+          bodyShape || "",
+
+        lastUpdated:
+          Date.now(),
+      };
 
     safeLocalStorageSet(
       storageKey,
@@ -982,6 +1221,10 @@ export default function MeasurementsClient({
       "saved"
     );
   }
+
+  /* =========================
+     Results
+  ========================= */
 
   function goResults() {
     if (!canSubmit) {
@@ -1035,24 +1278,21 @@ export default function MeasurementsClient({
       unit === "cm"
         ? b
         : Math.round(
-            inToCm(b) *
-              10
+            inToCm(b) * 10
           ) / 10;
 
     const waistCm =
       unit === "cm"
         ? w
         : Math.round(
-            inToCm(w) *
-              10
+            inToCm(w) * 10
           ) / 10;
 
     const hipCm =
       unit === "cm"
         ? hp
         : Math.round(
-            inToCm(hp) *
-              10
+            inToCm(hp) * 10
           ) / 10;
 
     params.set(
@@ -1076,7 +1316,8 @@ export default function MeasurementsClient({
     );
 
     /*
-      القيمة الداخلية تبقى عربية
+      نخلي القيمة الداخلية
+      عربية مثل قبل
     */
     params.set(
       "bodyShape",
@@ -1094,10 +1335,15 @@ export default function MeasurementsClient({
   }
 
   /* =========================
-     Labels
+     Text
   ========================= */
 
-  const circumPlaceholder =
+  const heightPlaceholder =
+    isArabic
+      ? "سنتيمتر"
+      : "Centimeters";
+
+  const circumferencePlaceholder =
     unit === "cm"
       ? isArabic
         ? "سنتيمتر"
@@ -1106,31 +1352,40 @@ export default function MeasurementsClient({
       ? "إنش"
       : "Inches";
 
-  const heightPlaceholder =
-    isArabic
-      ? "سنتيمتر"
-      : "Centimeters";
-
+  /*
+    الخاصية تظهر فقط
+    للمستخدم المسجل.
+  */
   const showActionButton =
     isLoggedIn;
 
+  /*
+    مهم جدًا:
+    هذا نفس منطق الزر القديم.
+    زر واحد فقط.
+  */
   const actionLabel =
     useMemo(() => {
+      /*
+        بعد الحفظ / التحديث
+      */
       if (
         lastAction ===
         "saved"
       ) {
-        if (hasSaved) {
-          return isArabic
+        return hasSaved
+          ? isArabic
             ? "تم تحديث المقاسات"
-            : "Measurements updated";
-        }
-
-        return isArabic
+            : "Measurements updated"
+          : isArabic
           ? "تم حفظ المقاسات"
           : "Measurements saved";
       }
 
+      /*
+        بعد الضغط على
+        استخدام المحفوظ
+      */
       if (
         lastAction ===
         "applied"
@@ -1140,6 +1395,11 @@ export default function MeasurementsClient({
           : "Saved measurements applied";
       }
 
+      /*
+        المستخدم بدأ يعدل:
+        عنده محفوظ = تحديث
+        ما عنده محفوظ = حفظ
+      */
       if (isDirty) {
         return hasSaved
           ? isArabic
@@ -1150,6 +1410,11 @@ export default function MeasurementsClient({
           : "Save measurements";
       }
 
+      /*
+        المستخدم ما عدّل:
+        عنده محفوظ = استخدام
+        ما عنده محفوظ = حفظ
+      */
       return hasSaved
         ? isArabic
           ? "استخدام المقاسات المحفوظة"
@@ -1164,20 +1429,42 @@ export default function MeasurementsClient({
       isArabic,
     ]);
 
+  /*
+    نفس منطق التعطيل القديم.
+  */
   const actionDisabled =
     useMemo(() => {
+      /*
+        بعد "تم..."
+        نخليه ثابت لين
+        المستخدم يعدل شيء.
+      */
       if (lastAction) {
         return true;
       }
 
+      /*
+        إذا بدأ يعدل:
+        ما يتفعل إلا بعد
+        إكمال القياسات.
+      */
       if (isDirty) {
         return !canUpdate;
       }
 
+      /*
+        ما عدل شيء:
+        إذا عنده محفوظ
+        يقدر يستخدمه.
+      */
       if (hasSaved) {
         return false;
       }
 
+      /*
+        ما عنده محفوظ
+        وما دخل قياسات بعد.
+      */
       return true;
     }, [
       lastAction,
@@ -1186,6 +1473,9 @@ export default function MeasurementsClient({
       hasSaved,
     ]);
 
+  /*
+    زر واحد فقط.
+  */
   function onActionClick() {
     if (!isLoggedIn) {
       return;
@@ -1195,11 +1485,20 @@ export default function MeasurementsClient({
       return;
     }
 
+    /*
+      بدأ يعدل:
+      حفظ أو تحديث
+    */
     if (isDirty) {
       saveOrUpdateMeasurements();
+
       return;
     }
 
+    /*
+      ما عدل وعنده محفوظ:
+      استخدام المحفوظ
+    */
     if (hasSaved) {
       applySavedFromSnapshot();
     }
@@ -1297,11 +1596,11 @@ export default function MeasurementsClient({
               value={
                 heightCm
               }
-              onChange={(v) => {
+              onChange={(value) => {
                 markDirty();
 
                 setHeightCm(
-                  v
+                  value
                 );
               }}
               placeholder={
@@ -1323,13 +1622,15 @@ export default function MeasurementsClient({
               }
               iconType="bust"
               value={bust}
-              onChange={(v) => {
+              onChange={(value) => {
                 markDirty();
 
-                setBust(v);
+                setBust(
+                  value
+                );
               }}
               placeholder={
-                circumPlaceholder
+                circumferencePlaceholder
               }
               options={
                 bustOptions
@@ -1347,13 +1648,15 @@ export default function MeasurementsClient({
               }
               iconType="waist"
               value={waist}
-              onChange={(v) => {
+              onChange={(value) => {
                 markDirty();
 
-                setWaist(v);
+                setWaist(
+                  value
+                );
               }}
               placeholder={
-                circumPlaceholder
+                circumferencePlaceholder
               }
               options={
                 waistOptions
@@ -1371,13 +1674,15 @@ export default function MeasurementsClient({
               }
               iconType="hip"
               value={hip}
-              onChange={(v) => {
+              onChange={(value) => {
                 markDirty();
 
-                setHip(v);
+                setHip(
+                  value
+                );
               }}
               placeholder={
-                circumPlaceholder
+                circumferencePlaceholder
               }
               options={
                 hipOptions
@@ -1388,7 +1693,11 @@ export default function MeasurementsClient({
             />
           </div>
 
-          {/* Saved measurement action */}
+          {/* =========================
+              ONE SAVED-MEASUREMENTS BUTTON
+              الحسابات فقط
+          ========================== */}
+
           {showActionButton ? (
             <div className="mt-4 flex items-center justify-start">
               <button
@@ -1400,12 +1709,13 @@ export default function MeasurementsClient({
                   actionDisabled
                 }
                 className={[
-                  "inline-flex max-w-full items-center",
+                  "inline-flex max-w-full items-center justify-center",
                   "rounded-xl border px-3 py-2",
                   "text-xs font-extrabold transition",
                   "whitespace-nowrap",
                   "border-[#d6b56a]/45 bg-black/20 text-white hover:border-[#d6b56a]/70",
                   "disabled:opacity-60 disabled:hover:border-[#d6b56a]/45",
+
                   lastAction
                     ? "bg-[#d6b56a]/10 border-[#d6b56a]/60"
                     : "",
@@ -1433,7 +1743,7 @@ export default function MeasurementsClient({
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
               {BODY_SHAPES.map(
                 (shape) => (
-                  <Chip
+                  <ShapeChip
                     key={
                       shape.value
                     }
@@ -1442,8 +1752,8 @@ export default function MeasurementsClient({
                     }
                     label={
                       isArabic
-                        ? shape.labelAr
-                        : shape.labelEn
+                        ? shape.ar
+                        : shape.en
                     }
                     active={
                       bodyShape ===
@@ -1467,6 +1777,7 @@ export default function MeasurementsClient({
 
           {/* Results */}
           <button
+            type="button"
             onClick={
               goResults
             }
@@ -1474,7 +1785,6 @@ export default function MeasurementsClient({
               !canSubmit
             }
             className="mt-6 w-full rounded-2xl border border-[#d6b56a]/45 bg-gradient-to-r from-[#d6b56a]/25 via-white/5 to-[#d6b56a]/15 py-3 text-sm font-extrabold text-white shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:border-[#d6b56a]/70 disabled:opacity-40 disabled:hover:border-[#d6b56a]/45"
-            type="button"
           >
             {isArabic
               ? "عرض النتائج"
@@ -1500,184 +1810,5 @@ export default function MeasurementsClient({
         }
       />
     </main>
-  );
-}
-
-/* =========================
-   Select field
-========================= */
-
-function SelectField({
-  label,
-  iconType,
-  value,
-  onChange,
-  placeholder,
-  options,
-  isArabic,
-}: {
-  label: string;
-  iconType:
-    | "height"
-    | "bust"
-    | "waist"
-    | "hip";
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  options: number[];
-  isArabic: boolean;
-}) {
-  return (
-    <label className="block">
-      <span className="text-sm font-semibold text-white inline-flex items-center gap-2">
-        <span>
-          {label}
-        </span>
-
-        <span className="pointer-events-none">
-          <MeasureIconImg
-            type={
-              iconType
-            }
-            isArabic={
-              isArabic
-            }
-          />
-        </span>
-      </span>
-
-      <div className="relative mt-2">
-        <select
-          dir={
-            isArabic
-              ? "rtl"
-              : "ltr"
-          }
-          value={value}
-          onChange={(e) =>
-            onChange(
-              e.target.value
-            )
-          }
-          style={{
-            colorScheme:
-              "dark",
-          }}
-          className={[
-            "w-full appearance-none rounded-2xl border py-3 text-sm font-semibold transition overflow-hidden shrink-0",
-            "border-white/10 bg-neutral-950 text-white",
-            "focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10",
-            isArabic
-              ? "px-4 text-right"
-              : "pl-4 pr-10 text-left",
-          ].join(" ")}
-        >
-          <option
-            value=""
-            disabled
-            className="bg-neutral-950 text-neutral-400"
-          >
-            {placeholder ||
-              (isArabic
-                ? "اختاري"
-                : "Select")}
-          </option>
-
-          {options.map(
-            (n) => (
-              <option
-                key={n}
-                value={String(
-                  n
-                )}
-                className="bg-neutral-950 text-white"
-              >
-                {n}
-              </option>
-            )
-          )}
-        </select>
-
-        <div
-          className={[
-            "pointer-events-none absolute inset-y-0 flex items-center",
-            isArabic
-              ? "left-3"
-              : "right-3",
-          ].join(" ")}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4 text-[#d6b56a]"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M19 9l-7 7-7-7"
-            />
-          </svg>
-        </div>
-      </div>
-    </label>
-  );
-}
-
-/* =========================
-   Body shape chip
-========================= */
-
-function Chip({
-  value,
-  label,
-  active,
-  onClick,
-  isArabic,
-}: {
-  value: BodyShapeArabic;
-  label: string;
-  active: boolean;
-  onClick: () => void;
-  isArabic: boolean;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      type="button"
-      className={[
-        "h-[48px] w-full",
-        "rounded-2xl border px-4 text-xs font-semibold transition",
-        "bg-black/20 border-white/10 text-white hover:bg-black/30",
-        "flex items-center justify-center gap-2",
-        "overflow-hidden",
-        active
-          ? "ring-2 ring-[#d6b56a]/40 border-[#d6b56a]/35 bg-[#d6b56a]/10"
-          : "",
-      ].join(" ")}
-    >
-      <span
-        className={[
-          "whitespace-nowrap",
-          isArabic
-            ? "mr-18"
-            : "ml-18",
-        ].join(" ")}
-      >
-        {label}
-      </span>
-
-      <span className="shrink-0">
-        <ShapeIcon
-          type={value}
-          isArabic={
-            isArabic
-          }
-        />
-      </span>
-    </button>
   );
 }
