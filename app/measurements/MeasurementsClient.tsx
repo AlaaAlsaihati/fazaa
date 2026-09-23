@@ -1,4 +1,4 @@
-"use client";
+ "use client";
 
 import {
   useEffect,
@@ -578,20 +578,21 @@ export default function MeasurementsClient({
      User-scoped local storage
   ========================= */
 
-  const storageKey = useMemo(
-    () => {
+  const storageKey =
+    useMemo(() => {
       return userId
         ? `${STORAGE_KEY}:${userId}`
         : STORAGE_KEY;
-    },
-    [userId]
-  );
+    }, [userId]);
 
   /* =========================
      Form state
   ========================= */
 
-  const [unit, setUnit] =
+  const [
+    unit,
+    setUnit,
+  ] =
     useState<Unit>("cm");
 
   const [
@@ -599,14 +600,20 @@ export default function MeasurementsClient({
     setHeightCm,
   ] = useState("");
 
-  const [bust, setBust] =
-    useState("");
+  const [
+    bust,
+    setBust,
+  ] = useState("");
 
-  const [waist, setWaist] =
-    useState("");
+  const [
+    waist,
+    setWaist,
+  ] = useState("");
 
-  const [hip, setHip] =
-    useState("");
+  const [
+    hip,
+    setHip,
+  ] = useState("");
 
   const [
     bodyShape,
@@ -622,16 +629,18 @@ export default function MeasurementsClient({
   const [
     savedSnapshot,
     setSavedSnapshot,
-  ] = useState<SavedPayload | null>(
-    null
-  );
+  ] =
+    useState<SavedPayload | null>(
+      null
+    );
 
   const [
     savedLastUpdated,
     setSavedLastUpdated,
-  ] = useState<number | null>(
-    null
-  );
+  ] =
+    useState<number | null>(
+      null
+    );
 
   const [
     isDirty,
@@ -912,9 +921,7 @@ export default function MeasurementsClient({
     );
 
     /*
-      نفس سلوك ملفك الأصلي:
-      عند تغيير الوحدة نفرغ المحيطات
-      وشكل الجسم.
+      نفس سلوك العربي الحالي
     */
     setBust("");
     setWaist("");
@@ -1122,9 +1129,7 @@ export default function MeasurementsClient({
     );
 
     /*
-      مهم:
-      نخزن القيمة العربية الأصلية
-      حتى تظل توصيات العبايات شغالة.
+      القيمة الداخلية تبقى عربية
     */
     params.set(
       "bodyShape",
@@ -1245,6 +1250,7 @@ export default function MeasurementsClient({
 
     if (isDirty) {
       saveOrUpdateMeasurements();
+
       return;
     }
 
@@ -1252,6 +1258,12 @@ export default function MeasurementsClient({
       applySavedFromSnapshot();
     }
   }
+
+  const showStaleAppliedMessage =
+    !isDirty &&
+    lastAction ===
+      "applied" &&
+    isStale;
 
   /* =========================
      Render
@@ -1438,50 +1450,52 @@ export default function MeasurementsClient({
 
           {/* Saved measurement action */}
           {showActionButton ? (
-            <div className="mt-4 flex items-center justify-start">
-              <button
-                type="button"
-                onClick={
-                  onActionClick
-                }
-                disabled={
-                  actionDisabled
-                }
-                className={[
-                  "inline-flex items-center gap-2",
-                  "rounded-xl border px-3 py-2",
-                  "text-xs font-extrabold transition",
-                  "border-[#d6b56a]/45 bg-black/20 text-white hover:border-[#d6b56a]/70",
-                  "disabled:opacity-60 disabled:hover:border-[#d6b56a]/45",
-                  lastAction
-                    ? "bg-[#d6b56a]/10 border-[#d6b56a]/60"
-                    : "",
-                ].join(" ")}
-              >
-                <span>
-                  {actionLabel}
-                </span>
-
-                {!isDirty &&
-                lastAction ===
-                  "applied" &&
-                isStale ? (
-                  <span
-                    className={[
-                      "rounded-full border border-[#d6b56a]/35 bg-black/20 px-2 py-0.5 text-[10px] text-[#f3e0b0]",
-                      isArabic
-                        ? "mr-2"
-                        : "ml-2",
-                    ].join(
-                      " "
-                    )}
-                  >
-                    {isArabic
-                      ? `مر ${STALE_DAYS} يوم على آخر تحديث للمقاسات`
-                      : `Last updated over ${STALE_DAYS} days ago`}
+            <div className="mt-4">
+              <div className="flex items-center justify-start">
+                <button
+                  type="button"
+                  onClick={
+                    onActionClick
+                  }
+                  disabled={
+                    actionDisabled
+                  }
+                  className={[
+                    "inline-flex max-w-full items-center gap-2",
+                    "rounded-xl border px-3 py-2",
+                    "text-xs font-extrabold transition",
+                    "whitespace-nowrap",
+                    "border-[#d6b56a]/45 bg-black/20 text-white hover:border-[#d6b56a]/70",
+                    "disabled:opacity-60 disabled:hover:border-[#d6b56a]/45",
+                    lastAction
+                      ? "bg-[#d6b56a]/10 border-[#d6b56a]/60"
+                      : "",
+                  ].join(" ")}
+                >
+                  <span>
+                    {actionLabel}
                   </span>
-                ) : null}
-              </button>
+
+                  {/* العربي يبقى بنفس شكل التنبيه القديم داخل الزر */}
+                  {isArabic &&
+                  showStaleAppliedMessage ? (
+                    <span className="mr-2 whitespace-nowrap rounded-full border border-[#d6b56a]/35 bg-black/20 px-2 py-0.5 text-[10px] text-[#f3e0b0]">
+                      {`مر ${STALE_DAYS} يوم على آخر تحديث للمقاسات`}
+                    </span>
+                  ) : null}
+                </button>
+              </div>
+
+              {/* English فقط:
+                  لو فيه تنبيه قديم نخليه بسطر مستقل
+                  حتى ما ينضغط داخل الزر.
+              */}
+              {!isArabic &&
+              showStaleAppliedMessage ? (
+                <div className="mt-2 text-[10px] text-[#f3e0b0]">
+                  {`Last updated over ${STALE_DAYS} days ago`}
+                </div>
+              ) : null}
             </div>
           ) : null}
 
@@ -1618,6 +1632,11 @@ function SelectField({
 
       <div className="relative mt-2">
         <select
+          dir={
+            isArabic
+              ? "rtl"
+              : "ltr"
+          }
           value={value}
           onChange={(e) =>
             onChange(
@@ -1629,9 +1648,17 @@ function SelectField({
               "dark",
           }}
           className={[
-            "w-full appearance-none rounded-2xl border px-4 py-3 text-sm font-semibold transition overflow-hidden shrink-0",
+            "w-full appearance-none rounded-2xl border py-3 text-sm font-semibold transition overflow-hidden shrink-0",
             "border-white/10 bg-neutral-950 text-white",
             "focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10",
+
+            /*
+              العربي: نفس وضعه السابق
+              الإنجليزي: مساحة السهم تنتقل لليمين
+            */
+            isArabic
+              ? "px-4 text-right"
+              : "pl-4 pr-10 text-left",
           ].join(" ")}
         >
           <option
@@ -1660,7 +1687,19 @@ function SelectField({
           )}
         </select>
 
-        <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
+        {/* العربي:
+            السهم يبقى يسار مثل قبل.
+            English:
+            ينتقل فقط إلى اليمين.
+        */}
+        <div
+          className={[
+            "pointer-events-none absolute inset-y-0 flex items-center",
+            isArabic
+              ? "left-3"
+              : "right-3",
+          ].join(" ")}
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-4 w-4 text-[#d6b56a]"

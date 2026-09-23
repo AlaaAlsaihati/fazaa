@@ -224,23 +224,9 @@ function ThreeDotsButton({
         viewBox="0 0 24 24"
         fill="currentColor"
       >
-        <circle
-          cx="5"
-          cy="12"
-          r="1.4"
-        />
-
-        <circle
-          cx="12"
-          cy="12"
-          r="1.4"
-        />
-
-        <circle
-          cx="19"
-          cy="12"
-          r="1.4"
-        />
+        <circle cx="5" cy="12" r="1.4" />
+        <circle cx="12" cy="12" r="1.4" />
+        <circle cx="19" cy="12" r="1.4" />
       </svg>
     </button>
   );
@@ -262,9 +248,7 @@ function BackFab({
       type="button"
       onClick={onClick}
       aria-label={
-        isArabic
-          ? "رجوع"
-          : "Back"
+        isArabic ? "رجوع" : "Back"
       }
       style={{
         bottom:
@@ -427,12 +411,8 @@ export default function OccasionPage() {
             {CARDS_TOP6.map(
               (card) => (
                 <OccasionButton
-                  key={
-                    card.key
-                  }
-                  card={
-                    card
-                  }
+                  key={card.key}
+                  card={card}
                   active={
                     occasion ===
                     card.key
@@ -521,9 +501,7 @@ export default function OccasionPage() {
 
                 return (
                   <button
-                    key={
-                      style
-                    }
+                    key={style}
                     onClick={() =>
                       setWeddingStyle(
                         style
@@ -537,9 +515,7 @@ export default function OccasionPage() {
                       style
                         ? "ring-2 ring-[#d6b56a]/30 border-[#d6b56a]/40"
                         : "",
-                    ].join(
-                      " "
-                    )}
+                    ].join(" ")}
                   >
                     {display}
                   </button>
@@ -653,15 +629,34 @@ function OccasionButton({
         </span>
       )}
 
-      {/* الأيقونة */}
-      <div className="absolute left-[-57px] top-1/2 -translate-y-1/2 pointer-events-none">
+      {/* الأيقونة
+          العربي: نفس مكانها السابق تمامًا.
+          الإنجليزي فقط تنتقل لليمين.
+      */}
+      <div
+        className={[
+          "absolute top-1/2 -translate-y-1/2 pointer-events-none",
+          isArabic
+            ? "left-[-57px]"
+            : "right-[-57px]",
+        ].join(" ")}
+      >
         <div className="absolute inset-0 -z-10 h-[110px] w-[110px] rounded-full bg-[#d6b56a]/10 blur-2xl" />
 
         {card.icon}
       </div>
 
-      {/* المحتوى */}
-      <div className="pl-[92px]">
+      {/* المحتوى
+          العربي: نفس pl السابق.
+          الإنجليزي فقط يحجز مساحة من اليمين للأيقونة.
+      */}
+      <div
+        className={
+          isArabic
+            ? "pl-[92px]"
+            : "pr-[92px]"
+        }
+      >
         <div>
           <h2 className="text-white font-semibold">
             {title}
