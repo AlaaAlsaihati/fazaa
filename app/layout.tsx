@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { Viewport } from "next";
+import LanguageProvider from "@/app/components/LanguageProvider";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -13,9 +14,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ar" dir="rtl">
+    <html
+      lang="ar"
+      dir="rtl"
+      suppressHydrationWarning
+    >
       <body className="bg-black text-white min-h-[100dvh]">
-        {children}
+        <LanguageProvider>
+          {children}
+        </LanguageProvider>
       </body>
     </html>
   );
