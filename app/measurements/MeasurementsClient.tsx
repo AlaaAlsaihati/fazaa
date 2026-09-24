@@ -40,6 +40,20 @@ type SavedPayload = {
   lastUpdated?: number;
 };
 
+type LastAction =
+  | "saved"
+  | "updated"
+  | "applied"
+  | null;
+
+type ActionMode =
+  | "save"
+  | "use"
+  | "update"
+  | "saved"
+  | "updated"
+  | "applied";
+
 const STORAGE_KEY =
   "fazaa_measurements_v1";
 
@@ -66,7 +80,8 @@ function safeLocalStorageGet(
 ) {
   try {
     if (
-      typeof window === "undefined"
+      typeof window ===
+      "undefined"
     ) {
       return null;
     }
@@ -85,7 +100,8 @@ function safeLocalStorageSet(
 ) {
   try {
     if (
-      typeof window === "undefined"
+      typeof window ===
+      "undefined"
     ) {
       return;
     }
@@ -405,7 +421,9 @@ function UnitToggle({
   isArabic,
 }: {
   value: Unit;
-  onChange: (unit: Unit) => void;
+  onChange: (
+    unit: Unit
+  ) => void;
   isArabic: boolean;
 }) {
   return (
@@ -825,11 +843,10 @@ export default function MeasurementsClient({
   const [
     lastAction,
     setLastAction,
-  ] = useState<
-    | "saved"
-    | "applied"
-    | null
-  >(null);
+  ] =
+    useState<LastAction>(
+      null
+    );
 
   /* =========================
      Load saved
@@ -861,6 +878,10 @@ export default function MeasurementsClient({
         null
       );
 
+      setIsDirty(
+        false
+      );
+
       return;
     }
 
@@ -876,6 +897,10 @@ export default function MeasurementsClient({
 
       setLastAction(
         null
+      );
+
+      setIsDirty(
+        false
       );
 
       /*
@@ -899,6 +924,10 @@ export default function MeasurementsClient({
 
       setLastAction(
         null
+      );
+
+      setIsDirty(
+        false
       );
     }
   }, [
@@ -1075,9 +1104,7 @@ export default function MeasurementsClient({
 
     /*
       أي تعديل يلغي
-      "تم الحفظ"
-      أو
-      "تم استخدام..."
+      رسالة الإجراء السابق.
     */
     setLastAction(null);
   }
@@ -1186,6 +1213,14 @@ export default function MeasurementsClient({
       return;
     }
 
+    /*
+      مهم:
+      نعرف قبل الحفظ هل كان
+      فيه بيانات محفوظة أصلًا.
+    */
+    const wasUpdate =
+      hasSaved;
+
     const payload: SavedPayload =
       {
         unit,
@@ -1218,7 +1253,9 @@ export default function MeasurementsClient({
     setIsDirty(false);
 
     setLastAction(
-      "saved"
+      wasUpdate
+        ? "updated"
+        : "saved"
     );
   }
 
@@ -1359,118 +1396,140 @@ export default function MeasurementsClient({
   const showActionButton =
     isLoggedIn;
 
+  /* =========================
+     ONE action state
+  ========================= */
+
   /*
-    مهم جدًا:
-    هذا نفس منطق الزر القديم.
-    زر واحد فقط.
+    هنا كل حالات الزر في متغير واحد.
+    ما فيه زرين ولا نصين منفصلين.
   */
-  const actionLabel =
-    useMemo(() => {
-      /*
-        بعد الحفظ / التحديث
-      */
+  const actionMode =
+    useMemo<ActionMode>(() => {
       if (
         lastAction ===
         "saved"
       ) {
-        return hasSaved
-          ? isArabic
-            ? "تم تحديث المقاسات"
-            : "Measurements updated"
-          : isArabic
-          ? "تم حفظ المقاسات"
-          : "Measurements saved";
+        return "saved";
       }
 
-      /*
-        بعد الضغط على
-        استخدام المحفوظ
-      */
+      if (
+        lastAction ===
+        "updated"
+      ) {
+        return "updated";
+      }
+
       if (
         lastAction ===
         "applied"
       ) {
-        return isArabic
-          ? "تم استخدام المقاسات المحفوظة"
-          : "Saved measurements applied";
+        return "applied";
       }
 
       /*
-        المستخدم بدأ يعدل:
+        أول ما يعدل أي شيء:
         عنده محفوظ = تحديث
         ما عنده محفوظ = حفظ
       */
       if (isDirty) {
         return hasSaved
-          ? isArabic
-            ? "تحديث المقاسات"
-            : "Update measurements"
-          : isArabic
-          ? "حفظ المقاسات"
-          : "Save measurements";
-      }
-
-      /*
-        المستخدم ما عدّل:
-        عنده محفوظ = استخدام
-        ما عنده محفوظ = حفظ
-      */
-      return hasSaved
-        ? isArabic
-          ? "استخدام المقاسات المحفوظة"
-          : "Use saved measurements"
-        : isArabic
-        ? "حفظ المقاسات"
-        : "Save measurements";
-    }, [
-      lastAction,
-      isDirty,
-      hasSaved,
-      isArabic,
-    ]);
-
-  /*
-    نفس منطق التعطيل القديم.
-  */
-  const actionDisabled =
-    useMemo(() => {
-      /*
-        بعد "تم..."
-        نخليه ثابت لين
-        المستخدم يعدل شيء.
-      */
-      if (lastAction) {
-        return true;
-      }
-
-      /*
-        إذا بدأ يعدل:
-        ما يتفعل إلا بعد
-        إكمال القياسات.
-      */
-      if (isDirty) {
-        return !canUpdate;
+          ? "update"
+          : "save";
       }
 
       /*
         ما عدل شيء:
-        إذا عنده محفوظ
-        يقدر يستخدمه.
+        عنده محفوظ = استخدام
+        ما عنده محفوظ = حفظ
       */
-      if (hasSaved) {
+      return hasSaved
+        ? "use"
+        : "save";
+    }, [
+      lastAction,
+      isDirty,
+      hasSaved,
+    ]);
+
+  const actionLabel =
+    useMemo(() => {
+      switch (
+        actionMode
+      ) {
+        case "saved":
+          return isArabic
+            ? "تم حفظ المقاسات"
+            : "Measurements saved";
+
+        case "updated":
+          return isArabic
+            ? "تم تحديث المقاسات"
+            : "Measurements updated";
+
+        case "applied":
+          return isArabic
+            ? "تم استخدام المقاسات المحفوظة"
+            : "Saved measurements applied";
+
+        case "update":
+          return isArabic
+            ? "تحديث المقاسات"
+            : "Update measurements";
+
+        case "use":
+          return isArabic
+            ? "استخدام المقاسات المحفوظة"
+            : "Use saved measurements";
+
+        case "save":
+        default:
+          return isArabic
+            ? "حفظ المقاسات"
+            : "Save measurements";
+      }
+    }, [
+      actionMode,
+      isArabic,
+    ]);
+
+  const actionDisabled =
+    useMemo(() => {
+      /*
+        بعد رسالة النجاح
+        نخليه ثابت لين
+        المستخدم يعدل شيء.
+      */
+      if (
+        actionMode ===
+          "saved" ||
+        actionMode ===
+          "updated" ||
+        actionMode ===
+          "applied"
+      ) {
+        return true;
+      }
+
+      /*
+        استخدام المحفوظ
+        متاح دائمًا إذا موجود.
+      */
+      if (
+        actionMode ===
+        "use"
+      ) {
         return false;
       }
 
       /*
-        ما عنده محفوظ
-        وما دخل قياسات بعد.
+        حفظ / تحديث:
+        يتفعل بعد اكتمال القياسات.
       */
-      return true;
+      return !canUpdate;
     }, [
-      lastAction,
-      isDirty,
+      actionMode,
       canUpdate,
-      hasSaved,
     ]);
 
   /*
@@ -1481,26 +1540,33 @@ export default function MeasurementsClient({
       return;
     }
 
-    if (lastAction) {
+    if (
+      actionMode ===
+        "saved" ||
+      actionMode ===
+        "updated" ||
+      actionMode ===
+        "applied"
+    ) {
       return;
     }
 
-    /*
-      بدأ يعدل:
-      حفظ أو تحديث
-    */
-    if (isDirty) {
-      saveOrUpdateMeasurements();
-
-      return;
-    }
-
-    /*
-      ما عدل وعنده محفوظ:
-      استخدام المحفوظ
-    */
-    if (hasSaved) {
+    if (
+      actionMode ===
+      "use"
+    ) {
       applySavedFromSnapshot();
+
+      return;
+    }
+
+    if (
+      actionMode ===
+        "save" ||
+      actionMode ===
+        "update"
+    ) {
+      saveOrUpdateMeasurements();
     }
   }
 
@@ -1699,8 +1765,17 @@ export default function MeasurementsClient({
           ========================== */}
 
           {showActionButton ? (
-            <div className="mt-4 flex items-center justify-start">
+            <div className="mt-4 flex items-center justify-start overflow-hidden">
               <button
+                /*
+                  مهم:
+                  لما تتغير الحالة React
+                  يحذف الزر القديم بالكامل
+                  وينشئ نفس الزر بالنص الجديد.
+                */
+                key={
+                  actionMode
+                }
                 type="button"
                 onClick={
                   onActionClick
@@ -1709,6 +1784,7 @@ export default function MeasurementsClient({
                   actionDisabled
                 }
                 className={[
+                  "relative isolate overflow-hidden",
                   "inline-flex max-w-full items-center justify-center",
                   "rounded-xl border px-3 py-2",
                   "text-xs font-extrabold transition",
@@ -1716,12 +1792,26 @@ export default function MeasurementsClient({
                   "border-[#d6b56a]/45 bg-black/20 text-white hover:border-[#d6b56a]/70",
                   "disabled:opacity-60 disabled:hover:border-[#d6b56a]/45",
 
-                  lastAction
+                  actionMode ===
+                      "saved" ||
+                    actionMode ===
+                      "updated" ||
+                    actionMode ===
+                      "applied"
                     ? "bg-[#d6b56a]/10 border-[#d6b56a]/60"
                     : "",
                 ].join(" ")}
               >
-                {actionLabel}
+                <span
+                  key={
+                    actionLabel
+                  }
+                  className="block"
+                >
+                  {
+                    actionLabel
+                  }
+                </span>
               </button>
             </div>
           ) : null}
