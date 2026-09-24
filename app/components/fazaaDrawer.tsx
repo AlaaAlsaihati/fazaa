@@ -28,10 +28,6 @@ type UiMessage = {
   text: string;
 };
 
-const STORAGE_KEY_BASE = "fazaa_measurements_v1";
-const STALE_DAYS = 60;
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 type SavedPayload = {
   unit?: Unit;
   heightCm?: string;
@@ -49,14 +45,47 @@ type HistoryItem = {
   created_at?: string;
 };
 
+const STORAGE_KEY_BASE =
+  "fazaa_measurements_v1";
+
+const STALE_DAYS = 60;
+
+const DAY_MS =
+  24 * 60 * 60 * 1000;
+
+/*
+  مهم للآيفون:
+  iOS يعمل zoom تلقائي إذا كان
+  font-size داخل input أقل من 16px.
+
+  على الجوال = text-base = 16px
+  على md وما فوق نرجع text-sm
+  حتى ما يتغير تصميم اللابتوب.
+*/
+const INPUT_CLASS =
+  "w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-base md:text-sm text-white outline-none focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10";
+
+const INPUT_LTR_CLASS =
+  "w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-left text-base md:text-sm text-white outline-none focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10";
+
 /* =========================
    Local storage
 ========================= */
 
-function safeLocalStorageGet(key: string) {
+function safeLocalStorageGet(
+  key: string
+) {
   try {
-    if (typeof window === "undefined") return null;
-    return window.localStorage.getItem(key);
+    if (
+      typeof window ===
+      "undefined"
+    ) {
+      return null;
+    }
+
+    return window.localStorage.getItem(
+      key
+    );
   } catch {
     return null;
   }
@@ -67,17 +96,36 @@ function safeLocalStorageSet(
   value: string
 ) {
   try {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(key, value);
+    if (
+      typeof window ===
+      "undefined"
+    ) {
+      return;
+    }
+
+    window.localStorage.setItem(
+      key,
+      value
+    );
   } catch {
     // ignore
   }
 }
 
-function safeLocalStorageRemove(key: string) {
+function safeLocalStorageRemove(
+  key: string
+) {
   try {
-    if (typeof window === "undefined") return;
-    window.localStorage.removeItem(key);
+    if (
+      typeof window ===
+      "undefined"
+    ) {
+      return;
+    }
+
+    window.localStorage.removeItem(
+      key
+    );
   } catch {
     // ignore
   }
@@ -99,15 +147,21 @@ function range(
     x <= max + 1e-9;
     x += step
   ) {
-    out.push(x);
+    out.push(
+      Math.round(x * 2) / 2
+    );
   }
 
   return out;
 }
 
-function toNum(value: string) {
+function toNum(
+  value: string
+) {
   const n = Number(
-    String(value || "").trim()
+    String(
+      value || ""
+    ).trim()
   );
 
   return Number.isFinite(n)
@@ -115,18 +169,24 @@ function toNum(value: string) {
     : NaN;
 }
 
-function inToCm(value: number) {
+function inToCm(
+  value: number
+) {
   return value * 2.54;
 }
 
-function cmToIn(value: number) {
+function cmToIn(
+  value: number
+) {
   return value / 2.54;
 }
 
 function hasAnySavedValue(
   payload: SavedPayload | null
 ) {
-  if (!payload) return false;
+  if (!payload) {
+    return false;
+  }
 
   return !!(
     payload.heightCm ||
@@ -142,7 +202,8 @@ function getErrorMessage(
 ) {
   if (
     error &&
-    typeof error === "object" &&
+    typeof error ===
+      "object" &&
     "message" in error &&
     typeof (
       error as {
@@ -168,47 +229,54 @@ function getErrorMessage(
    Measurement options
 ========================= */
 
-const HEIGHT_OPTIONS = range(
-  140,
-  210,
-  1
-);
+const HEIGHT_OPTIONS =
+  range(
+    140,
+    210,
+    1
+  );
 
-const BUST_CM_OPTIONS = range(
-  60,
-  160,
-  1
-);
+const BUST_CM_OPTIONS =
+  range(
+    60,
+    160,
+    1
+  );
 
-const WAIST_CM_OPTIONS = range(
-  45,
-  160,
-  1
-);
+const WAIST_CM_OPTIONS =
+  range(
+    45,
+    160,
+    1
+  );
 
-const HIP_CM_OPTIONS = range(
-  60,
-  180,
-  1
-);
+const HIP_CM_OPTIONS =
+  range(
+    60,
+    180,
+    1
+  );
 
-const BUST_IN_OPTIONS = range(
-  24,
-  63,
-  0.5
-);
+const BUST_IN_OPTIONS =
+  range(
+    24,
+    63,
+    0.5
+  );
 
-const WAIST_IN_OPTIONS = range(
-  18,
-  63,
-  0.5
-);
+const WAIST_IN_OPTIONS =
+  range(
+    18,
+    63,
+    0.5
+  );
 
-const HIP_IN_OPTIONS = range(
-  24,
-  71,
-  0.5
-);
+const HIP_IN_OPTIONS =
+  range(
+    24,
+    71,
+    0.5
+  );
 
 /* =========================
    Query helpers
@@ -222,27 +290,38 @@ function normalizeResultsQuery(
       raw || ""
     ).trim();
 
-    if (!s) return "";
+    if (!s) {
+      return "";
+    }
 
     if (
-      s.startsWith("http://") ||
-      s.startsWith("https://")
+      s.startsWith(
+        "http://"
+      ) ||
+      s.startsWith(
+        "https://"
+      )
     ) {
-      const url = new URL(s);
+      const url =
+        new URL(s);
 
       return url.search
         ? url.search
         : "";
     }
 
-    if (s.includes("?")) {
+    if (
+      s.includes("?")
+    ) {
       const index =
         s.indexOf("?");
 
       const after =
         s.slice(index);
 
-      return after.startsWith("?")
+      return after.startsWith(
+        "?"
+      )
         ? after
         : `?${after}`;
     }
@@ -255,9 +334,13 @@ function normalizeResultsQuery(
       raw || ""
     ).trim();
 
-    if (!s) return "";
+    if (!s) {
+      return "";
+    }
 
-    if (s.includes("?")) {
+    if (
+      s.includes("?")
+    ) {
       return s.slice(
         s.indexOf("?")
       );
@@ -303,7 +386,8 @@ function subtitleFromQuery(
         ? "سم"
         : "cm";
 
-    const parts: string[] = [];
+    const parts: string[] =
+      [];
 
     if (bust) {
       parts.push(
@@ -369,7 +453,7 @@ function translateHistoryTitle(
 }
 
 /* =========================
-   UI
+   UI Components
 ========================= */
 
 function UnitToggle({
@@ -378,7 +462,9 @@ function UnitToggle({
   isArabic,
 }: {
   value: Unit;
-  onChange: (unit: Unit) => void;
+  onChange: (
+    unit: Unit
+  ) => void;
   isArabic: boolean;
 }) {
   return (
@@ -395,7 +481,9 @@ function UnitToggle({
             : "text-neutral-300 hover:text-white",
         ].join(" ")}
       >
-        {isArabic ? "سم" : "cm"}
+        {isArabic
+          ? "سم"
+          : "cm"}
       </button>
 
       <button
@@ -454,7 +542,11 @@ function SelectField({
               "dark",
           }}
           className={[
-            "w-full appearance-none rounded-2xl border px-4 py-2.5 text-sm font-semibold transition",
+            /*
+              16px على الجوال
+              لمنع iOS zoom
+            */
+            "w-full appearance-none rounded-2xl border px-4 py-2.5 text-base md:text-sm font-semibold transition",
             "border-white/10 bg-neutral-950 text-white",
             "focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10",
           ].join(" ")}
@@ -507,10 +599,10 @@ function SelectField({
 }
 
 /*
-  نفس هذا المكوّن مستخدم:
-  - في المقاسات
+  نفس شكل المربعات:
+  - المقاسات
   - آخر النتائج
-  - وكل أقسام الإعدادات
+  - الإعدادات
 */
 function SectionDetails({
   title,
@@ -523,11 +615,13 @@ function SectionDetails({
 }) {
   return (
     <details
-      {...(defaultOpen
-        ? {
-            open: true,
-          }
-        : {})}
+      {...(
+        defaultOpen
+          ? {
+              open: true,
+            }
+          : {}
+      )}
       className="group rounded-3xl border border-white/10 bg-white/5"
     >
       <summary
@@ -537,7 +631,9 @@ function SectionDetails({
           "text-sm font-extrabold text-white",
         ].join(" ")}
       >
-        <span>{title}</span>
+        <span>
+          {title}
+        </span>
 
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -733,10 +829,6 @@ export default function FazaaDrawer({
     setSettingsEmail,
   ] = useState("");
 
-  /*
-    كلمة المرور:
-    الحالية + الجديدة + التأكيد
-  */
   const [
     settingsCurrentPassword,
     setSettingsCurrentPassword,
@@ -868,6 +960,39 @@ export default function FazaaDrawer({
     ]);
 
   /* =========================
+     Close / iOS focus fix
+  ========================= */
+
+  function blurActiveElement() {
+    if (
+      typeof document ===
+      "undefined"
+    ) {
+      return;
+    }
+
+    const active =
+      document.activeElement;
+
+    if (
+      active instanceof
+      HTMLElement
+    ) {
+      active.blur();
+    }
+  }
+
+  function handleDrawerClose() {
+    /*
+      احتياط إضافي للآيفون:
+      نفك الـfocus قبل إغلاق الداور.
+    */
+    blurActiveElement();
+
+    onClose();
+  }
+
+  /* =========================
      Session
   ========================= */
 
@@ -889,9 +1014,11 @@ export default function FazaaDrawer({
         user
           ? {
               id: user.id,
+
               email:
                 user.email ??
                 null,
+
               name:
                 (user
                   .user_metadata
@@ -904,7 +1031,10 @@ export default function FazaaDrawer({
 
     const { data: listener } =
       supabase.auth.onAuthStateChange(
-        (_event, session) => {
+        (
+          _event,
+          session
+        ) => {
           const user =
             session?.user;
 
@@ -913,9 +1043,11 @@ export default function FazaaDrawer({
               ? {
                   id:
                     user.id,
+
                   email:
                     user.email ??
                     null,
+
                   name:
                     (user
                       .user_metadata
@@ -934,6 +1066,15 @@ export default function FazaaDrawer({
     };
   }, []);
 
+  /*
+    لما الداور ينقفل:
+    نرجعه للقائمة الرئيسية.
+
+    ملاحظة:
+    ما عاد فيه شرط يرجع المستخدم
+    من settings إذا مو مسجل.
+    لأن اللغة صارت متاحة للجميع.
+  */
   useEffect(() => {
     if (!open) {
       setDrawerView(
@@ -962,27 +1103,14 @@ export default function FazaaDrawer({
     }
   }, [open]);
 
-  useEffect(() => {
-    if (
-      !sessionUser &&
-      drawerView ===
-        "settings"
-    ) {
-      setDrawerView(
-        "main"
-      );
-    }
-  }, [
-    sessionUser,
-    drawerView,
-  ]);
-
   /* =========================
      Saved measurements
   ========================= */
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
 
     const rawNew =
       safeLocalStorageGet(
@@ -1042,7 +1170,8 @@ export default function FazaaDrawer({
       if (
         saved.unit ===
           "cm" ||
-        saved.unit === "in"
+        saved.unit ===
+          "in"
       ) {
         setUnit(
           saved.unit
@@ -1235,7 +1364,9 @@ export default function FazaaDrawer({
   function onChangeUnit(
     next: Unit
   ) {
-    if (next === unit) {
+    if (
+      next === unit
+    ) {
       return;
     }
 
@@ -1368,9 +1499,11 @@ export default function FazaaDrawer({
       const { error } =
         await supabase.auth.signInWithPassword(
           {
-            email: email
-              .trim()
-              .toLowerCase(),
+            email:
+              email
+                .trim()
+                .toLowerCase(),
+
             password,
           }
         );
@@ -1386,11 +1519,18 @@ export default function FazaaDrawer({
       setPassword("");
 
       setAuthMsg(null);
+
+      /*
+        نفك الـfocus في الآيفون
+        بعد نجاح الدخول.
+      */
+      blurActiveElement();
     } catch (
       error: unknown
     ) {
       setAuthMsg({
         type: "err",
+
         text:
           getErrorMessage(
             error,
@@ -1419,7 +1559,9 @@ export default function FazaaDrawer({
           {
             email:
               cleanEmail,
+
             password,
+
             options: {
               data: {
                 name:
@@ -1435,17 +1577,21 @@ export default function FazaaDrawer({
 
       setAuthMsg({
         type: "ok",
+
         text: isArabic
           ? "تم إرسال رابط التفعيل إلى بريدك الإلكتروني"
           : "A verification link has been sent to your email",
       });
 
       setPassword("");
+
+      blurActiveElement();
     } catch (
       error: unknown
     ) {
       setAuthMsg({
         type: "err",
+
         text:
           getErrorMessage(
             error,
@@ -1459,6 +1605,8 @@ export default function FazaaDrawer({
 
   async function handleLogout() {
     setAuthMsg(null);
+
+    blurActiveElement();
 
     await supabase.auth.signOut();
 
@@ -1480,6 +1628,7 @@ export default function FazaaDrawer({
     if (!cleanEmail) {
       setAuthMsg({
         type: "err",
+
         text: isArabic
           ? "اكتبي الإيميل أول"
           : "Enter your email first",
@@ -1506,6 +1655,7 @@ export default function FazaaDrawer({
 
       setAuthMsg({
         type: "ok",
+
         text: isArabic
           ? "تم إرسال رابط إعادة كلمة المرور على إيميلك"
           : "A password reset link has been sent to your email",
@@ -1514,11 +1664,14 @@ export default function FazaaDrawer({
       setShowForgot(
         false
       );
+
+      blurActiveElement();
     } catch (
       error: unknown
     ) {
       setAuthMsg({
         type: "err",
+
         text:
           getErrorMessage(
             error,
@@ -1534,17 +1687,25 @@ export default function FazaaDrawer({
      Settings
   ========================= */
 
-  function openSettings() {
-    if (!sessionUser) {
-      return;
-    }
+  /*
+    الإعدادات الآن متاحة للجميع.
 
+    إذا المستخدم مو مسجل:
+    يدخل settings عادي
+    لكن يشوف اللغة فقط.
+
+    إذا مسجل:
+    نعبّي الاسم والإيميل
+    وتظهر له باقي الخيارات.
+  */
+  function openSettings() {
     setSettingsName(
-      sessionUser.name || ""
+      sessionUser?.name ||
+        ""
     );
 
     setSettingsEmail(
-      sessionUser.email ||
+      sessionUser?.email ||
         ""
     );
 
@@ -1572,6 +1733,8 @@ export default function FazaaDrawer({
   }
 
   function closeSettings() {
+    blurActiveElement();
+
     setSettingsMsg(null);
 
     setDeleteConfirm(
@@ -1596,6 +1759,10 @@ export default function FazaaDrawer({
   }
 
   async function handleUpdateName() {
+    if (!sessionUser) {
+      return;
+    }
+
     const cleanName =
       settingsName.trim();
 
@@ -1604,6 +1771,7 @@ export default function FazaaDrawer({
     if (!cleanName) {
       setSettingsMsg({
         type: "err",
+
         text: isArabic
           ? "اكتبي الاسم أول"
           : "Enter your name first",
@@ -1636,6 +1804,7 @@ export default function FazaaDrawer({
           current
             ? {
                 ...current,
+
                 name:
                   cleanName,
               }
@@ -1644,15 +1813,19 @@ export default function FazaaDrawer({
 
       setSettingsMsg({
         type: "ok",
+
         text: isArabic
           ? "تم تحديث الاسم بنجاح"
           : "Name updated successfully",
       });
+
+      blurActiveElement();
     } catch (
       error: unknown
     ) {
       setSettingsMsg({
         type: "err",
+
         text:
           getErrorMessage(
             error,
@@ -1667,6 +1840,10 @@ export default function FazaaDrawer({
   }
 
   async function handleUpdateEmail() {
+    if (!sessionUser) {
+      return;
+    }
+
     const cleanEmail =
       settingsEmail
         .trim()
@@ -1682,6 +1859,7 @@ export default function FazaaDrawer({
     ) {
       setSettingsMsg({
         type: "err",
+
         text: isArabic
           ? "اكتبي بريد إلكتروني صحيح"
           : "Enter a valid email address",
@@ -1692,12 +1870,13 @@ export default function FazaaDrawer({
 
     if (
       cleanEmail ===
-      sessionUser?.email
+      sessionUser.email
         ?.trim()
         .toLowerCase()
     ) {
       setSettingsMsg({
         type: "err",
+
         text: isArabic
           ? "هذا هو بريدك الحالي"
           : "This is already your current email",
@@ -1725,15 +1904,19 @@ export default function FazaaDrawer({
 
       setSettingsMsg({
         type: "ok",
+
         text: isArabic
           ? "تم إرسال طلب تغيير البريد. لإكمال التغيير، أكدي الرسائل المرسلة إلى بريدك الحالي والبريد الجديد."
           : "Your email change request was sent. To complete the change, confirm the messages sent to your current and new email addresses.",
       });
+
+      blurActiveElement();
     } catch (
       error: unknown
     ) {
       setSettingsMsg({
         type: "err",
+
         text:
           getErrorMessage(
             error,
@@ -1747,13 +1930,11 @@ export default function FazaaDrawer({
     }
   }
 
-  /*
-    تغيير كلمة المرور:
-    1- الحالية مطلوبة
-    2- نتأكد منها بتسجيل دخول فعلي
-    3- بعدها فقط نغيّرها
-  */
   async function handleUpdatePassword() {
+    if (!sessionUser) {
+      return;
+    }
+
     setSettingsMsg(null);
 
     if (
@@ -1761,6 +1942,7 @@ export default function FazaaDrawer({
     ) {
       setSettingsMsg({
         type: "err",
+
         text: isArabic
           ? "اكتبي كلمة المرور الحالية"
           : "Enter your current password",
@@ -1775,6 +1957,7 @@ export default function FazaaDrawer({
     ) {
       setSettingsMsg({
         type: "err",
+
         text: isArabic
           ? "كلمة المرور الجديدة لازم تكون 6 أحرف على الأقل"
           : "The new password must be at least 6 characters",
@@ -1789,6 +1972,7 @@ export default function FazaaDrawer({
     ) {
       setSettingsMsg({
         type: "err",
+
         text: isArabic
           ? "كلمتا المرور الجديدة غير متطابقتين"
           : "The new passwords do not match",
@@ -1803,6 +1987,7 @@ export default function FazaaDrawer({
     ) {
       setSettingsMsg({
         type: "err",
+
         text: isArabic
           ? "اختاري كلمة مرور جديدة مختلفة عن الحالية"
           : "Choose a new password that is different from your current password",
@@ -1812,13 +1997,14 @@ export default function FazaaDrawer({
     }
 
     const currentEmail =
-      sessionUser?.email
+      sessionUser.email
         ?.trim()
         .toLowerCase();
 
     if (!currentEmail) {
       setSettingsMsg({
         type: "err",
+
         text: isArabic
           ? "تعذر التحقق من حسابك"
           : "Unable to verify your account",
@@ -1833,8 +2019,8 @@ export default function FazaaDrawer({
       );
 
       /*
-        التحقق الفعلي
-        من كلمة المرور الحالية
+        أولًا:
+        نتأكد من كلمة المرور الحالية.
       */
       const {
         error:
@@ -1844,6 +2030,7 @@ export default function FazaaDrawer({
           {
             email:
               currentEmail,
+
             password:
               settingsCurrentPassword,
           }
@@ -1852,6 +2039,7 @@ export default function FazaaDrawer({
       if (verifyError) {
         setSettingsMsg({
           type: "err",
+
           text: isArabic
             ? "كلمة المرور الحالية غير صحيحة"
             : "Your current password is incorrect",
@@ -1861,8 +2049,8 @@ export default function FazaaDrawer({
       }
 
       /*
-        الآن فقط نغيّر
-        كلمة المرور
+        بعد نجاح التحقق
+        نغير كلمة المرور.
       */
       const {
         error:
@@ -1893,15 +2081,19 @@ export default function FazaaDrawer({
 
       setSettingsMsg({
         type: "ok",
+
         text: isArabic
           ? "تم تحديث كلمة المرور بنجاح"
           : "Password updated successfully",
       });
+
+      blurActiveElement();
     } catch (
       error: unknown
     ) {
       setSettingsMsg({
         type: "err",
+
         text:
           getErrorMessage(
             error,
@@ -1980,7 +2172,8 @@ export default function FazaaDrawer({
           data as {
             error?: unknown;
           }
-        ).error === "string"
+        ).error ===
+          "string"
       ) {
         throw new Error(
           (
@@ -2025,6 +2218,8 @@ export default function FazaaDrawer({
         "main"
       );
 
+      blurActiveElement();
+
       onClose();
 
       router.replace("/");
@@ -2033,6 +2228,7 @@ export default function FazaaDrawer({
     ) {
       setSettingsMsg({
         type: "err",
+
         text:
           getErrorMessage(
             error,
@@ -2053,7 +2249,9 @@ export default function FazaaDrawer({
   ========================= */
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
 
     if (
       !sessionUser?.id
@@ -2194,6 +2392,7 @@ export default function FazaaDrawer({
   const saveButtonClass =
     [
       "w-full rounded-2xl border py-2.5 text-xs font-extrabold transition",
+
       !canSave
         ? "border-white/10 bg-black/20 text-neutral-500"
         : saveStatus ===
@@ -2225,22 +2424,25 @@ export default function FazaaDrawer({
 
   return (
     <>
+      {/* Overlay */}
       <div
         className={[
           "fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition",
           overlayClass,
         ].join(" ")}
         onClick={
-          onClose
+          handleDrawerClose
         }
       />
 
+      {/* Drawer */}
       <aside
         className={[
           "fixed right-0 z-50 w-[360px] max-w-[92vw] flex flex-col",
           "bg-neutral-950/95 border-l border-white/10",
           "shadow-[0_30px_80px_rgba(0,0,0,0.65)]",
           "transition-transform duration-300",
+
           open
             ? "translate-x-0"
             : "translate-x-full",
@@ -2248,6 +2450,7 @@ export default function FazaaDrawer({
         style={{
           top:
             "env(safe-area-inset-top)",
+
           height:
             "calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom))",
         }}
@@ -2294,7 +2497,7 @@ export default function FazaaDrawer({
               <button
                 type="button"
                 onClick={
-                  onClose
+                  handleDrawerClose
                 }
                 className="h-10 w-10 rounded-2xl border border-[#d6b56a]/35 bg-black/30 text-[#d6b56a] hover:border-[#d6b56a]/60 transition"
                 aria-label={
@@ -2308,6 +2511,7 @@ export default function FazaaDrawer({
             )}
           </div>
 
+          {/* المستخدم المسجل */}
           {isLoggedIn &&
           drawerView ===
             "main" ? (
@@ -2351,13 +2555,40 @@ export default function FazaaDrawer({
                   dir="ltr"
                   className="min-w-0 flex-1 truncate text-right text-xs text-neutral-400"
                 >
-                  {
-                    sessionUser?.email
-                  }
+                  {sessionUser?.email}
                 </div>
               </div>
 
               <div className="mt-3 h-px w-full bg-[#d6b56a]/35" />
+            </div>
+          ) : null}
+
+          {/*
+            المستخدم غير المسجل:
+            نخلي الإعدادات ظاهرة له
+            حتى يقدر يغير اللغة.
+          */}
+          {!isLoggedIn &&
+          drawerView ===
+            "main" ? (
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={
+                  openSettings
+                }
+                className="w-full flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-3 py-2.5 hover:bg-black/30 transition"
+              >
+                <span className="text-xs font-semibold text-neutral-300">
+                  {isArabic
+                    ? "الإعدادات"
+                    : "Settings"}
+                </span>
+
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#d6b56a]/30 bg-black/25 text-[#d6b56a]">
+                  <GearIcon />
+                </span>
+              </button>
             </div>
           ) : null}
         </div>
@@ -2373,6 +2604,7 @@ export default function FazaaDrawer({
               <div
                 className={[
                   "rounded-2xl px-3 py-3 text-xs font-semibold border leading-5",
+
                   settingsMsg.type ===
                   "ok"
                     ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
@@ -2385,209 +2617,234 @@ export default function FazaaDrawer({
               </div>
             ) : null}
 
-            {/* الاسم */}
-            <SectionDetails
-              title={
-                isArabic
-                  ? "الاسم"
-                  : "Name"
-              }
-            >
-              <input
-                type="text"
-                value={
-                  settingsName
-                }
-                onChange={(e) =>
-                  setSettingsName(
-                    e.target.value
-                  )
-                }
-                autoComplete="name"
-                className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white outline-none focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10"
-              />
-
-              <button
-                type="button"
-                onClick={
-                  handleUpdateName
-                }
-                disabled={
-                  settingsBusy !==
-                  null
-                }
-                className="mt-3 w-full rounded-2xl border border-[#d6b56a]/45 bg-[#d6b56a]/15 py-2.5 text-xs font-extrabold text-white hover:border-[#d6b56a]/70 transition disabled:opacity-50"
-              >
-                {settingsBusy ===
-                "name"
-                  ? isArabic
-                    ? "جاري الحفظ..."
-                    : "Saving..."
-                  : isArabic
-                  ? "حفظ الاسم"
-                  : "Save name"}
-              </button>
-            </SectionDetails>
-
-            {/* البريد */}
-            <SectionDetails
-              title={
-                isArabic
-                  ? "البريد الإلكتروني"
-                  : "Email"
-              }
-            >
-              <input
-                type="email"
-                dir="ltr"
-                value={
-                  settingsEmail
-                }
-                onChange={(e) =>
-                  setSettingsEmail(
-                    e.target.value
-                  )
-                }
-                autoComplete="email"
-                className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-left text-sm text-white outline-none focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10"
-              />
-
-              <p className="mt-2 text-[11px] leading-5 text-neutral-400">
-                {isArabic
-                  ? "عند تغيير البريد، سيطلب منك تأكيد البريد الحالي والبريد الجديد لإكمال التغيير."
-                  : "When changing your email, confirmation will be required from both your current and new email addresses."}
-              </p>
-
-              <button
-                type="button"
-                onClick={
-                  handleUpdateEmail
-                }
-                disabled={
-                  settingsBusy !==
-                  null
-                }
-                className="mt-3 w-full rounded-2xl border border-[#d6b56a]/45 bg-[#d6b56a]/15 py-2.5 text-xs font-extrabold text-white hover:border-[#d6b56a]/70 transition disabled:opacity-50"
-              >
-                {settingsBusy ===
-                "email"
-                  ? isArabic
-                    ? "جاري الإرسال..."
-                    : "Sending..."
-                  : isArabic
-                  ? "تغيير البريد"
-                  : "Change email"}
-              </button>
-            </SectionDetails>
-
-            {/* كلمة المرور */}
-            <SectionDetails
-              title={
-                isArabic
-                  ? "كلمة المرور"
-                  : "Password"
-              }
-            >
-              {/* الحالية */}
-              <label className="mt-2 block">
-                <div className="text-xs font-semibold text-neutral-300">
-                  {isArabic
-                    ? "كلمة المرور الحالية"
-                    : "Current password"}
-                </div>
-
-                <input
-                  type="password"
-                  value={
-                    settingsCurrentPassword
+            {/*
+              هذي الإعدادات
+              للمستخدم المسجل فقط.
+            */}
+            {isLoggedIn ? (
+              <>
+                {/* الاسم */}
+                <SectionDetails
+                  title={
+                    isArabic
+                      ? "الاسم"
+                      : "Name"
                   }
-                  onChange={(e) =>
-                    setSettingsCurrentPassword(
-                      e.target.value
-                    )
+                >
+                  <input
+                    type="text"
+                    value={
+                      settingsName
+                    }
+                    onChange={(e) =>
+                      setSettingsName(
+                        e.target.value
+                      )
+                    }
+                    autoComplete="name"
+                    className={
+                      INPUT_CLASS
+                    }
+                  />
+
+                  <button
+                    type="button"
+                    onClick={
+                      handleUpdateName
+                    }
+                    disabled={
+                      settingsBusy !==
+                      null
+                    }
+                    className="mt-3 w-full rounded-2xl border border-[#d6b56a]/45 bg-[#d6b56a]/15 py-2.5 text-xs font-extrabold text-white hover:border-[#d6b56a]/70 transition disabled:opacity-50"
+                  >
+                    {settingsBusy ===
+                    "name"
+                      ? isArabic
+                        ? "جاري الحفظ..."
+                        : "Saving..."
+                      : isArabic
+                      ? "حفظ الاسم"
+                      : "Save name"}
+                  </button>
+                </SectionDetails>
+
+                {/* البريد الإلكتروني */}
+                <SectionDetails
+                  title={
+                    isArabic
+                      ? "البريد الإلكتروني"
+                      : "Email"
                   }
-                  autoComplete="current-password"
-                  placeholder="********"
-                  className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white outline-none focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10"
-                />
-              </label>
+                >
+                  <input
+                    type="email"
+                    dir="ltr"
+                    value={
+                      settingsEmail
+                    }
+                    onChange={(e) =>
+                      setSettingsEmail(
+                        e.target.value
+                      )
+                    }
+                    autoComplete="email"
+                    className={
+                      INPUT_LTR_CLASS
+                    }
+                  />
 
-              {/* الجديدة */}
-              <label className="mt-3 block">
-                <div className="text-xs font-semibold text-neutral-300">
-                  {isArabic
-                    ? "كلمة المرور الجديدة"
-                    : "New password"}
-                </div>
+                  <p className="mt-2 text-[11px] leading-5 text-neutral-400">
+                    {isArabic
+                      ? "عند تغيير البريد، سيطلب منك تأكيد البريد الحالي والبريد الجديد لإكمال التغيير."
+                      : "When changing your email, confirmation will be required from both your current and new email addresses."}
+                  </p>
 
-                <input
-                  type="password"
-                  value={
-                    settingsPassword
+                  <button
+                    type="button"
+                    onClick={
+                      handleUpdateEmail
+                    }
+                    disabled={
+                      settingsBusy !==
+                      null
+                    }
+                    className="mt-3 w-full rounded-2xl border border-[#d6b56a]/45 bg-[#d6b56a]/15 py-2.5 text-xs font-extrabold text-white hover:border-[#d6b56a]/70 transition disabled:opacity-50"
+                  >
+                    {settingsBusy ===
+                    "email"
+                      ? isArabic
+                        ? "جاري الإرسال..."
+                        : "Sending..."
+                      : isArabic
+                      ? "تغيير البريد"
+                      : "Change email"}
+                  </button>
+                </SectionDetails>
+
+                {/* كلمة المرور */}
+                <SectionDetails
+                  title={
+                    isArabic
+                      ? "كلمة المرور"
+                      : "Password"
                   }
-                  onChange={(e) =>
-                    setSettingsPassword(
-                      e.target.value
-                    )
-                  }
-                  autoComplete="new-password"
-                  placeholder="********"
-                  className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white outline-none focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10"
-                />
-              </label>
+                >
+                  {/* الحالية */}
+                  <label className="mt-2 block">
+                    <div className="text-xs font-semibold text-neutral-300">
+                      {isArabic
+                        ? "كلمة المرور الحالية"
+                        : "Current password"}
+                    </div>
 
-              {/* التأكيد */}
-              <label className="mt-3 block">
-                <div className="text-xs font-semibold text-neutral-300">
-                  {isArabic
-                    ? "تأكيد كلمة المرور الجديدة"
-                    : "Confirm new password"}
-                </div>
+                    <input
+                      type="password"
+                      value={
+                        settingsCurrentPassword
+                      }
+                      onChange={(e) =>
+                        setSettingsCurrentPassword(
+                          e.target.value
+                        )
+                      }
+                      autoComplete="current-password"
+                      placeholder="********"
+                      className={
+                        INPUT_CLASS
+                      }
+                    />
+                  </label>
 
-                <input
-                  type="password"
-                  value={
-                    settingsPasswordConfirm
-                  }
-                  onChange={(e) =>
-                    setSettingsPasswordConfirm(
-                      e.target.value
-                    )
-                  }
-                  autoComplete="new-password"
-                  placeholder="********"
-                  className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white outline-none focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10"
-                />
-              </label>
+                  {/* الجديدة */}
+                  <label className="mt-3 block">
+                    <div className="text-xs font-semibold text-neutral-300">
+                      {isArabic
+                        ? "كلمة المرور الجديدة"
+                        : "New password"}
+                    </div>
 
-              <button
-                type="button"
-                onClick={
-                  handleUpdatePassword
-                }
-                disabled={
-                  settingsBusy !==
-                  null
-                }
-                className="mt-3 w-full rounded-2xl border border-[#d6b56a]/45 bg-[#d6b56a]/15 py-2.5 text-xs font-extrabold text-white hover:border-[#d6b56a]/70 transition disabled:opacity-50"
-              >
-                {settingsBusy ===
-                "password"
-                  ? isArabic
-                    ? "جاري التحقق والتحديث..."
-                    : "Verifying and updating..."
-                  : isArabic
-                  ? "تحديث كلمة المرور"
-                  : "Update password"}
-              </button>
-            </SectionDetails>
+                    <input
+                      type="password"
+                      value={
+                        settingsPassword
+                      }
+                      onChange={(e) =>
+                        setSettingsPassword(
+                          e.target.value
+                        )
+                      }
+                      autoComplete="new-password"
+                      placeholder="********"
+                      className={
+                        INPUT_CLASS
+                      }
+                    />
+                  </label>
 
-            {/* اللغة - قبل حذف الحساب */}
+                  {/* تأكيد الجديدة */}
+                  <label className="mt-3 block">
+                    <div className="text-xs font-semibold text-neutral-300">
+                      {isArabic
+                        ? "تأكيد كلمة المرور الجديدة"
+                        : "Confirm new password"}
+                    </div>
+
+                    <input
+                      type="password"
+                      value={
+                        settingsPasswordConfirm
+                      }
+                      onChange={(e) =>
+                        setSettingsPasswordConfirm(
+                          e.target.value
+                        )
+                      }
+                      autoComplete="new-password"
+                      placeholder="********"
+                      className={
+                        INPUT_CLASS
+                      }
+                    />
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={
+                      handleUpdatePassword
+                    }
+                    disabled={
+                      settingsBusy !==
+                      null
+                    }
+                    className="mt-3 w-full rounded-2xl border border-[#d6b56a]/45 bg-[#d6b56a]/15 py-2.5 text-xs font-extrabold text-white hover:border-[#d6b56a]/70 transition disabled:opacity-50"
+                  >
+                    {settingsBusy ===
+                    "password"
+                      ? isArabic
+                        ? "جاري التحقق والتحديث..."
+                        : "Verifying and updating..."
+                      : isArabic
+                      ? "تحديث كلمة المرور"
+                      : "Update password"}
+                  </button>
+                </SectionDetails>
+              </>
+            ) : null}
+
+            {/*
+              اللغة:
+              تظهر للجميع
+              سواء عنده حساب أو لا.
+            */}
             <SectionDetails
               title={
                 isArabic
                   ? "اللغة"
                   : "Language"
+              }
+              defaultOpen={
+                !isLoggedIn
               }
             >
               <div className="mt-2 flex items-center justify-between gap-4">
@@ -2612,7 +2869,6 @@ export default function FazaaDrawer({
                   </div>
                 </div>
 
-                {/* اختيار صغير ولطيف */}
                 <div
                   dir="ltr"
                   className="inline-flex rounded-xl border border-white/10 bg-black/25 p-1"
@@ -2622,21 +2878,29 @@ export default function FazaaDrawer({
                       {
                         value:
                           "ar",
+
                         label:
                           "ع",
                       },
+
                       {
                         value:
                           "en",
+
                         label:
                           "EN",
                       },
                     ] as {
-                      value: AppLanguage;
-                      label: string;
+                      value:
+                        AppLanguage;
+
+                      label:
+                        string;
                     }[]
                   ).map(
-                    (option) => {
+                    (
+                      option
+                    ) => {
                       const active =
                         language ===
                         option.value;
@@ -2660,6 +2924,7 @@ export default function FazaaDrawer({
                           }
                           className={[
                             "min-w-10 rounded-lg px-2.5 py-1.5 text-[11px] font-extrabold transition",
+
                             active
                               ? "border border-[#d6b56a]/40 bg-[#d6b56a]/15 text-[#f3e0b0]"
                               : "border border-transparent text-neutral-400 hover:text-white",
@@ -2678,95 +2943,100 @@ export default function FazaaDrawer({
               </div>
             </SectionDetails>
 
-            {/* حذف الحساب */}
-            <SectionDetails
-              title={
-                isArabic
-                  ? "حذف الحساب"
-                  : "Delete account"
-              }
-            >
-              <div className="mt-2">
-                <p className="text-[11px] leading-5 text-neutral-400">
-                  {isArabic
-                    ? "حذف الحساب نهائي. سيتم حذف بيانات حسابك والمقاسات وسجل النتائج المرتبط بالحساب."
-                    : "Account deletion is permanent. Your account data, saved measurements, and result history linked to the account will be deleted."}
-                </p>
-
-                {!deleteConfirm ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSettingsMsg(
-                        null
-                      );
-
-                      setDeleteConfirm(
-                        true
-                      );
-                    }}
-                    disabled={
-                      settingsBusy !==
-                      null
-                    }
-                    className="mt-3 w-full rounded-2xl border border-rose-400/35 bg-rose-500/10 py-2.5 text-xs font-extrabold text-rose-100 hover:bg-rose-500/15 transition disabled:opacity-50"
-                  >
+            {/*
+              حذف الحساب:
+              للمستخدم المسجل فقط.
+            */}
+            {isLoggedIn ? (
+              <SectionDetails
+                title={
+                  isArabic
+                    ? "حذف الحساب"
+                    : "Delete account"
+                }
+              >
+                <div className="mt-2">
+                  <p className="text-[11px] leading-5 text-neutral-400">
                     {isArabic
-                      ? "حذف الحساب"
-                      : "Delete account"}
-                  </button>
-                ) : (
-                  <div className="mt-3 rounded-2xl border border-rose-400/30 bg-black/25 p-3">
-                    <div className="text-xs font-bold text-rose-100">
+                      ? "حذف الحساب نهائي. سيتم حذف بيانات حسابك والمقاسات وسجل النتائج المرتبط بالحساب."
+                      : "Account deletion is permanent. Your account data, saved measurements, and result history linked to the account will be deleted."}
+                  </p>
+
+                  {!deleteConfirm ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSettingsMsg(
+                          null
+                        );
+
+                        setDeleteConfirm(
+                          true
+                        );
+                      }}
+                      disabled={
+                        settingsBusy !==
+                        null
+                      }
+                      className="mt-3 w-full rounded-2xl border border-rose-400/35 bg-rose-500/10 py-2.5 text-xs font-extrabold text-rose-100 hover:bg-rose-500/15 transition disabled:opacity-50"
+                    >
                       {isArabic
-                        ? "هل أنتِ متأكدة؟ لا يمكن التراجع عن هذا الإجراء."
-                        : "Are you sure? This action cannot be undone."}
-                    </div>
-
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setDeleteConfirm(
-                            false
-                          )
-                        }
-                        disabled={
-                          settingsBusy ===
-                          "delete"
-                        }
-                        className="rounded-xl border border-white/10 bg-black/20 py-2.5 text-xs font-extrabold text-white hover:bg-black/30 transition disabled:opacity-50"
-                      >
+                        ? "حذف الحساب"
+                        : "Delete account"}
+                    </button>
+                  ) : (
+                    <div className="mt-3 rounded-2xl border border-rose-400/30 bg-black/25 p-3">
+                      <div className="text-xs font-bold text-rose-100">
                         {isArabic
-                          ? "إلغاء"
-                          : "Cancel"}
-                      </button>
+                          ? "هل أنتِ متأكدة؟ لا يمكن التراجع عن هذا الإجراء."
+                          : "Are you sure? This action cannot be undone."}
+                      </div>
 
-                      <button
-                        type="button"
-                        onClick={
-                          handleDeleteAccount
-                        }
-                        disabled={
-                          settingsBusy ===
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDeleteConfirm(
+                              false
+                            )
+                          }
+                          disabled={
+                            settingsBusy ===
+                            "delete"
+                          }
+                          className="rounded-xl border border-white/10 bg-black/20 py-2.5 text-xs font-extrabold text-white hover:bg-black/30 transition disabled:opacity-50"
+                        >
+                          {isArabic
+                            ? "إلغاء"
+                            : "Cancel"}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={
+                            handleDeleteAccount
+                          }
+                          disabled={
+                            settingsBusy ===
+                            "delete"
+                          }
+                          className="rounded-xl border border-rose-400/40 bg-rose-500/15 py-2.5 text-xs font-extrabold text-rose-100 hover:bg-rose-500/25 transition disabled:opacity-50"
+                        >
+                          {settingsBusy ===
                           "delete"
-                        }
-                        className="rounded-xl border border-rose-400/40 bg-rose-500/15 py-2.5 text-xs font-extrabold text-rose-100 hover:bg-rose-500/25 transition disabled:opacity-50"
-                      >
-                        {settingsBusy ===
-                        "delete"
-                          ? isArabic
-                            ? "جاري الحذف..."
-                            : "Deleting..."
-                          : isArabic
-                          ? "حذف نهائي"
-                          : "Delete permanently"}
-                      </button>
+                            ? isArabic
+                              ? "جاري الحذف..."
+                              : "Deleting..."
+                            : isArabic
+                            ? "حذف نهائي"
+                            : "Delete permanently"}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            </SectionDetails>
+                  )}
+                </div>
+              </SectionDetails>
+            ) : null}
           </div>
         ) : (
           /* =====================
@@ -2774,6 +3044,10 @@ export default function FazaaDrawer({
           ====================== */
 
           <div className="p-5 space-y-4 overflow-y-auto flex-1 min-h-0">
+            {/* =====================
+                ACCOUNT / AUTH
+            ====================== */}
+
             {!isLoggedIn ? (
               <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
                 <div className="flex items-center justify-between mb-3">
@@ -2801,13 +3075,12 @@ export default function FazaaDrawer({
                       }}
                       className={[
                         "px-3 py-1.5 rounded-xl text-xs font-extrabold transition",
+
                         tab ===
                         "login"
                           ? "bg-[#d6b56a]/15 text-white border border-[#d6b56a]/35"
                           : "text-neutral-300 hover:text-white",
-                      ].join(
-                        " "
-                      )}
+                      ].join(" ")}
                     >
                       {isArabic
                         ? "تسجيل الدخول"
@@ -2831,13 +3104,12 @@ export default function FazaaDrawer({
                       }}
                       className={[
                         "px-3 py-1.5 rounded-xl text-xs font-extrabold transition",
+
                         tab ===
                         "register"
                           ? "bg-[#d6b56a]/15 text-white border border-[#d6b56a]/35"
                           : "text-neutral-300 hover:text-white",
-                      ].join(
-                        " "
-                      )}
+                      ].join(" ")}
                     >
                       {isArabic
                         ? "إنشاء حساب"
@@ -2850,13 +3122,12 @@ export default function FazaaDrawer({
                   <div
                     className={[
                       "mb-3 rounded-2xl px-3 py-2 text-xs font-semibold border",
+
                       authMsg.type ===
                       "ok"
                         ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
                         : "border-rose-400/30 bg-rose-500/10 text-rose-100",
-                    ].join(
-                      " "
-                    )}
+                    ].join(" ")}
                   >
                     {
                       authMsg.text
@@ -2864,6 +3135,7 @@ export default function FazaaDrawer({
                   </div>
                 ) : null}
 
+                {/* نسيت كلمة المرور */}
                 {showForgot ? (
                   <div className="space-y-3">
                     <div>
@@ -2886,7 +3158,9 @@ export default function FazaaDrawer({
                         }
                         placeholder="example@email.com"
                         autoComplete="email"
-                        className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-left text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
+                        className={
+                          INPUT_LTR_CLASS
+                        }
                       />
                     </div>
 
@@ -2906,6 +3180,8 @@ export default function FazaaDrawer({
                       <button
                         type="button"
                         onClick={() => {
+                          blurActiveElement();
+
                           setShowForgot(
                             false
                           );
@@ -2924,6 +3200,10 @@ export default function FazaaDrawer({
                   </div>
                 ) : tab ===
                   "register" ? (
+                  /* =====================
+                      CREATE ACCOUNT
+                  ====================== */
+
                   <div className="space-y-3">
                     <div>
                       <label className="text-xs font-semibold text-neutral-200">
@@ -2933,6 +3213,7 @@ export default function FazaaDrawer({
                       </label>
 
                       <input
+                        type="text"
                         value={
                           name
                         }
@@ -2942,7 +3223,9 @@ export default function FazaaDrawer({
                           )
                         }
                         autoComplete="name"
-                        className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
+                        className={
+                          INPUT_CLASS
+                        }
                       />
                     </div>
 
@@ -2965,7 +3248,9 @@ export default function FazaaDrawer({
                           )
                         }
                         autoComplete="email"
-                        className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-left text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
+                        className={
+                          INPUT_LTR_CLASS
+                        }
                       />
                     </div>
 
@@ -2987,7 +3272,9 @@ export default function FazaaDrawer({
                           )
                         }
                         autoComplete="new-password"
-                        className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
+                        className={
+                          INPUT_CLASS
+                        }
                       />
                     </div>
 
@@ -3004,6 +3291,10 @@ export default function FazaaDrawer({
                     </button>
                   </div>
                 ) : (
+                  /* =====================
+                      SIGN IN
+                  ====================== */
+
                   <div className="space-y-3">
                     <div>
                       <label className="text-xs font-semibold text-neutral-200">
@@ -3024,7 +3315,9 @@ export default function FazaaDrawer({
                           )
                         }
                         autoComplete="email"
-                        className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-left text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
+                        className={
+                          INPUT_LTR_CLASS
+                        }
                       />
                     </div>
 
@@ -3046,7 +3339,9 @@ export default function FazaaDrawer({
                           )
                         }
                         autoComplete="current-password"
-                        className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-2.5 text-sm text-white focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10 outline-none"
+                        className={
+                          INPUT_CLASS
+                        }
                       />
                     </div>
 
@@ -3054,6 +3349,8 @@ export default function FazaaDrawer({
                       <button
                         type="button"
                         onClick={() => {
+                          blurActiveElement();
+
                           setShowForgot(
                             true
                           );
@@ -3090,7 +3387,11 @@ export default function FazaaDrawer({
               </div>
             ) : null}
 
-            {/* المقاسات */}
+            {/* =====================
+                MEASUREMENTS
+                للحسابات فقط
+            ====================== */}
+
             {isLoggedIn ? (
               <SectionDetails
                 title={
@@ -3107,9 +3408,7 @@ export default function FazaaDrawer({
                   </div>
 
                   <UnitToggle
-                    value={
-                      unit
-                    }
+                    value={unit}
                     onChange={
                       onChangeUnit
                     }
@@ -3304,7 +3603,11 @@ export default function FazaaDrawer({
               </SectionDetails>
             ) : null}
 
-            {/* آخر النتائج */}
+            {/* =====================
+                RECENT RESULTS
+                للحسابات فقط
+            ====================== */}
+
             {isLoggedIn ? (
               <SectionDetails
                 title={
@@ -3335,7 +3638,9 @@ export default function FazaaDrawer({
                 ) : (
                   <div className="space-y-2">
                     {history.map(
-                      (item) => (
+                      (
+                        item
+                      ) => (
                         <button
                           key={
                             item.id
@@ -3357,6 +3662,8 @@ export default function FazaaDrawer({
                               return;
                             }
 
+                            blurActiveElement();
+
                             onClose();
 
                             router.push(
@@ -3366,12 +3673,11 @@ export default function FazaaDrawer({
                           className={[
                             "w-full rounded-2xl border border-white/10 bg-black/20 px-3 py-3",
                             "hover:bg-black/30 transition",
+
                             isArabic
                               ? "text-right"
                               : "text-left",
-                          ].join(
-                            " "
-                          )}
+                          ].join(" ")}
                         >
                           <div className="text-xs font-extrabold text-white">
                             {translateHistoryTitle(
@@ -3397,7 +3703,10 @@ export default function FazaaDrawer({
               </SectionDetails>
             ) : null}
 
-            {/* تسجيل الخروج */}
+            {/* =====================
+                SIGN OUT
+            ====================== */}
+
             {isLoggedIn ? (
               <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
                 <button
