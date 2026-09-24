@@ -31,7 +31,7 @@ function PasswordField({
         onChange={(e) =>
           onChange(e.target.value)
         }
-        className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-3 text-sm text-white outline-none focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10"
+        className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-3 text-base md:text-sm text-white outline-none focus:border-[#d6b56a]/40 focus:ring-2 focus:ring-[#d6b56a]/10"
         placeholder="********"
         autoComplete="new-password"
       />
@@ -39,20 +39,118 @@ function PasswordField({
   );
 }
 
+function getFriendlyResetError(
+  error: unknown,
+  isArabic: boolean
+) {
+  let code = "";
+  let message = "";
+
+  if (
+    error &&
+    typeof error === "object"
+  ) {
+    if (
+      "code" in error &&
+      typeof (
+        error as {
+          code?: unknown;
+        }
+      ).code === "string"
+    ) {
+      code = (
+        error as {
+          code: string;
+        }
+      ).code;
+    }
+
+    if (
+      "message" in error &&
+      typeof (
+        error as {
+          message?: unknown;
+        }
+      ).message === "string"
+    ) {
+      message = (
+        error as {
+          message: string;
+        }
+      ).message;
+    }
+  }
+
+  const normalized =
+    message.toLowerCase();
+
+  if (
+    code ===
+      "same_password" ||
+    normalized.includes(
+      "same password"
+    )
+  ) {
+    return isArabic
+      ? "كلمة المرور الجديدة لازم تكون مختلفة عن كلمة المرور السابقة."
+      : "Your new password must be different from your previous password.";
+  }
+
+  if (
+    code ===
+      "weak_password" ||
+    normalized.includes(
+      "password should"
+    ) ||
+    normalized.includes(
+      "weak password"
+    )
+  ) {
+    return isArabic
+      ? "كلمة المرور لا تستوفي متطلبات الأمان. اختاري كلمة مرور أقوى."
+      : "The password does not meet the security requirements. Choose a stronger password.";
+  }
+
+  if (
+    normalized.includes(
+      "expired"
+    ) ||
+    normalized.includes(
+      "invalid"
+    )
+  ) {
+    return isArabic
+      ? "رابط الاستعادة غير صالح أو انتهت صلاحيته. اطلبي رابطًا جديدًا."
+      : "The recovery link is invalid or has expired. Please request a new one.";
+  }
+
+  return isArabic
+    ? "تعذر تحديث كلمة المرور. حاولي مرة ثانية."
+    : "Unable to update your password. Please try again.";
+}
+
 export default function ResetPasswordPage() {
-  const router = useRouter();
+  const router =
+    useRouter();
 
   const {
     isArabic,
     direction,
   } = useLanguage();
 
-  const [ready, setReady] =
-    useState(false);
+  const [
+    ready,
+    setReady,
+  ] = useState(false);
 
   const [
     sessionOk,
     setSessionOk,
+  ] = useState(false);
+
+  const [
+    recoveryDetected,
+    setRecoveryDetected,
   ] = useState(false);
 
   const [
@@ -78,8 +176,10 @@ export default function ResetPasswordPage() {
     setSaving,
   ] = useState(false);
 
-  const [done, setDone] =
-    useState(false);
+  const [
+    done,
+    setDone,
+  ] = useState(false);
 
   /* =========================
      Recovery session
@@ -88,36 +188,131 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     let mounted = true;
 
-    (async () => {
-      const { data } =
-        await supabase.auth.getSession();
-
-      if (!mounted) return;
-
-      setSessionOk(
-        !!data.session?.user
-      );
-
-      setReady(true);
-    })();
-
-    const { data: listener } =
+    /*
+      نسجل الـlistener أولًا حتى ما نفوت
+      PASSWORD_RECOVERY عند فتح الرابط.
+    */
+    const {
+      data: listener,
+    } =
       supabase.auth.onAuthStateChange(
-        (_event, session) => {
-          if (!mounted) return;
+        (
+          event,
+          session
+        ) => {
+          if (!mounted) {
+            return;
+          }
 
-          setSessionOk(
-            !!session?.user
-          );
+          if (
+            event ===
+            "PASSWORD_RECOVERY"
+          ) {
+            setRecoveryDetected(
+              true
+            );
+
+            setSessionOk(
+              !!session?.user
+            );
+
+            setReady(true);
+
+            return;
+          }
+
+          if (
+            event ===
+            "SIGNED_OUT"
+          ) {
+            if (!done) {
+              setSessionOk(
+                false
+              );
+            }
+
+            return;
+          }
+
+          if (
+            session?.user
+          ) {
+            setSessionOk(
+              true
+            );
+          }
         }
       );
+
+    /*
+      fallback:
+      بعض المتصفحات تنشئ Session من رابط
+      الاستعادة قبل تشغيل الـeffect.
+    */
+    (async () => {
+      try {
+        const {
+          data,
+        } =
+          await supabase.auth.getSession();
+
+        if (!mounted) {
+          return;
+        }
+
+        if (
+          data.session?.user
+        ) {
+          setSessionOk(
+            true
+          );
+        }
+      } finally {
+        if (mounted) {
+          setReady(true);
+        }
+      }
+    })();
+
+    /*
+      وجود token/code في عنوان صفحة
+      الاستعادة دليل إضافي إن المستخدم
+      جاء من رابط الإيميل.
+    */
+    try {
+      const url =
+        new URL(
+          window.location.href
+        );
+
+      const hash =
+        url.hash.toLowerCase();
+
+      if (
+        hash.includes(
+          "type=recovery"
+        ) ||
+        url.searchParams.has(
+          "code"
+        ) ||
+        url.searchParams.get(
+          "type"
+        ) === "recovery"
+      ) {
+        setRecoveryDetected(
+          true
+        );
+      }
+    } catch {
+      // ignore
+    }
 
     return () => {
       mounted = false;
 
       listener.subscription.unsubscribe();
     };
-  }, []);
+  }, [done]);
 
   /* =========================
      Validation
@@ -126,6 +321,12 @@ export default function ResetPasswordPage() {
   const canSubmit =
     useMemo(() => {
       if (done) {
+        return false;
+      }
+
+      if (
+        !sessionOk
+      ) {
         return false;
       }
 
@@ -147,6 +348,7 @@ export default function ResetPasswordPage() {
       password,
       confirm,
       done,
+      sessionOk,
     ]);
 
   /* =========================
@@ -159,9 +361,10 @@ export default function ResetPasswordPage() {
     if (!sessionOk) {
       setStatus({
         type: "err",
+
         text: isArabic
-          ? "الرابط غير صالح أو انتهت صلاحيته. ارجعي واطلبي رابطًا جديدًا."
-          : "This reset link is invalid or has expired. Please request a new one.",
+          ? "رابط الاستعادة غير صالح أو انتهت صلاحيته. ارجعي للتطبيق واطلبي رابطًا جديدًا."
+          : "The recovery link is invalid or has expired. Return to the app and request a new one.",
       });
 
       return;
@@ -170,6 +373,7 @@ export default function ResetPasswordPage() {
     if (!password) {
       setStatus({
         type: "err",
+
         text: isArabic
           ? "اكتبي كلمة المرور الجديدة."
           : "Enter your new password.",
@@ -183,6 +387,7 @@ export default function ResetPasswordPage() {
     ) {
       setStatus({
         type: "err",
+
         text: isArabic
           ? "كلمة المرور لازم تكون 6 أحرف على الأقل."
           : "Password must be at least 6 characters.",
@@ -196,6 +401,7 @@ export default function ResetPasswordPage() {
     ) {
       setStatus({
         type: "err",
+
         text: isArabic
           ? "كلمتا المرور غير متطابقتين."
           : "Passwords do not match.",
@@ -211,25 +417,29 @@ export default function ResetPasswordPage() {
     try {
       setSaving(true);
 
-      const { error } =
-        await supabase.auth.updateUser({
-          password,
-        });
+      const {
+        error,
+      } =
+        await supabase.auth.updateUser(
+          {
+            password,
+          }
+        );
 
       if (error) {
         throw error;
       }
 
       /*
-        بعد نجاح الاستعادة:
-        ننهي جلسة الاستعادة حتى تدخل
-        المستخدمة بكلمة المرور الجديدة
-        من التطبيق بشكل طبيعي.
+        بعد نجاح تغيير كلمة المرور
+        نخرج من جلسة الاستعادة حتى
+        تسجل المستخدمة دخول طبيعي
+        بكلمة المرور الجديدة.
       */
       try {
         await supabase.auth.signOut();
       } catch {
-        // password was already updated
+        // password already updated
       }
 
       setDone(true);
@@ -239,35 +449,22 @@ export default function ResetPasswordPage() {
 
       setStatus({
         type: "ok",
+
         text: isArabic
           ? "تم تحديث كلمة المرور بنجاح."
           : "Your password has been updated successfully.",
       });
-    } catch (error: unknown) {
-      let message = isArabic
-        ? "تعذر تحديث كلمة المرور."
-        : "Unable to update your password.";
-
-      if (
-        error &&
-        typeof error === "object" &&
-        "message" in error &&
-        typeof (
-          error as {
-            message?: unknown;
-          }
-        ).message === "string"
-      ) {
-        message = (
-          error as {
-            message: string;
-          }
-        ).message;
-      }
-
+    } catch (
+      error: unknown
+    ) {
       setStatus({
         type: "err",
-        text: message,
+
+        text:
+          getFriendlyResetError(
+            error,
+            isArabic
+          ),
       });
     } finally {
       setSaving(false);
@@ -315,11 +512,12 @@ export default function ResetPasswordPage() {
                 ? "جاري التحميل…"
                 : "Loading…"}
             </div>
-          ) : !sessionOk && !done ? (
+          ) : !sessionOk &&
+            !done ? (
             <div className="rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm leading-6 text-rose-100">
               {isArabic
-                ? "الرابط غير صالح أو منتهي. ارجعي للتطبيق واطلبي رابطًا جديدًا من «نسيت كلمة المرور»."
-                : "This link is invalid or has expired. Return to the app and request a new link using “Forgot password?”"}
+                ? "رابط الاستعادة غير صالح أو منتهي. ارجعي للتطبيق واطلبي رابطًا جديدًا من «نسيت كلمة المرور»."
+                : "This recovery link is invalid or has expired. Return to the app and request a new link using “Forgot password?”"}
             </div>
           ) : (
             <div className="space-y-4">
@@ -327,13 +525,18 @@ export default function ResetPasswordPage() {
                 <div
                   className={[
                     "rounded-2xl border px-4 py-3 text-sm leading-6",
+
                     status.type ===
                     "ok"
                       ? "border-[#d6b56a]/35 bg-[#d6b56a]/10 text-[#f3e0b0]"
                       : "border-rose-400/30 bg-rose-500/10 text-rose-100",
-                  ].join(" ")}
+                  ].join(
+                    " "
+                  )}
                 >
-                  {status.text}
+                  {
+                    status.text
+                  }
                 </div>
               ) : null}
 
@@ -397,7 +600,9 @@ export default function ResetPasswordPage() {
                 <button
                   type="button"
                   onClick={() =>
-                    router.replace("/")
+                    router.replace(
+                      "/"
+                    )
                   }
                   className="w-full rounded-2xl border border-[#d6b56a]/45 bg-[#d6b56a]/15 py-3 text-sm font-extrabold text-white transition hover:border-[#d6b56a]/70"
                 >
