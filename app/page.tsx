@@ -64,7 +64,7 @@ export default function HomePage() {
         ease: "easeOut",
       }}
       dir={direction}
-      className="relative min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-900 to-black text-white flex items-center justify-center p-6 overflow-hidden"
+      className="fazaa-home relative min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-900 to-black text-white flex items-center justify-center p-6 overflow-hidden"
     >
       {/* زر الثلاث نقاط */}
       <ThreeDotsButton

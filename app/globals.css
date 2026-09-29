@@ -116,3 +116,13 @@ main {
     max-width: 100%;
   }
 }
+/* =========================================
+   iPad Only — Fazaa Home Layout
+   لا يؤثر على الآيفون
+   ========================================= */
+
+@media (min-width: 768px) and (max-width: 1366px) and (pointer: coarse) {
+  main.fazaa-home {
+    align-items: flex-start !important;
+  }
+}
